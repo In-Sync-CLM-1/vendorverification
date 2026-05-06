@@ -142,7 +142,7 @@ export function ApiKeysPanel() {
             Quick Start
           </p>
           <pre className="text-xs bg-background/70 rounded p-3 overflow-x-auto font-mono text-muted-foreground">
-{`curl -X POST https://civ.in-sync.co.in/functions/v1/public-api \\
+{`curl -X POST https://vendorverification.in-sync.co.in/functions/v1/public-api \\
   -H "Authorization: Bearer isk_live_YOUR_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"action":"verify_gst","gstin":"27AAHCA3239L1ZH"}'`}

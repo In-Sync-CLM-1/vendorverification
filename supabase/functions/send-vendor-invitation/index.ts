@@ -142,7 +142,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const registrationUrl = `https://civ.in-sync.co.in${registrationPath}`;
+    const registrationUrl = `https://vendorverification.in-sync.co.in${registrationPath}`;
 
     // Send email via Resend
     const emailRes = await fetch("https://api.resend.com/emails", {
