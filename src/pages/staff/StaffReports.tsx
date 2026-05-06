@@ -35,7 +35,6 @@ import {
 const STATUS_CHART_COLORS: Record<string, string> = {
   draft: "#94a3b8",
   pending_review: "#f59e0b",
-  in_verification: "#0066B3",
   pending_approval: "#8b5cf6",
   sent_back: "#f97316",
   approved: "#7AB648",
@@ -45,7 +44,6 @@ const STATUS_CHART_COLORS: Record<string, string> = {
 const STATUS_LABELS: Record<string, string> = {
   draft: "Draft",
   pending_review: "Pending Review",
-  in_verification: "In Verification",
   pending_approval: "Pending Approval",
   sent_back: "Sent Back",
   approved: "Approved",
@@ -72,7 +70,7 @@ interface WorkflowHistoryData {
 }
 
 export default function StaffReports() {
-  const { isAdmin, isMaker, isChecker } = useUserRoles();
+  const { isAdmin, isMaker } = useUserRoles();
   const [activeReport, setActiveReport] = useState("status");
 
   const { data: vendors, isLoading: vendorsLoading } = useQuery({
@@ -142,7 +140,7 @@ export default function StaffReports() {
     window.URL.revokeObjectURL(url);
   };
 
-  if (!isAdmin && !isMaker && !isChecker) {
+  if (!isAdmin && !isMaker) {
     return (
       <StaffLayout title="Access Denied">
         <div className="flex-1 flex items-center justify-center p-4">
@@ -163,7 +161,6 @@ export default function StaffReports() {
   const approvedCount = statusCounts["approved"] || 0;
   const pendingCount =
     (statusCounts["pending_review"] || 0) +
-    (statusCounts["in_verification"] || 0) +
     (statusCounts["pending_approval"] || 0) +
     (statusCounts["sent_back"] || 0);
 
@@ -204,7 +201,7 @@ export default function StaffReports() {
   const pendingData =
     vendors
       ?.filter((v) =>
-        ["pending_review", "in_verification", "pending_approval", "sent_back"].includes(
+        ["pending_review", "pending_approval", "sent_back"].includes(
           v.current_status
         )
       )
@@ -260,7 +257,6 @@ export default function StaffReports() {
   const statusBadgeClasses: Record<string, string> = {
     draft: "bg-muted text-muted-foreground",
     pending_review: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
-    in_verification: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
     pending_approval: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
     sent_back: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
     approved: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",

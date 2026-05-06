@@ -13,10 +13,10 @@ export interface VendorWithCategory extends Vendor {
 
 export function useStaffVendorQueue() {
   const { user } = useAuth();
-  const { isAdmin, isMaker, isChecker, isApprover } = useUserRoles();
+  const { isAdmin, isMaker, isApprover } = useUserRoles();
 
   return useQuery({
-    queryKey: ["staff-vendor-queue", user?.id, isAdmin, isMaker, isChecker, isApprover],
+    queryKey: ["staff-vendor-queue", user?.id, isAdmin, isMaker, isApprover],
     queryFn: async () => {
       if (!user) return [];
 

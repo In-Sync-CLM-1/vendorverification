@@ -33,7 +33,6 @@ import {
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
   draft: { label: "Draft", color: "bg-muted", icon: FileText },
   pending_review: { label: "Pending Review", color: "bg-warning/20 text-warning", icon: Clock },
-  in_verification: { label: "In Verification", color: "bg-primary/20 text-primary", icon: FileText },
   pending_approval: { label: "Pending Approval", color: "bg-accent/20 text-accent", icon: Clock },
   sent_back: { label: "Sent Back", color: "bg-orange-100 text-orange-700", icon: AlertCircle },
   approved: { label: "Approved", color: "bg-success/20 text-success", icon: CheckCircle2 },

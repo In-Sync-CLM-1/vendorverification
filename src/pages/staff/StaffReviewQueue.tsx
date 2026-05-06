@@ -37,8 +37,8 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function StaffReviewQueue() {
   const navigate = useNavigate();
-  const { isAdmin, isMaker, isChecker, isApprover, isLoading: rolesLoading } = useUserRoles();
-  const isReviewer = isMaker || isChecker;
+  const { isAdmin, isMaker, isApprover, isLoading: rolesLoading } = useUserRoles();
+  const isReviewer = isMaker;
   const { data: vendors, isLoading: vendorsLoading } = useStaffVendorQueue();
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("pending_review");

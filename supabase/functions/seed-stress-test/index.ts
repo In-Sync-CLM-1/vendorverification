@@ -120,8 +120,8 @@ function buildVendor(n: number, group: number, ctx: SeedContext) {
       base.submitted_at = new Date(Date.now() - 12 * 86400000).toISOString();
       base.sent_back_reason = SENT_BACK_REASONS[(n - 1) % 5];
       break;
-    case 5: // In verification
-      base.current_status = "in_verification";
+    case 5: // Pending approval (older)
+      base.current_status = "pending_approval";
       base.submitted_at = new Date(Date.now() - 7 * 86400000).toISOString();
       break;
     case 6: // Pending approval

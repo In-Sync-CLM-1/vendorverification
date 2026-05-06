@@ -23,7 +23,7 @@ export interface Vendor {
   bank_ifsc: string | null;
   bank_name: string | null;
   bank_branch: string | null;
-  current_status: "draft" | "pending_review" | "in_verification" | "pending_approval" | "approved" | "rejected";
+  current_status: "draft" | "pending_review" | "pending_approval" | "approved" | "rejected";
   submitted_at: string | null;
   approved_at: string | null;
   rejected_at: string | null;

@@ -76,8 +76,8 @@ const DOC_STATUS_COLORS = {
 export default function VendorReviewDetail() {
   const { vendorId } = useParams();
   const navigate = useNavigate();
-  const { isAdmin, isMaker, isChecker, isApprover } = useUserRoles();
-  const isReviewer = isMaker || isChecker;
+  const { isAdmin, isMaker, isApprover } = useUserRoles();
+  const isReviewer = isMaker;
 
   const { data: vendor, isLoading: vendorLoading } = useVendorDetails(vendorId || null);
   const { data: documents, isLoading: docsLoading } = useVendorDocumentsForReview(vendorId || null);
