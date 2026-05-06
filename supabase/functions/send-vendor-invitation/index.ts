@@ -184,9 +184,8 @@ Deno.serve(async (req) => {
       // Invitation was created, email failure is not critical
     }
 
-    // Send WhatsApp via Exotel using the `vendor_invitation` template.
-    // Skipped silently if WhatsApp is not configured for this platform OR if the
-    // template hasn't been approved by Meta yet (Exotel returns an error in that case).
+    // Send WhatsApp via Exotel using the `vendor_invitation` template and log
+    // every attempt to whatsapp_messages so deliveries are auditable.
     try {
       const { data: wsConfig } = await supabaseAdmin
         .from("whatsapp_settings")
@@ -200,6 +199,7 @@ Deno.serve(async (req) => {
         const toPhone = phoneDigits.length === 10 ? `91${phoneDigits}` : phoneDigits;
         const fromNumber = wsConfig.whatsapp_source_number.replace("+", "");
         const subdomain = wsConfig.exotel_subdomain || "api.exotel.com";
+        const safeCompany = sanitizeString(company_name, 60);
 
         const waPayload = {
           custom_data: toPhone,
@@ -217,7 +217,7 @@ Deno.serve(async (req) => {
                       {
                         type: "body",
                         parameters: [
-                          { type: "text", text: sanitizeString(company_name, 60) },
+                          { type: "text", text: safeCompany },
                           { type: "text", text: registrationUrl },
                         ],
                       },
@@ -235,10 +235,47 @@ Deno.serve(async (req) => {
           headers: { "Content-Type": "application/json", Authorization: waAuth },
           body: JSON.stringify(waPayload),
         });
-        if (!waRes.ok) {
-          const waText = await waRes.text();
-          console.error("WhatsApp send failed:", waRes.status, waText.slice(0, 300));
+
+        const waText = await waRes.text();
+        let exotelMessageId: string | null = null;
+        let errorMessage: string | null = null;
+        let logStatus: "sent" | "failed" = waRes.ok ? "sent" : "failed";
+
+        try {
+          const parsed = JSON.parse(waText);
+          // Exotel v2 returns: { response: [{ data: { messages: [{ id }] } }] } on success
+          exotelMessageId =
+            parsed?.response?.[0]?.data?.messages?.[0]?.id ??
+            parsed?.response?.[0]?.data?.id ??
+            null;
+          if (!waRes.ok) {
+            errorMessage =
+              parsed?.response?.[0]?.error_data?.description ??
+              parsed?.response?.[0]?.error_data?.message ??
+              waText.slice(0, 500);
+          }
+        } catch {
+          if (!waRes.ok) errorMessage = waText.slice(0, 500);
         }
+
+        if (!waRes.ok) {
+          console.error("WhatsApp send failed:", waRes.status, errorMessage);
+        }
+
+        await supabaseAdmin.from("whatsapp_messages").insert({
+          tenant_id: tenantId,
+          vendor_id: null,
+          phone_number: toPhone,
+          direction: "outbound",
+          template_name: "vendor_invitation",
+          template_variables: { "1": safeCompany, "2": registrationUrl },
+          message_content: `Hi ${safeCompany}, you have been invited to register as a vendor on the Vendor Verification Portal.\n\nComplete your registration here: ${registrationUrl}\n\nThis invitation is valid for 7 days.`,
+          status: logStatus,
+          exotel_message_id: exotelMessageId,
+          error_message: errorMessage,
+          sent_by: user.id,
+          sent_at: logStatus === "sent" ? new Date().toISOString() : null,
+        });
       }
     } catch (waErr) {
       console.error("WhatsApp send threw:", waErr);
