@@ -236,6 +236,70 @@ serve(async (req) => {
       });
     }
 
+    // 6. Seed master data for the new tenant by copying from the default tenant.
+    // Without this, vendor_categories / document_types are empty and the
+    // "Invite Vendor" category dropdown shows nothing.
+    const DEFAULT_TENANT_ID = "a0000000-0000-0000-0000-000000000001";
+    try {
+      const { data: srcCategories } = await supabase
+        .from("vendor_categories")
+        .select("name, description, is_active")
+        .eq("tenant_id", DEFAULT_TENANT_ID);
+
+      const { data: srcDocTypes } = await supabase
+        .from("document_types")
+        .select("name, description, sample_url, accepted_formats, max_file_size_mb, has_expiry")
+        .eq("tenant_id", DEFAULT_TENANT_ID);
+
+      const { data: srcCategoryDocs } = await supabase
+        .from("category_documents")
+        .select("category_id, document_type_id, is_mandatory, display_order, vendor_categories!inner(name), document_types!inner(name)")
+        .eq("tenant_id", DEFAULT_TENANT_ID);
+
+      // Insert categories for new tenant; map old name -> new id
+      const categoryNameToId: Record<string, string> = {};
+      if (srcCategories?.length) {
+        const { data: insertedCats } = await supabase
+          .from("vendor_categories")
+          .insert(srcCategories.map(c => ({ ...c, tenant_id: tenant.id })))
+          .select("id, name");
+        insertedCats?.forEach(c => { categoryNameToId[c.name] = c.id; });
+      }
+
+      // Insert document types; map old name -> new id
+      const docTypeNameToId: Record<string, string> = {};
+      if (srcDocTypes?.length) {
+        const { data: insertedDocs } = await supabase
+          .from("document_types")
+          .insert(srcDocTypes.map(d => ({ ...d, tenant_id: tenant.id })))
+          .select("id, name");
+        insertedDocs?.forEach(d => { docTypeNameToId[d.name] = d.id; });
+      }
+
+      // Insert category_documents using the new tenant's category/doc-type IDs
+      if (srcCategoryDocs?.length) {
+        const rows = srcCategoryDocs
+          .map((cd: any) => {
+            const newCategoryId = categoryNameToId[cd.vendor_categories?.name];
+            const newDocTypeId = docTypeNameToId[cd.document_types?.name];
+            if (!newCategoryId || !newDocTypeId) return null;
+            return {
+              tenant_id: tenant.id,
+              category_id: newCategoryId,
+              document_type_id: newDocTypeId,
+              is_mandatory: cd.is_mandatory,
+              display_order: cd.display_order,
+            };
+          })
+          .filter(Boolean);
+        if (rows.length) {
+          await supabase.from("category_documents").insert(rows);
+        }
+      }
+    } catch (seedErr) {
+      console.error("Master data seeding failed (non-fatal):", seedErr);
+    }
+
     // Note: Trial subscription is auto-created by the trigger on tenants insert
     // (see 20260318100000_subscription_billing.sql)
 
