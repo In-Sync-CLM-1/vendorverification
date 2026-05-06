@@ -216,24 +216,31 @@ serve(async (req) => {
         .eq("user_id", userId);
     }
 
-    // 4. Assign admin role
-    const { error: roleErr } = await supabase.from("user_roles").insert({
+    // 4. Assign admin + all workflow roles so the creator owns the org.
+    // If any role insert fails we treat the whole registration as failed and
+    // roll back the half-created tenant — otherwise the user ends up with an
+    // account that cannot do anything.
+    const rolesToAssign = ["admin", "maker", "checker", "approver"];
+    const roleRows = rolesToAssign.map((role) => ({
       user_id: userId,
       tenant_id: tenant.id,
-      role: "admin",
-    });
+      role,
+    }));
+
+    const { error: roleErr } = await supabase.from("user_roles").insert(roleRows);
 
     if (roleErr) {
       console.error("Role assignment failed:", roleErr);
-    }
-
-    // 5. Also assign all workflow roles so the admin can do everything
-    for (const role of ["maker", "checker", "approver"]) {
-      await supabase.from("user_roles").insert({
-        user_id: userId,
-        tenant_id: tenant.id,
-        role,
-      });
+      // Roll back tenant + auto-seeded child rows so the org doesn't linger
+      // as an abandoned tenant the user can never access.
+      await supabase.from("vendor_categories").delete().eq("tenant_id", tenant.id);
+      await supabase.from("org_subscriptions").delete().eq("tenant_id", tenant.id);
+      await supabase.from("profiles").delete().eq("tenant_id", tenant.id);
+      await supabase.from("tenants").delete().eq("id", tenant.id);
+      return new Response(
+        JSON.stringify({ error: "Failed to grant admin access to your account. Please try again." }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // 6. Seed master data for the new tenant by copying from the default tenant.

@@ -7,6 +7,7 @@ import { useUserRoles } from "@/hooks/useUserRoles";
 import { useStaffVendorQueue } from "@/hooks/useStaffWorkflow";
 import { useDataRequests } from "@/hooks/useDataRequests";
 import { OnboardingChecklist } from "@/components/staff/OnboardingChecklist";
+import { PlatformOrgsPanel } from "@/components/platform/PlatformOrgsPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,7 +31,7 @@ import {
 
 export default function StaffDashboard() {
   const { user } = useAuth();
-  const { isAdmin, isLoading: rolesLoading } = useUserRoles();
+  const { isAdmin, isPlatformAdmin, isLoading: rolesLoading } = useUserRoles();
   const { data: vendors, isLoading: vendorsLoading } = useStaffVendorQueue();
   const { data: dataRequestStats } = useDataRequests();
   const navigate = useNavigate();
@@ -316,6 +317,9 @@ export default function StaffDashboard() {
             <div className="absolute bottom-0 right-0 opacity-[0.07]"><Users className="h-20 w-20 -mb-3 -mr-3" /></div>
           </button>
         </div>
+
+        {/* Platform Admin: Organizations management */}
+        {isPlatformAdmin && <PlatformOrgsPanel />}
 
         {/* Activity + Metrics */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
