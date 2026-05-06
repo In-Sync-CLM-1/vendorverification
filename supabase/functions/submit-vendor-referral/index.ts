@@ -212,6 +212,7 @@ serve(async (req) => {
         file_url: doc.file_path,
         file_size_bytes: doc.file_size || null,
         status: "uploaded",
+        tenant_id: resolvedTenantId,
       }));
 
       const { data: insertedDocs, error: docErr } = await supabase

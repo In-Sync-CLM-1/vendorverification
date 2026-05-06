@@ -7,6 +7,7 @@ import { User, Phone, Mail, CheckCircle2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { useTenant } from "@/contexts/TenantContext";
 
 interface ContactDetailsStepProps {
   formData: {
@@ -23,6 +24,7 @@ interface ContactDetailsStepProps {
 }
 
 export function ContactDetailsStep({ formData, phoneVerified, emailVerified, onChange, onPhoneVerified, onEmailVerified }: ContactDetailsStepProps) {
+  const { tenant } = useTenant();
   // Phone OTP state
   const [phoneOtpSent, setPhoneOtpSent] = useState(false);
   const [phoneOtpValue, setPhoneOtpValue] = useState("");
@@ -63,7 +65,7 @@ export function ContactDetailsStep({ formData, phoneVerified, emailVerified, onC
     setPhoneSending(true);
     try {
       const { data, error } = await supabase.functions.invoke("send-public-otp", {
-        body: { identifier: phone, identifierType: "phone" },
+        body: { identifier: phone, identifierType: "phone", tenant_id: tenant?.id },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -115,7 +117,7 @@ export function ContactDetailsStep({ formData, phoneVerified, emailVerified, onC
     setEmailSending(true);
     try {
       const { data, error } = await supabase.functions.invoke("send-public-otp", {
-        body: { identifier: email, identifierType: "email" },
+        body: { identifier: email, identifierType: "email", tenant_id: tenant?.id },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);

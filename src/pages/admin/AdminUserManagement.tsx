@@ -109,8 +109,12 @@ export default function AdminUserManagement() {
 
       const { error: deleteError } = await supabase.from("user_roles").delete().eq("user_id", user.user_id);
       if (deleteError) throw deleteError;
+      // Use the target user's existing tenant_id for new role rows (NOT NULL on user_roles.tenant_id)
+      const { data: targetProfile, error: targetErr } = await supabase
+        .from("profiles").select("tenant_id").eq("user_id", user.user_id).maybeSingle();
+      if (targetErr || !targetProfile?.tenant_id) throw new Error("Could not resolve user's organization");
       for (const role of user.roles) {
-        const { error: insertError } = await supabase.from("user_roles").insert({ user_id: user.user_id, role: role as any });
+        const { error: insertError } = await supabase.from("user_roles").insert({ user_id: user.user_id, role: role as any, tenant_id: targetProfile.tenant_id });
         if (insertError) throw insertError;
       }
     },

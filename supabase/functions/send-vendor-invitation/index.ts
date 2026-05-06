@@ -61,6 +61,16 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Resolve the staff user's tenant — required by NOT NULL constraint on vendor_invitations.tenant_id
+    const { data: tenantId, error: tenantErr } = await supabaseAdmin.rpc("get_user_tenant_id", { _user_id: user.id });
+    if (tenantErr || !tenantId) {
+      console.error("Tenant lookup failed");
+      return new Response(JSON.stringify({ error: "Tenant not found for user" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const body = await req.json();
     const { company_name, contact_email, contact_phone, category_id } = body;
 
@@ -113,6 +123,7 @@ Deno.serve(async (req) => {
     const { data: invitation, error: insertError } = await supabaseAdmin
       .from("vendor_invitations")
       .insert({
+        tenant_id: tenantId,
         company_name: sanitizeString(company_name, 255),
         contact_email,
         contact_phone,

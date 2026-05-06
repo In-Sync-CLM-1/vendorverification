@@ -6,22 +6,15 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// ── Reference IDs ──────────────────────────────────────────────
-const CATEGORIES = [
-  "b7b877fe-8e92-44c1-92ca-171298c74ba6", // Supplier
-  "4e82c190-a42d-4982-88e7-58c41df0cef8", // Service Provider
-  "a3518fa9-7fd1-4163-ab29-dbd7cd4da63a", // Contractor
-  "512d21fe-1ac3-44ac-bb9b-808cbd5aabe4", // Channel Partner
+// Category and document-type IDs are now resolved per-tenant at request time
+// (was hardcoded for the In-Sync tenant — broke for any other org).
+const CATEGORY_NAMES = ["Supplier", "Service Provider", "Contractor", "Channel Partner"];
+const DOC_TYPE_NAMES = [
+  "GST Registration Certificate",
+  "PAN Card",
+  "Certificate of Incorporation",
+  "Cancelled Cheque",
 ];
-
-const DOC_TYPES = [
-  "c6f865ba-b0f2-4a58-8653-228701b4fc83", // GST Registration Certificate
-  "c58df90a-b3b3-4fa9-b318-aa7ea91c0a9c", // PAN Card
-  "a7a8d996-afca-435f-9ab2-6a452a07d049", // Certificate of Incorporation
-  "4e7246e8-f1bf-446b-aabb-01af58eb9d70", // Cancelled Cheque
-];
-
-const STAFF_USER_ID = "8b83d837-bb3d-4efb-81c6-c33550ba557a";
 
 const SALUTATIONS = ["Mr", "Mrs", "Ms", "Dr"];
 const CONSTITUTIONS = ["Proprietorship", "Partnership", "LLP", "Private Limited", "Public Limited"];
@@ -62,14 +55,22 @@ const PII_COLUMNS = [
 
 const PII_PURPOSES = ["display", "verification", "export", "audit_review", "compliance_check"];
 
+interface SeedContext {
+  tenantId: string;
+  staffUserId: string;
+  categoryIds: string[]; // length 4, ordered same as CATEGORY_NAMES
+  docTypeIds: string[];  // length 4, ordered same as DOC_TYPE_NAMES
+}
+
 // ── Helpers ────────────────────────────────────────────────────
 const pad = (n: number, len = 4) => String(n).padStart(len, "0");
 
-function buildVendor(n: number, group: number) {
+function buildVendor(n: number, group: number, ctx: SeedContext) {
   const base: Record<string, unknown> = {
+    tenant_id: ctx.tenantId,
     company_name: `StressTest Corp #${n}`,
     trade_name: `ST Trading #${n}`,
-    category_id: CATEGORIES[(n - 1) % 4],
+    category_id: ctx.categoryIds[(n - 1) % 4],
     primary_contact_name: `Contact Person #${n}`,
     primary_mobile: `9${pad(n, 9)}`,
     primary_email: `vendor${n}@stresstest.in`,
@@ -77,7 +78,7 @@ function buildVendor(n: number, group: number) {
     constitution_type: CONSTITUTIONS[(n - 1) % 5],
     registered_address: `${n} Test Street, Mumbai, Maharashtra 400001`,
     operational_address: `${n} Operations Lane, Pune, Maharashtra 411001`,
-    referred_by: STAFF_USER_ID,
+    referred_by: ctx.staffUserId,
   };
 
   // Full PII (all groups except Group 2 which is partial)
@@ -150,7 +151,7 @@ function buildVendor(n: number, group: number) {
   return base;
 }
 
-function buildDocs(vendorId: string, vendorN: number, group: number) {
+function buildDocs(vendorId: string, vendorN: number, group: number, ctx: SeedContext) {
   const now = Date.now();
   const docs: Record<string, unknown>[] = [];
 
@@ -159,8 +160,9 @@ function buildDocs(vendorId: string, vendorN: number, group: number) {
 
   for (let d = 0; d < docCount; d++) {
     const doc: Record<string, unknown> = {
+      tenant_id: ctx.tenantId,
       vendor_id: vendorId,
-      document_type_id: DOC_TYPES[d],
+      document_type_id: ctx.docTypeIds[d],
       file_url: `seed/vendor_${vendorN}/${["gst", "pan", "coi", "cheque"][d]}.pdf`,
       file_name: `${["gst_certificate", "pan_card", "certificate_of_incorporation", "cancelled_cheque"][d]}.pdf`,
       file_size_bytes: 100000 + Math.floor(Math.random() * 1900000),
@@ -174,7 +176,7 @@ function buildDocs(vendorId: string, vendorN: number, group: number) {
       case 8: // expiring docs - approved
       case 9: // consent withdrawn
         doc.status = "approved";
-        doc.reviewed_by = STAFF_USER_ID;
+        doc.reviewed_by = ctx.staffUserId;
         doc.reviewed_at = new Date(now - 14 * 86400000).toISOString();
         break;
       case 2: // uploaded
@@ -184,10 +186,10 @@ function buildDocs(vendorId: string, vendorN: number, group: number) {
         doc.status = d % 2 === 0 ? "approved" : "rejected";
         if (d % 2 !== 0) {
           doc.review_comments = DOC_REVIEW_COMMENTS[d % 6];
-          doc.reviewed_by = STAFF_USER_ID;
+          doc.reviewed_by = ctx.staffUserId;
           doc.reviewed_at = new Date(now - 10 * 86400000).toISOString();
         } else {
-          doc.reviewed_by = STAFF_USER_ID;
+          doc.reviewed_by = ctx.staffUserId;
           doc.reviewed_at = new Date(now - 12 * 86400000).toISOString();
         }
         break;
@@ -195,7 +197,7 @@ function buildDocs(vendorId: string, vendorN: number, group: number) {
         doc.status = d < 2 ? "uploaded" : "rejected";
         if (d >= 2) {
           doc.review_comments = DOC_REVIEW_COMMENTS[(vendorN + d) % 6];
-          doc.reviewed_by = STAFF_USER_ID;
+          doc.reviewed_by = ctx.staffUserId;
           doc.reviewed_at = new Date(now - 8 * 86400000).toISOString();
         }
         break;
@@ -253,17 +255,47 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const clean = url.searchParams.get("clean") === "true";
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    // ── Auth: require admin caller, scope all work to caller's tenant ──
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user: caller } } = await userClient.auth.getUser();
+    if (!caller) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: isAdmin } = await supabase.rpc("is_admin", { _user_id: caller.id });
+    if (!isAdmin) {
+      return new Response(JSON.stringify({ error: "Forbidden: admin role required" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: callerTenantId } = await supabase.rpc("get_user_tenant_id", { _user_id: caller.id });
+    if (!callerTenantId) {
+      return new Response(JSON.stringify({ error: "Tenant not found for caller" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const tenantId: string = callerTenantId;
 
     // ── Cleanup mode ─────────────────────────────────────────
     if (clean) {
-      // Get all stress test vendor IDs
+      // Get all stress test vendor IDs (scoped to caller's tenant)
       const { data: stVendors } = await supabase
         .from("vendors")
         .select("id")
+        .eq("tenant_id", tenantId)
         .or(
           "company_name.like.StressTest Corp%,company_name.like.DupPAN Corp%,company_name.like.DupGST Corp%,company_name.like.DupBank Corp%,company_name.eq.Capital Trading Enterprises,company_name.eq.Capitol Trading Enterprise"
         );
@@ -326,6 +358,7 @@ Deno.serve(async (req) => {
     const { count: existing } = await supabase
       .from("vendors")
       .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId)
       .like("company_name", "StressTest Corp%");
 
     if (existing && existing > 0) {
@@ -336,6 +369,40 @@ Deno.serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
+
+    // ── Resolve per-tenant category and document_type IDs by name ──
+    const { data: cats } = await supabase
+      .from("vendor_categories")
+      .select("id, name")
+      .eq("tenant_id", tenantId)
+      .in("name", CATEGORY_NAMES);
+    const categoryIds = CATEGORY_NAMES.map((n) => cats?.find((c: { name: string }) => c.name === n)?.id);
+    if (categoryIds.some((id) => !id)) {
+      return new Response(
+        JSON.stringify({ error: "Tenant is missing one or more default categories", missing: CATEGORY_NAMES.filter((_, i) => !categoryIds[i]) }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const { data: docTypes } = await supabase
+      .from("document_types")
+      .select("id, name")
+      .eq("tenant_id", tenantId)
+      .in("name", DOC_TYPE_NAMES);
+    const docTypeIds = DOC_TYPE_NAMES.map((n) => docTypes?.find((d: { name: string }) => d.name === n)?.id);
+    if (docTypeIds.some((id) => !id)) {
+      return new Response(
+        JSON.stringify({ error: "Tenant is missing one or more default document types", missing: DOC_TYPE_NAMES.filter((_, i) => !docTypeIds[i]) }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const ctx: SeedContext = {
+      tenantId,
+      staffUserId: caller.id,
+      categoryIds: categoryIds as string[],
+      docTypeIds: docTypeIds as string[],
+    };
 
     // ── Seed vendors in 10 groups ────────────────────────────
     const allVendorIds: string[] = [];
@@ -356,7 +423,7 @@ Deno.serve(async (req) => {
       const vendorBatch: Record<string, unknown>[] = [];
       for (let i = 0; i < groupSize; i++) {
         const n = startN + i;
-        vendorBatch.push(buildVendor(n, group));
+        vendorBatch.push(buildVendor(n, group, ctx));
       }
 
       // Apply fraud overrides for group 10
@@ -385,7 +452,7 @@ Deno.serve(async (req) => {
       // Build documents for each vendor in this group
       for (let i = 0; i < ids.length; i++) {
         const n = startN + i;
-        const docs = buildDocs(ids[i], n, group);
+        const docs = buildDocs(ids[i], n, group, ctx);
         allDocs.push(...docs);
       }
 
@@ -393,6 +460,7 @@ Deno.serve(async (req) => {
       for (let i = 0; i < ids.length; i++) {
         const n = startN + i;
         const consent: Record<string, unknown> = {
+          tenant_id: tenantId,
           vendor_id: ids[i],
           user_identifier: `vendor${n}@stresstest.in`,
           purpose: "vendor_onboarding",
@@ -429,7 +497,8 @@ Deno.serve(async (req) => {
       const vendorIdx = i % allVendorIds.length;
       const daysAgo = Math.floor(Math.random() * 30);
       piiLogs.push({
-        user_id: STAFF_USER_ID,
+        tenant_id: tenantId,
+        user_id: ctx.staffUserId,
         vendor_id: allVendorIds[vendorIdx],
         table_name: "vendors",
         column_name: PII_COLUMNS[i % PII_COLUMNS.length],

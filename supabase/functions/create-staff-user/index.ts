@@ -47,6 +47,15 @@ serve(async (req) => {
       });
     }
 
+    // Resolve caller's tenant — required by NOT NULL on profiles.tenant_id and user_roles.tenant_id
+    const { data: callerTenantId, error: tenantErr } = await adminClient.rpc("get_user_tenant_id", { _user_id: caller.id });
+    if (tenantErr || !callerTenantId) {
+      return new Response(JSON.stringify({ error: "Tenant not found for caller" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { email, password, full_name, phone, department, roles } = await req.json();
 
     if (!email || !password || !full_name || !roles?.length) {
@@ -71,6 +80,7 @@ serve(async (req) => {
     // Create profile
     const { error: profileError } = await adminClient.from("profiles").insert({
       user_id: userId,
+      tenant_id: callerTenantId,
       full_name,
       email,
       phone: phone || null,
@@ -82,6 +92,7 @@ serve(async (req) => {
     for (const role of roles) {
       const { error: roleError } = await adminClient.from("user_roles").insert({
         user_id: userId,
+        tenant_id: callerTenantId,
         role,
       });
       if (roleError) throw roleError;

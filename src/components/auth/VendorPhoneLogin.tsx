@@ -7,8 +7,10 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Phone, ArrowRight, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/contexts/TenantContext";
 
 export function VendorPhoneLogin() {
+  const { tenant } = useTenant();
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [step, setStep] = useState<"phone" | "otp">("phone");
@@ -38,7 +40,7 @@ export function VendorPhoneLogin() {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("send-public-otp", {
-        body: { identifier: phone, identifierType: "phone" },
+        body: { identifier: phone, identifierType: "phone", tenant_id: tenant?.id },
       });
 
       if (error) throw error;

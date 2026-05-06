@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
       if (authUserId) {
         const { data: vendor } = await supabase
           .from("vendors")
-          .select("id")
+          .select("id, tenant_id")
           .or(`primary_mobile.eq.${phoneDigits},primary_mobile.eq.${identifier},primary_email.eq.${identifier}`)
           .limit(1)
           .maybeSingle();
@@ -136,6 +136,7 @@ Deno.serve(async (req) => {
             await supabase.from("vendor_users").insert({
               user_id: authUserId,
               vendor_id: vendor.id,
+              tenant_id: vendor.tenant_id,
             });
           }
         }

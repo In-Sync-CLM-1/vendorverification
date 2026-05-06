@@ -79,16 +79,10 @@ Deno.serve(async (req) => {
     // Generate OTP and store
     const otpCode = generateOtp();
 
-    // Resolve tenant: use provided tenant_id, or fall back to default tenant
-    let resolvedTenantId = tenant_id || null;
-    if (!resolvedTenantId) {
-      const { data: defaultTenant } = await supabase
-        .from("tenants")
-        .select("id")
-        .limit(1)
-        .single();
-      resolvedTenantId = defaultTenant?.id || null;
-    }
+    // tenant_id is optional (NULL for org-registration OTPs — no tenant exists yet).
+    // Removed the "fall back to first tenant in DB" default which silently mis-attributed
+    // OTPs from new tenants to whichever tenant happened to be first.
+    const resolvedTenantId = tenant_id || null;
 
     const { data: otpRecord, error: insertError } = await supabase
       .from("public_otp_verifications")

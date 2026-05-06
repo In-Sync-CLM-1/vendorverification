@@ -61,6 +61,7 @@ function DataRightsSection({ vendor, user }: { vendor: any; user: any }) {
         vendor_id: vendor.id,
         requested_by: user.id,
         request_type: "access",
+        tenant_id: vendor.tenant_id,
       });
 
       const blob = new Blob([JSON.stringify({
@@ -90,6 +91,7 @@ function DataRightsSection({ vendor, user }: { vendor: any; user: any }) {
         vendor_id: vendor.id,
         requested_by: user.id,
         request_type: "erasure",
+        tenant_id: vendor.tenant_id,
       });
       toast.success("Erasure request submitted. We will respond within 90 days.");
     } catch {
@@ -131,6 +133,7 @@ function DataRightsSection({ vendor, user }: { vendor: any; user: any }) {
         vendor_id: vendor.id,
         requested_by: user.id,
         request_type: "nomination",
+        tenant_id: vendor.tenant_id,
       });
       
       toast.success("Nominee saved");

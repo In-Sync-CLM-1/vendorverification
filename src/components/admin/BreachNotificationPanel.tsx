@@ -38,10 +38,14 @@ export function BreachNotificationPanel() {
   const triggerBreach = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Not authenticated");
+      const { data: profile, error: profileErr } = await supabase
+        .from("profiles").select("tenant_id").eq("user_id", user.id).maybeSingle();
+      if (profileErr || !profile?.tenant_id) throw new Error("Could not resolve your organization");
       const { error } = await supabase.from("breach_notifications").insert({
         ...form,
         triggered_by: user.id,
         affected_vendor_ids: [],
+        tenant_id: profile.tenant_id,
       });
       if (error) throw error;
     },

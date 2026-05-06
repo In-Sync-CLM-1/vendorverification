@@ -48,6 +48,16 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Resolve caller's tenant — used to scope recipient lookups so a staff user
+    // cannot trigger notifications for users in other tenants.
+    const { data: callerTenantId } = await supabaseAdmin.rpc("get_user_tenant_id", { _user_id: user.id });
+    if (!callerTenantId) {
+      return new Response(JSON.stringify({ error: "Tenant not found for caller" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { recipient_id, title, message, notification_type } = await req.json();
 
     if (!recipient_id || !title || !message) {
@@ -68,12 +78,13 @@ Deno.serve(async (req) => {
 
     const recipientEmail = recipientUser.user.email;
 
-    // Look up recipient name from profiles or vendor_users
+    // Look up recipient name from profiles or vendor_users — both scoped to caller's tenant.
     let recipientName = "Vendor";
     const { data: profile } = await supabaseAdmin
       .from("profiles")
       .select("full_name")
       .eq("user_id", recipient_id)
+      .eq("tenant_id", callerTenantId)
       .maybeSingle();
 
     if (profile?.full_name) {
@@ -84,18 +95,25 @@ Deno.serve(async (req) => {
         .from("vendor_users")
         .select("vendor_id")
         .eq("user_id", recipient_id)
+        .eq("tenant_id", callerTenantId)
         .maybeSingle();
 
-      if (vendorUser?.vendor_id) {
-        const { data: vendor } = await supabaseAdmin
-          .from("vendors")
-          .select("primary_contact_name, company_name")
-          .eq("id", vendorUser.vendor_id)
-          .maybeSingle();
+      if (!vendorUser?.vendor_id) {
+        return new Response(JSON.stringify({ error: "Recipient is not part of this organization" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
-        if (vendor) {
-          recipientName = vendor.primary_contact_name || vendor.company_name || "Vendor";
-        }
+      const { data: vendor } = await supabaseAdmin
+        .from("vendors")
+        .select("primary_contact_name, company_name")
+        .eq("id", vendorUser.vendor_id)
+        .eq("tenant_id", callerTenantId)
+        .maybeSingle();
+
+      if (vendor) {
+        recipientName = vendor.primary_contact_name || vendor.company_name || "Vendor";
       }
     }
 

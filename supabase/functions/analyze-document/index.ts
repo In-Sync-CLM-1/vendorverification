@@ -70,7 +70,7 @@ serve(async (req) => {
     // Fetch document record
     const { data: doc, error: docError } = await supabase
       .from("vendor_documents")
-      .select("id, file_url, file_name, vendor_id, document_type_id")
+      .select("id, file_url, file_name, vendor_id, document_type_id, tenant_id")
       .eq("id", document_id)
       .single();
 
@@ -110,7 +110,7 @@ serve(async (req) => {
       // Create new
       const { data: newAnalysis, error: insertError } = await supabase
         .from("document_analyses")
-        .insert({ document_id, analysis_status: "processing" })
+        .insert({ document_id, analysis_status: "processing", tenant_id: doc.tenant_id })
         .select("id")
         .single();
 

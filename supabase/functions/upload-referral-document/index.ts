@@ -89,16 +89,18 @@ serve(async (req) => {
     // Validate token - try vendor_invitations first, then staff_referral_codes
     let identifier: string;
     let vendorId: string | null = null;
+    let invitationTenantId: string | null = null;
 
     const { data: invitation } = await supabase
       .from("vendor_invitations")
-      .select("id, vendor_id")
+      .select("id, vendor_id, tenant_id")
       .eq("token", token)
       .single();
 
     if (invitation) {
       identifier = invitation.id;
       vendorId = invitation.vendor_id;
+      invitationTenantId = invitation.tenant_id;
     } else {
       const { data: refCode } = await supabase
         .from("staff_referral_codes")
@@ -145,6 +147,7 @@ serve(async (req) => {
         file_url: filePath,
         file_size_bytes: file.size,
         status: "uploaded",
+        tenant_id: invitationTenantId,
       }).select("id").single();
 
       // Fire-and-forget: trigger AI analysis

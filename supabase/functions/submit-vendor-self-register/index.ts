@@ -136,15 +136,14 @@ serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Resolve tenant_id — use provided value or fall back to default tenant
-    let resolvedTenantId = tenant_id;
+    // tenant_id is required — no fallback to "in-sync" default to avoid silently
+    // mis-attributing self-registrations to the wrong tenant.
+    const resolvedTenantId = tenant_id;
     if (!resolvedTenantId) {
-      const { data: defaultTenant } = await supabase
-        .from("tenants")
-        .select("id")
-        .eq("slug", "in-sync")
-        .single();
-      resolvedTenantId = defaultTenant?.id;
+      return new Response(
+        JSON.stringify({ error: "tenant_id is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const { data: vendor, error: vendorErr } = await supabase

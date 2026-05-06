@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { StaffLayout } from "@/components/layout/StaffLayout";
 import { useUserRoles } from "@/hooks/useUserRoles";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -37,7 +38,19 @@ import { ApiKeysPanel } from "@/components/admin/ApiKeysPanel";
 
 export default function AdminSettings() {
   const { isAdmin } = useUserRoles();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
+
+  // Resolve the admin's tenant_id once — required for vendor_categories / document_types inserts
+  const { data: adminTenantId } = useQuery({
+    queryKey: ["admin-tenant-id", user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data } = await supabase.from("profiles").select("tenant_id").eq("user_id", user.id).maybeSingle();
+      return data?.tenant_id ?? null;
+    },
+    enabled: !!user,
+  });
 
   const [activeTab, setActiveTab] = useState("categories");
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
@@ -96,7 +109,11 @@ export default function AdminSettings() {
   const saveCategory = useMutation({
     mutationFn: async () => {
       if (editingCategory) { const { error } = await supabase.from("vendor_categories").update(categoryForm).eq("id", editingCategory.id); if (error) throw error; }
-      else { const { error } = await supabase.from("vendor_categories").insert(categoryForm); if (error) throw error; }
+      else {
+        if (!adminTenantId) throw new Error("Could not resolve your organization");
+        const { error } = await supabase.from("vendor_categories").insert({ ...categoryForm, tenant_id: adminTenantId });
+        if (error) throw error;
+      }
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["admin-categories"] }); toast.success(editingCategory ? "Category updated" : "Category created"); setShowCategoryDialog(false); setEditingCategory(null); setCategoryForm({ name: "", description: "", is_active: true }); },
     onError: (error: Error) => toast.error(error.message),
@@ -111,7 +128,11 @@ export default function AdminSettings() {
   const saveDocType = useMutation({
     mutationFn: async () => {
       if (editingDocType) { const { error } = await supabase.from("document_types").update(docTypeForm).eq("id", editingDocType.id); if (error) throw error; }
-      else { const { error } = await supabase.from("document_types").insert(docTypeForm); if (error) throw error; }
+      else {
+        if (!adminTenantId) throw new Error("Could not resolve your organization");
+        const { error } = await supabase.from("document_types").insert({ ...docTypeForm, tenant_id: adminTenantId });
+        if (error) throw error;
+      }
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["admin-doc-types"] }); toast.success(editingDocType ? "Document type updated" : "Document type created"); setShowDocTypeDialog(false); setEditingDocType(null); setDocTypeForm({ name: "", description: "", has_expiry: false, max_file_size_mb: 5 }); },
     onError: (error: Error) => toast.error(error.message),
