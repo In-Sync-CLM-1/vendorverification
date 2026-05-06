@@ -30,6 +30,9 @@ supabase/.temp/
 .claude/
 
 # Environment variables — never commit secrets
+# .env.production contains only public Vite keys (URL + anon key) needed at
+# build time; secret tokens belong in CI secrets, never on disk.
 .env
 .env.*
 !.env.example
+!.env.production
