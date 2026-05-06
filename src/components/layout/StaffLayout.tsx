@@ -1,7 +1,8 @@
 import { ReactNode, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/contexts/TenantContext";
+import { useUserRoles } from "@/hooks/useUserRoles";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { StaffSidebar } from "./StaffSidebar";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
@@ -13,18 +14,39 @@ interface StaffLayoutProps {
   title?: string;
 }
 
+const PLATFORM_ALLOWED_PATHS = ["/platform/", "/staff/profile", "/staff/login"];
+
 export function StaffLayout({ children, title }: StaffLayoutProps) {
   const { user, userType, loading, signOut } = useAuth();
   const { tenant } = useTenant();
+  const { isPlatformAdmin, isLoading: rolesLoading } = useUserRoles();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     if (!loading && !user) {
       navigate("/staff/login");
-    } else if (!loading && user && userType !== null && userType !== "staff") {
-      navigate("/staff/login");
+      return;
     }
-  }, [user, userType, loading, navigate]);
+    if (!loading && user && userType !== null && userType !== "staff") {
+      navigate("/staff/login");
+      return;
+    }
+    // Role-based redirects: platform admins must use /platform/*, regular
+    // staff must NOT use /platform/*.
+    if (!loading && !rolesLoading && user && userType === "staff") {
+      const path = location.pathname;
+      const isPlatformPath = path.startsWith("/platform/");
+      const isAllowedForPlatform = PLATFORM_ALLOWED_PATHS.some((p) =>
+        p.endsWith("/") ? path.startsWith(p) : path === p
+      );
+      if (isPlatformAdmin && !isAllowedForPlatform) {
+        navigate("/platform/dashboard", { replace: true });
+      } else if (!isPlatformAdmin && isPlatformPath) {
+        navigate("/staff/dashboard", { replace: true });
+      }
+    }
+  }, [user, userType, loading, rolesLoading, isPlatformAdmin, location.pathname, navigate]);
 
   if (loading) {
     return (

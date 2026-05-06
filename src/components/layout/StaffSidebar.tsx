@@ -15,6 +15,7 @@ import {
   UserCircle,
   CreditCard,
   Upload,
+  Building2,
 } from "lucide-react";
 import {
   Sidebar,
@@ -51,7 +52,7 @@ const adminItems = [
 
 export function StaffSidebar() {
   const { signOut, user } = useAuth();
-  const { isAdmin } = useUserRoles();
+  const { isAdmin, isPlatformAdmin } = useUserRoles();
   const { tenant } = useTenant();
   const logo = useTenantLogo();
   const navigate = useNavigate();
@@ -105,50 +106,78 @@ export function StaffSidebar() {
       </div>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Main</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {mainItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild tooltip={item.title} isActive={location.pathname === item.url}>
+        {isPlatformAdmin ? (
+          <SidebarGroup>
+            <SidebarGroupLabel>Platform</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    tooltip="Command Center"
+                    isActive={location.pathname === "/platform/dashboard"}
+                  >
                     <NavLink
-                      to={item.url}
+                      to="/platform/dashboard"
                       className="hover:bg-muted/50"
                       activeClassName="bg-primary/10 text-primary font-medium"
                     >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
+                      <Building2 className="h-4 w-4" />
+                      <span>Command Center</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {isAdmin && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Administration</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {adminItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild tooltip={item.title} isActive={location.pathname === item.url}>
-                      <NavLink
-                        to={item.url}
-                        className="hover:bg-muted/50"
-                        activeClassName="bg-primary/10 text-primary font-medium"
-                      >
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
+        ) : (
+          <>
+            <SidebarGroup>
+              <SidebarGroupLabel>Main</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {mainItems.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild tooltip={item.title} isActive={location.pathname === item.url}>
+                        <NavLink
+                          to={item.url}
+                          className="hover:bg-muted/50"
+                          activeClassName="bg-primary/10 text-primary font-medium"
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            {isAdmin && (
+              <SidebarGroup>
+                <SidebarGroupLabel>Administration</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {adminItems.map((item) => (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton asChild tooltip={item.title} isActive={location.pathname === item.url}>
+                          <NavLink
+                            to={item.url}
+                            className="hover:bg-muted/50"
+                            activeClassName="bg-primary/10 text-primary font-medium"
+                          >
+                            <item.icon className="h-4 w-4" />
+                            <span>{item.title}</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+          </>
         )}
       </SidebarContent>
 

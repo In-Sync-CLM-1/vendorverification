@@ -33,6 +33,9 @@ import AdminSettings from "./pages/admin/AdminSettings";
 import DpdpAuditDashboard from "./pages/admin/DpdpAuditDashboard";
 import BillingPage from "./pages/admin/BillingPage";
 
+// Platform-admin Pages
+import PlatformDashboard from "./pages/platform/PlatformDashboard";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -67,6 +70,9 @@ const App = () => (
             <Route path="/admin/settings" element={<AdminSettings />} />
             <Route path="/admin/dpdp-audit" element={<DpdpAuditDashboard />} />
             <Route path="/admin/billing" element={<BillingPage />} />
+
+            {/* Platform-admin Routes */}
+            <Route path="/platform/dashboard" element={<PlatformDashboard />} />
 
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
