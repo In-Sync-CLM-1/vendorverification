@@ -11,12 +11,14 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { 
-  Plus, 
+import {
+  Plus,
   Search,
   Pencil,
   Trash2,
   Loader2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 interface StaffUser {
@@ -42,6 +44,7 @@ export default function AdminUserManagement() {
 
   const [search, setSearch] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [deletingUser, setDeletingUser] = useState<StaffUser | null>(null);
   const [editingUser, setEditingUser] = useState<StaffUser | null>(null);
   const [formData, setFormData] = useState({
@@ -222,7 +225,27 @@ export default function AdminUserManagement() {
           <div className="space-y-4">
             <div><Label htmlFor="full_name">Full Name *</Label><Input id="full_name" value={formData.full_name} onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))} placeholder="Enter full name" /></div>
             <div><Label htmlFor="email">Email *</Label><Input id="email" type="email" value={formData.email} onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))} placeholder="email@company.com" /></div>
-            <div><Label htmlFor="password">Password *</Label><Input id="password" type="password" value={formData.password} onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))} placeholder="Minimum 6 characters" /></div>
+            <div>
+              <Label htmlFor="password">Password *</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={formData.password}
+                  onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                  placeholder="Minimum 6 characters"
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
             <div><Label htmlFor="phone">Phone</Label><Input id="phone" value={formData.phone} onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))} placeholder="Mobile number" /></div>
             <div><Label htmlFor="department">Department</Label><Input id="department" value={formData.department} onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))} placeholder="e.g., Operations, Finance" /></div>
             <div>

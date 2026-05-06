@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
-import { Loader2, Building2, ArrowLeft, CheckCircle2, Phone, Mail } from "lucide-react";
+import { Loader2, Building2, ArrowLeft, CheckCircle2, Phone, Mail, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 
 export default function OrgRegistration() {
@@ -19,6 +19,7 @@ export default function OrgRegistration() {
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPhone, setAdminPhone] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Email OTP state
@@ -378,14 +379,25 @@ export default function OrgRegistration() {
 
               <div className="space-y-2">
                 <Label htmlFor="adminPassword">Password</Label>
-                <Input
-                  id="adminPassword"
-                  type="password"
-                  placeholder="Min. 6 characters"
-                  value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                  minLength={6}
-                />
+                <div className="relative">
+                  <Input
+                    id="adminPassword"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Min. 6 characters"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    minLength={6}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
 
               <Button
