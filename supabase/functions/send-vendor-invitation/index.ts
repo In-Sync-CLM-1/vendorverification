@@ -184,6 +184,66 @@ Deno.serve(async (req) => {
       // Invitation was created, email failure is not critical
     }
 
+    // Send WhatsApp via Exotel using the `vendor_invitation` template.
+    // Skipped silently if WhatsApp is not configured for this platform OR if the
+    // template hasn't been approved by Meta yet (Exotel returns an error in that case).
+    try {
+      const { data: wsConfig } = await supabaseAdmin
+        .from("whatsapp_settings")
+        .select("exotel_sid, exotel_api_key, exotel_api_token, exotel_subdomain, whatsapp_source_number")
+        .eq("is_active", true)
+        .limit(1)
+        .maybeSingle();
+
+      if (wsConfig?.exotel_sid && wsConfig?.exotel_api_key && wsConfig?.exotel_api_token && wsConfig?.whatsapp_source_number) {
+        const phoneDigits = contact_phone.replace(/\D/g, "");
+        const toPhone = phoneDigits.length === 10 ? `91${phoneDigits}` : phoneDigits;
+        const fromNumber = wsConfig.whatsapp_source_number.replace("+", "");
+        const subdomain = wsConfig.exotel_subdomain || "api.exotel.com";
+
+        const waPayload = {
+          custom_data: toPhone,
+          whatsapp: {
+            messages: [
+              {
+                from: fromNumber,
+                to: toPhone,
+                content: {
+                  type: "template",
+                  template: {
+                    name: "vendor_invitation",
+                    language: { code: "en" },
+                    components: [
+                      {
+                        type: "body",
+                        parameters: [
+                          { type: "text", text: sanitizeString(company_name, 60) },
+                          { type: "text", text: registrationUrl },
+                        ],
+                      },
+                    ],
+                  },
+                },
+              },
+            ],
+          },
+        };
+
+        const waAuth = `Basic ${btoa(`${wsConfig.exotel_api_key}:${wsConfig.exotel_api_token}`)}`;
+        const waRes = await fetch(`https://${subdomain}/v2/accounts/${wsConfig.exotel_sid}/messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: waAuth },
+          body: JSON.stringify(waPayload),
+        });
+        if (!waRes.ok) {
+          const waText = await waRes.text();
+          console.error("WhatsApp send failed:", waRes.status, waText.slice(0, 300));
+        }
+      }
+    } catch (waErr) {
+      console.error("WhatsApp send threw:", waErr);
+    }
+
     return new Response(
       JSON.stringify({ success: true, invitation_id: invitation.id }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
