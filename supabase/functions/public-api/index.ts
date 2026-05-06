@@ -69,11 +69,35 @@ Deno.serve(async (req) => {
       .eq("id", keyRecord.id)
       .then(() => {});
 
+    // Resolve action and org-slug from headers (set by the Cloudflare worker that
+    // routes /api/<org-slug>/<action>). Fall back to request body for direct/legacy
+    // callers hitting the function URL with {action: "..."} in JSON.
+    const headerOrgSlug = req.headers.get("X-Org-Slug");
+    const headerAction = req.headers.get("X-Action");
     const body = await req.json().catch(() => ({}));
-    const { action } = body;
+    const action = headerAction || body.action;
 
     if (!action) {
-      return jsonErr("missing_action", "action field is required", 400, requestId);
+      return jsonErr("missing_action", "action is required (path /api/<org>/<action> or body.action)", 400, requestId);
+    }
+
+    // If the request came via the worker, sanity-check that the URL's org-slug
+    // matches the tenant the API key belongs to. Prevents one tenant's key from
+    // being used at another tenant's URL.
+    if (headerOrgSlug) {
+      const { data: tenant } = await supabase
+        .from("tenants")
+        .select("slug")
+        .eq("id", tenantId)
+        .maybeSingle();
+      if (!tenant || tenant.slug !== headerOrgSlug) {
+        return jsonErr(
+          "org_mismatch",
+          "API key does not belong to the organization in the URL",
+          403,
+          requestId
+        );
+      }
     }
 
     // Deduct from quota for all actions

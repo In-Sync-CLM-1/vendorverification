@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,36 +56,53 @@ function CopyButton({ text }: { text: string }) {
 }
 
 export function ApiKeysPanel() {
-  const { tenant } = useTenant();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+
+  // Resolve the admin's actual tenant (id + slug) — used for both the API-keys
+  // table and the curl example URL. Hostname-based tenant from useTenant() is
+  // not used here because it's always "in-sync" (the canonical hostname).
+  const { data: orgTenant } = useQuery({
+    queryKey: ["admin-org-tenant", user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data: profile } = await supabase
+        .from("profiles").select("tenant_id").eq("user_id", user.id).maybeSingle();
+      if (!profile?.tenant_id) return null;
+      const { data: t } = await supabase
+        .from("tenants").select("id, slug").eq("id", profile.tenant_id).maybeSingle();
+      return t;
+    },
+    enabled: !!user,
+  });
 
   const [showDialog, setShowDialog] = useState(false);
   const [keyName, setKeyName] = useState("");
   const [newKey, setNewKey] = useState<string | null>(null);
 
   const { data: keys, isLoading } = useQuery({
-    queryKey: ["api-keys", tenant?.id],
+    queryKey: ["api-keys", orgTenant?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("api_keys")
         .select("id, name, key_prefix, is_active, created_at, last_used_at")
-        .eq("tenant_id", tenant!.id)
+        .eq("tenant_id", orgTenant!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
-    enabled: !!tenant?.id,
+    enabled: !!orgTenant?.id,
   });
 
   const createKey = useMutation({
     mutationFn: async () => {
+      if (!orgTenant) throw new Error("Could not resolve your organization");
       const fullKey = generateApiKey();
       const keyHash = await sha256Hex(fullKey);
       const keyPrefix = fullKey.substring(0, 12);
 
       const { error } = await supabase.from("api_keys").insert({
-        tenant_id: tenant!.id,
+        tenant_id: orgTenant.id,
         name: keyName.trim(),
         key_prefix: keyPrefix,
         key_hash: keyHash,
@@ -142,13 +158,13 @@ export function ApiKeysPanel() {
             Quick Start
           </p>
           <pre className="text-xs bg-background/70 rounded p-3 overflow-x-auto font-mono text-muted-foreground">
-{`curl -X POST https://vendorverification.in-sync.co.in/functions/v1/public-api \\
+{`curl -X POST https://vendorverification.in-sync.co.in/api/${orgTenant?.slug ?? "<your-org>"}/verify_gst \\
   -H "Authorization: Bearer isk_live_YOUR_KEY" \\
   -H "Content-Type: application/json" \\
-  -d '{"action":"verify_gst","gstin":"27AAHCA3239L1ZH"}'`}
+  -d '{"gstin":"27AAHCA3239L1ZH"}'`}
           </pre>
           <p className="text-xs text-muted-foreground mt-2">
-            Supported actions:{" "}
+            Supported actions (replace <code className="font-mono">verify_gst</code> in the URL):{" "}
             <code className="font-mono">verify_gst</code>,{" "}
             <code className="font-mono">verify_pan</code>,{" "}
             <code className="font-mono">verify_bank_account</code>,{" "}
