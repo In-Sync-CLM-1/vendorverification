@@ -28,15 +28,25 @@ serve(async (req) => {
 
     const { data, error } = await supabase
       .from("staff_referral_codes")
-      .select("referral_code")
+      .select("referral_code, tenant_id, user_id")
       .eq("referral_code", referral_code)
       .eq("is_active", true)
       .maybeSingle();
 
-    return new Response(JSON.stringify({ valid: !!data && !error }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    let tenantId: string | null = data?.tenant_id ?? null;
+    if (!tenantId && data?.user_id) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("tenant_id")
+        .eq("user_id", data.user_id)
+        .maybeSingle();
+      tenantId = profile?.tenant_id ?? null;
+    }
+
+    return new Response(
+      JSON.stringify({ valid: !!data && !error, tenant_id: tenantId }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch {
     return new Response(JSON.stringify({ valid: false }), {
       status: 200,

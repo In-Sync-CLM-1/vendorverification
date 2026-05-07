@@ -72,11 +72,13 @@ export default function VendorSelfRegistration() {
 
   // Load categories and restore saved state on mount
   useEffect(() => {
+    if (!tenant?.id) return;
     const init = async () => {
       const { data: cats } = await supabase
         .from("vendor_categories")
         .select("id, name")
-        .eq("is_active", true);
+        .eq("is_active", true)
+        .eq("tenant_id", tenant.id);
       setCategories(cats || []);
 
       // Restore from localStorage
@@ -100,7 +102,7 @@ export default function VendorSelfRegistration() {
       }
     };
     init();
-  }, [sessionId]);
+  }, [sessionId, tenant?.id]);
 
   const loadCategoryDocs = async (categoryId: string) => {
     const { data } = await supabase

@@ -149,6 +149,26 @@ serve(async (req) => {
       resolvedTenantId = staffProfile?.tenant_id || null;
     }
 
+    if (!resolvedTenantId) {
+      return new Response(
+        JSON.stringify({ error: "Could not resolve tenant for this referral" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { data: categoryRow, error: categoryErr } = await supabase
+      .from("vendor_categories")
+      .select("tenant_id, is_active")
+      .eq("id", category_id)
+      .maybeSingle();
+
+    if (categoryErr || !categoryRow || !categoryRow.is_active || categoryRow.tenant_id !== resolvedTenantId) {
+      return new Response(
+        JSON.stringify({ error: "Invalid category for this tenant" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // ── Check subscription limit before accepting vendor ──
     if (resolvedTenantId) {
       const { data: usageResult, error: usageErr } = await supabase

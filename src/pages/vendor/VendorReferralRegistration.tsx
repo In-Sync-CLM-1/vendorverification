@@ -20,6 +20,7 @@ export default function VendorReferralRegistration() {
   const { token } = useParams<{ token: string }>();
   const [pageState, setPageState] = useState<PageState>("loading");
   const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [referralTenantId, setReferralTenantId] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(0); // Start at consent step
   const [consented, setConsented] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
@@ -75,12 +76,16 @@ export default function VendorReferralRegistration() {
       }
 
       setReferralCode(code);
+      const tenantId: string | null = data?.tenant_id ?? null;
+      setReferralTenantId(tenantId);
 
-      // Load categories for the dropdown
-      const { data: cats } = await supabase
+      // Load categories for the dropdown — scoped to the referring tenant
+      let catsQuery = supabase
         .from("vendor_categories")
         .select("id, name")
         .eq("is_active", true);
+      if (tenantId) catsQuery = catsQuery.eq("tenant_id", tenantId);
+      const { data: cats } = await catsQuery;
       setCategories(cats || []);
 
       // Restore from localStorage
