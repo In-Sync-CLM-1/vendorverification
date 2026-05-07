@@ -347,7 +347,7 @@ export default function VendorReviewDetail() {
               return (
                 <div key={doc.id} className={`p-3 rounded-lg ${DOC_STATUS_COLORS[doc.status]}`}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium text-sm">{doc.document_types.name}</span>
+                    <span className="font-medium text-sm">{doc.document_types?.name ?? "Document"}</span>
                     <div className="flex items-center gap-1.5">
                       {hasAnalysis && (
                         <Badge variant="secondary" className="text-[10px] px-1.5 py-0 gap-0.5">
