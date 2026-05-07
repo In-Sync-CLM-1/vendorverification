@@ -487,7 +487,7 @@
         <span class="tag">Surepass (KYC)</span>
         <span class="tag">Exotel (WhatsApp)</span>
         <span class="tag">Resend (Email)</span>
-        <span class="tag">Google Gemini 2.5 Pro (AI)</span>
+        <span class="tag">Anthropic Claude Haiku 4.5 (AI)</span>
       </div>
     </div>
     <div class="card">
@@ -627,7 +627,7 @@
         <li>Max file size: <strong>10 MB</strong> per document</li>
         <li>Files stored in Supabase Storage bucket: <code>vendor-documents</code></li>
         <li>Path: <code>referral/{identifier}/{docTypeId}/{timestamp}_{filename}</code></li>
-        <li>Each upload immediately triggers <strong>AI document analysis</strong> (Google Gemini 2.5 Pro)</li>
+        <li>Each upload immediately triggers <strong>AI document analysis</strong> (Anthropic Claude Haiku 4.5)</li>
         <li>Mandatory documents marked with <strong>*</strong> must be uploaded before submission</li>
       </ul>
 
@@ -860,10 +860,10 @@
       </ul>
     </div>
     <div class="card">
-      <h3><span class="icon-circle purple">&#129302;</span> AI Analysis (Gemini 2.5 Pro)</h3>
+      <h3><span class="icon-circle purple">&#129302;</span> AI Analysis (Claude Haiku 4.5)</h3>
       <ul>
         <li>Triggered automatically on upload</li>
-        <li>Uses Google Gemini via Lovable AI Gateway</li>
+        <li>Uses Anthropic Claude Haiku 4.5</li>
         <li>Vision + tool-calling for structured extraction</li>
         <li>Runs asynchronously (non-blocking)</li>
       </ul>
@@ -1311,7 +1311,7 @@
       <span class="accordion-chevron">&#9660;</span>
     </div>
     <div class="accordion-body">
-      <p><strong>Purpose:</strong> AI-powered document extraction &amp; tamper detection (Gemini 2.5 Pro)</p>
+      <p><strong>Purpose:</strong> AI-powered document extraction &amp; tamper detection (Claude Haiku 4.5)</p>
       <div class="code-block">
 <span class="comment">// Request</span>
 { <span class="key">"document_id"</span>: <span class="str">"uuid"</span> }

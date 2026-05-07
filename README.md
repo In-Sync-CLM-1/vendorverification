@@ -1,73 +1,35 @@
-# Welcome to your Lovable project
+# vendor-empanelment
 
-## Project info
+In-Sync Vendor Empanelment — financial due diligence platform for vendor commitments. KYC verification (Credit Score, Bank Statement, GST, PAN, Aadhaar), document upload with AI tampering detection, multi-tenant org workflows, and a public/partner API.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+**Production:** https://civ.in-sync.co.in
 
-## How can I edit this code?
+## Stack
 
-There are several ways of editing your application.
+- **Frontend:** Vite + React + TypeScript + Tailwind + shadcn-ui
+- **Backend:** Supabase (Postgres + Auth + Edge Functions + Storage)
+- **AI:** Anthropic Claude Haiku 4.5 (document analysis & tamper detection)
+- **External APIs:** Surepass (KYC), Exotel (WhatsApp), Resend (Email)
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Local development
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+npm install
+npm run dev    # http://localhost:8080
 ```
 
-**Edit a file directly in GitHub**
+## Build & test
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```sh
+npm run build
+npm run test
+npm run lint
+```
 
-**Use GitHub Codespaces**
+## Deploy
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Pushes to `main` auto-deploy via GitHub Actions to Azure Static Web Apps (`civ.in-sync.co.in`). Backend (Supabase edge functions and migrations) is deployed separately via the Supabase Management API.
 
-## What technologies are used for this project?
+## Environment
 
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Local development needs a `.env` file (gitignored). `.env.production` (committed) holds only the public Vite keys needed at build time. Secret tokens live only in `.env` locally and in CI secrets — never in source.
