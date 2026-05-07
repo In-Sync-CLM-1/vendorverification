@@ -30,7 +30,7 @@ const WEBHOOK_EVENTS = [
   { value: "vendor.reviewed", label: "Vendor Reviewed" },
   { value: "vendor.approved", label: "Vendor Approved" },
   { value: "vendor.rejected", label: "Vendor Rejected" },
-  { value: "vendor.sent_back", label: "Vendor Sent Back" },
+  { value: "vendor.returned_to_maker", label: "Vendor Returned to Maker" },
 ];
 
 function generateSecret(): string {

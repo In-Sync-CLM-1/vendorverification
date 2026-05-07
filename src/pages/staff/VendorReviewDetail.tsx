@@ -60,7 +60,7 @@ const STATUS_LABELS: Record<string, string> = {
   draft: "Draft",
   pending_review: "Pending Review",
   pending_approval: "Pending Approval",
-  sent_back: "Sent Back",
+  returned_to_maker: "Returned by Approver",
   approved: "Approved",
   rejected: "Rejected",
 };
@@ -122,7 +122,7 @@ export default function VendorReviewDetail() {
   }
 
   const canForward =
-    (isReviewer && vendor.current_status === "pending_review") ||
+    (isReviewer && (vendor.current_status === "pending_review" || (vendor.current_status as string) === "returned_to_maker")) ||
     isAdmin;
 
   const canApprove =
@@ -131,12 +131,16 @@ export default function VendorReviewDetail() {
 
   const canReject = canForward || canApprove;
 
+  // Send Back is only used by the approver to return to the maker. There is
+  // no longer a "send back to vendor" path — vendors get approved/rejected
+  // and rejected vendors must do a fresh submission.
   const canSendBack =
-    (isReviewer && vendor.current_status === "pending_review") ||
+    (isApprover && vendor.current_status === "pending_approval") ||
     isAdmin;
 
   const getNextStatus = () => {
     if (vendor.current_status === "pending_review") return "pending_approval";
+    if ((vendor.current_status as string) === "returned_to_maker") return "pending_approval";
     if (vendor.current_status === "pending_approval") return "approved";
     return null;
   };
@@ -201,6 +205,18 @@ export default function VendorReviewDetail() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Approver returned this for re-review */}
+        {(vendor.current_status as string) === "returned_to_maker" && (vendor as any).sent_back_reason && (
+          <Card className="border-orange-300 bg-orange-50">
+            <CardContent className="p-4">
+              <p className="text-sm font-medium text-orange-700 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4" /> Returned by approver for re-review
+              </p>
+              <p className="text-sm mt-1">{(vendor as any).sent_back_reason}</p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Company Details */}
         <Card>
@@ -429,14 +445,14 @@ export default function VendorReviewDetail() {
       </div>
 
       {/* Action Buttons */}
-      {(canForward || canApprove || canReject) && vendor.current_status !== "approved" && vendor.current_status !== "rejected" && (vendor.current_status as string) !== "sent_back" && (
+      {(canForward || canApprove || canReject) && vendor.current_status !== "approved" && vendor.current_status !== "rejected" && (
         <div className="p-4 border-t bg-card flex flex-wrap gap-3">
           <Button variant="outline" className="text-destructive border-destructive" onClick={() => setShowRejectDialog(true)}>
             <XCircle className="h-4 w-4 mr-2" /> Reject
           </Button>
           {canSendBack && (
             <Button variant="outline" className="text-orange-600 border-orange-400" onClick={() => setShowSendBackDialog(true)}>
-              <ArrowRight className="h-4 w-4 mr-2 rotate-180" /> Send Back
+              <ArrowRight className="h-4 w-4 mr-2 rotate-180" /> Send Back to Maker
             </Button>
           )}
           <div className="flex-1" />
@@ -473,21 +489,21 @@ export default function VendorReviewDetail() {
         </DialogContent>
       </Dialog>
 
-      {/* Send Back Dialog */}
+      {/* Send Back to Maker Dialog */}
       <Dialog open={showSendBackDialog} onOpenChange={setShowSendBackDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-orange-600">
-              <AlertTriangle className="h-5 w-5" /> Send Back for Corrections
+              <AlertTriangle className="h-5 w-5" /> Send Back to Maker
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">Please describe what needs to be corrected. The vendor will be notified and can resubmit.</p>
-            <Textarea placeholder="Enter reason for sending back..." value={sendBackReason} onChange={(e) => setSendBackReason(e.target.value)} rows={4} />
+            <p className="text-sm text-muted-foreground">Describe what needs another look. The maker will be notified and can re-forward after addressing the points.</p>
+            <Textarea placeholder="Enter reason..." value={sendBackReason} onChange={(e) => setSendBackReason(e.target.value)} rows={4} />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowSendBackDialog(false)}>Cancel</Button>
-            <Button 
+            <Button
               className="bg-orange-600 hover:bg-orange-700 text-white"
               onClick={async () => {
                 if (!sendBackReason.trim()) return;
@@ -495,7 +511,7 @@ export default function VendorReviewDetail() {
                 try {
                   await updateVendorStatus.mutateAsync({
                     vendorId: vendor.id,
-                    newStatus: "sent_back" as any,
+                    newStatus: "returned_to_maker" as any,
                     comments: sendBackReason,
                   });
                   setShowSendBackDialog(false);
@@ -506,7 +522,7 @@ export default function VendorReviewDetail() {
               }}
               disabled={!sendBackReason.trim() || actionLoading === "sendback"}
             >
-              {actionLoading === "sendback" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm Send Back"}
+              {actionLoading === "sendback" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm"}
             </Button>
           </DialogFooter>
         </DialogContent>

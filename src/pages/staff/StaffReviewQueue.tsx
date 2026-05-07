@@ -21,7 +21,7 @@ const STATUS_LABELS: Record<string, string> = {
   draft: "Draft",
   pending_review: "Pending Review",
   pending_approval: "Pending Approval",
-  sent_back: "Sent Back",
+  returned_to_maker: "Returned by Approver",
   approved: "Approved",
   rejected: "Rejected",
 };
@@ -30,7 +30,7 @@ const STATUS_COLORS: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
   pending_review: "bg-warning/20 text-warning",
   pending_approval: "bg-accent/20 text-accent",
-  sent_back: "bg-orange-100 text-orange-700",
+  returned_to_maker: "bg-orange-100 text-orange-700",
   approved: "bg-success/20 text-success",
   rejected: "bg-destructive/20 text-destructive",
 };
@@ -65,7 +65,7 @@ export default function StaffReviewQueue() {
 
   const pendingReviewVendors = getFilteredVendors("pending_review");
   const pendingApprovalVendors = getFilteredVendors("pending_approval");
-  const sentBackVendors = getFilteredVendors("sent_back");
+  const returnedVendors = getFilteredVendors("returned_to_maker");
 
   const renderVendorCard = (vendor: VendorWithCategory) => {
     // Check for fraud flags (contextual fraud alert)
@@ -120,7 +120,7 @@ export default function StaffReviewQueue() {
   const tabs = [
     { value: "pending_review", label: "Review", count: pendingReviewVendors.length, show: isReviewer || isAdmin },
     { value: "pending_approval", label: "Approve", count: pendingApprovalVendors.length, show: isApprover || isAdmin },
-    { value: "sent_back", label: "Sent Back", count: sentBackVendors.length, show: isReviewer || isAdmin },
+    { value: "returned_to_maker", label: "Returned by Approver", count: returnedVendors.length, show: isReviewer || isAdmin },
   ].filter(tab => tab.show);
 
   return (
@@ -174,10 +174,10 @@ export default function StaffReviewQueue() {
                   <p className="text-center text-muted-foreground py-8">No vendors pending approval</p>
                 ) : pendingApprovalVendors.map(renderVendorCard)}
               </TabsContent>
-              <TabsContent value="sent_back" className="flex-1 p-4 space-y-3 overflow-auto mt-0">
-                {sentBackVendors.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">No sent back vendors</p>
-                ) : sentBackVendors.map(renderVendorCard)}
+              <TabsContent value="returned_to_maker" className="flex-1 p-4 space-y-3 overflow-auto mt-0">
+                {returnedVendors.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">Nothing returned by the approver</p>
+                ) : returnedVendors.map(renderVendorCard)}
               </TabsContent>
             </>
           )}

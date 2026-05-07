@@ -101,14 +101,14 @@ export default function StaffDashboard() {
   const pendingApproval = vendors?.filter((v) => v.current_status === "pending_approval").length || 0;
   const approvedVendors = vendors?.filter((v) => v.current_status === "approved").length || 0;
   const totalVendors = vendors?.length || 0;
-  const sentBack = vendors?.filter((v) => v.current_status === "sent_back").length || 0;
+  const returnedToMaker = vendors?.filter((v) => (v.current_status as string) === "returned_to_maker").length || 0;
 
   const recentActivity = vendors?.slice(0, 6) || [];
 
   const attentionItems = [
     pendingReview > 0 && { label: `${pendingReview} vendor${pendingReview > 1 ? "s" : ""} pending review`, action: "/staff/queue", color: "text-warning", icon: Clock },
     pendingApproval > 0 && { label: `${pendingApproval} vendor${pendingApproval > 1 ? "s" : ""} awaiting approval`, action: "/staff/queue", color: "text-accent", icon: FileCheck },
-    sentBack > 0 && { label: `${sentBack} vendor${sentBack > 1 ? "s" : ""} sent back for corrections`, action: "/staff/queue", color: "text-orange-600", icon: AlertTriangle },
+    returnedToMaker > 0 && { label: `${returnedToMaker} vendor${returnedToMaker > 1 ? "s" : ""} returned by approver for re-review`, action: "/staff/queue", color: "text-orange-600", icon: AlertTriangle },
     (docStats?.expiring ?? 0) > 0 && { label: `${docStats?.expiring} document${(docStats?.expiring ?? 0) > 1 ? "s" : ""} expiring in 30 days`, action: "/staff/vendors", color: "text-destructive", icon: AlertTriangle },
     (dataRequestStats?.overdue ?? 0) > 0 && isAdmin && { label: `${dataRequestStats?.overdue} overdue data request${(dataRequestStats?.overdue ?? 0) > 1 ? "s" : ""}`, action: "/admin/dpdp-audit", color: "text-destructive", icon: Shield },
   ].filter(Boolean) as { label: string; action: string; color: string; icon: typeof Clock }[];
@@ -120,21 +120,21 @@ export default function StaffDashboard() {
       pending_approval: "Pending Approval",
       approved: "Approved",
       rejected: "Rejected",
-      sent_back: "Sent Back",
+      returned_to_maker: "Returned by Approver",
     };
     return map[status] || status;
   };
 
   const statusIcon = (status: string) => {
     if (status === "approved") return <CheckCircle2 className="h-4 w-4" />;
-    if (status === "rejected" || status === "sent_back") return <AlertTriangle className="h-4 w-4" />;
+    if (status === "rejected" || status === "returned_to_maker") return <AlertTriangle className="h-4 w-4" />;
     return <FileSearch className="h-4 w-4" />;
   };
 
   const statusColor = (status: string) => {
     if (status === "approved") return "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]";
     if (status === "rejected") return "bg-destructive/10 text-destructive";
-    if (status === "sent_back") return "bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))]";
+    if (status === "returned_to_maker") return "bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))]";
     return "bg-primary/10 text-primary";
   };
 

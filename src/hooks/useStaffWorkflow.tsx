@@ -115,7 +115,7 @@ export function useUpdateVendorStatus() {
       } else if (newStatus === "rejected") {
         updateData.rejected_at = new Date().toISOString();
         updateData.rejection_reason = comments || null;
-      } else if ((newStatus as string) === "sent_back") {
+      } else if ((newStatus as string) === "returned_to_maker") {
         updateData.sent_back_reason = comments || null;
       }
 
@@ -127,6 +127,12 @@ export function useUpdateVendorStatus() {
       if (updateError) throw updateError;
 
       // Add workflow history
+      const action =
+        newStatus === "rejected" ? "rejected"
+        : (newStatus as string) === "returned_to_maker" ? "returned"
+        : newStatus === "approved" ? "approved"
+        : "forwarded";
+
       const { error: historyError } = await supabase
         .from("workflow_history")
         .insert({
@@ -134,60 +140,88 @@ export function useUpdateVendorStatus() {
           tenant_id: vendor.tenant_id,
           from_status: vendor.current_status,
           to_status: newStatus,
-          action: newStatus === "rejected" ? "rejected" : (newStatus as string) === "sent_back" ? "returned" : newStatus === "approved" ? "approved" : "forwarded",
+          action,
           action_by: user!.id,
           comments: comments || null,
         });
 
       if (historyError) throw historyError;
 
-      // Phase 5: Create notification for the vendor
+      // Notify the right party for this transition.
+      //   approved/rejected → notify vendor (the primary contact's user account).
+      //   returned_to_maker → notify the maker who last forwarded this vendor;
+      //     if none on record, fall back to any maker in this tenant.
+      //   pending_approval (forward) → no notification (in-app queue is enough).
+      let recipientId: string | null = null;
       let notificationTitle = "";
       let notificationMessage = "";
+      let notificationType: "approval" | "rejection" | "returned_to_maker" | null = null;
 
-      if (newStatus === "approved") {
-        notificationTitle = "Vendor Approved";
-        notificationMessage = `Your vendor registration has been approved. Welcome!`;
-      } else if (newStatus === "rejected") {
-        notificationTitle = "Vendor Registration Rejected";
-        notificationMessage = `Your vendor registration was rejected. Reason: ${comments || "Not specified"}`;
-      } else if ((newStatus as string) === "sent_back") {
-        notificationTitle = "Corrections Required";
-        notificationMessage = `Your application was sent back for corrections. Reason: ${comments || "Please review and resubmit"}`;
-      }
-
-      if (notificationTitle) {
+      if (newStatus === "approved" || newStatus === "rejected") {
         const { data: vendorUser } = await supabase
           .from("vendor_users")
           .select("user_id")
           .eq("vendor_id", vendorId)
           .eq("is_primary_contact", true)
           .maybeSingle();
+        recipientId = vendorUser?.user_id ?? null;
 
-        if (vendorUser?.user_id) {
-          const notificationType = newStatus === "approved" ? "approval" : newStatus === "rejected" ? "rejection" : "sent_back";
+        if (newStatus === "approved") {
+          notificationTitle = "Vendor Approved";
+          notificationMessage = "Your vendor registration has been approved. Welcome!";
+          notificationType = "approval";
+        } else {
+          notificationTitle = "Vendor Registration Rejected";
+          notificationMessage = `Your vendor registration was rejected. Reason: ${comments || "Not specified"}`;
+          notificationType = "rejection";
+        }
+      } else if ((newStatus as string) === "returned_to_maker") {
+        const { data: lastForward } = await supabase
+          .from("workflow_history")
+          .select("action_by")
+          .eq("vendor_id", vendorId)
+          .eq("to_status", "pending_approval")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        recipientId = lastForward?.action_by ?? null;
 
-          await supabase.from("notifications").insert({
-            recipient_id: vendorUser.user_id,
-            tenant_id: vendor.tenant_id,
+        if (!recipientId) {
+          const { data: anyMaker } = await supabase
+            .from("user_roles")
+            .select("user_id")
+            .eq("tenant_id", vendor.tenant_id)
+            .eq("role", "maker")
+            .limit(1)
+            .maybeSingle();
+          recipientId = anyMaker?.user_id ?? null;
+        }
+
+        notificationTitle = "Application Returned for Re-review";
+        notificationMessage = `The approver returned this vendor application to you. Reason: ${comments || "Not specified"}`;
+        notificationType = "returned_to_maker";
+      }
+
+      if (recipientId && notificationType) {
+        await supabase.from("notifications").insert({
+          recipient_id: recipientId,
+          tenant_id: vendor.tenant_id,
+          title: notificationTitle,
+          message: notificationMessage,
+          notification_type: notificationType,
+          related_vendor_id: vendorId,
+        });
+
+        supabase.functions.invoke("send-notification-email", {
+          body: {
+            recipient_id: recipientId,
             title: notificationTitle,
             message: notificationMessage,
             notification_type: notificationType,
-            related_vendor_id: vendorId,
-          });
-
-          // Send email notification
-          supabase.functions.invoke("send-notification-email", {
-            body: {
-              recipient_id: vendorUser.user_id,
-              title: notificationTitle,
-              message: notificationMessage,
-              notification_type: notificationType,
-            },
-          }).catch(() => {
-            // Email failure is non-blocking
-          });
-        }
+          },
+        }).catch(() => {
+          // Email failure is non-blocking
+        });
       }
 
       // Fire webhook for all status changes (fire-and-forget)
@@ -196,7 +230,7 @@ export function useUpdateVendorStatus() {
         pending_approval: "vendor.reviewed",
         approved: "vendor.approved",
         rejected: "vendor.rejected",
-        sent_back: "vendor.sent_back",
+        returned_to_maker: "vendor.returned_to_maker",
       };
       const webhookEvent = webhookEventMap[newStatus as string];
       if (webhookEvent && vendor.tenant_id) {

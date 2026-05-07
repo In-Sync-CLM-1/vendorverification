@@ -36,7 +36,7 @@ const STATUS_CHART_COLORS: Record<string, string> = {
   draft: "#94a3b8",
   pending_review: "#f59e0b",
   pending_approval: "#8b5cf6",
-  sent_back: "#f97316",
+  returned_to_maker: "#f97316",
   approved: "#7AB648",
   rejected: "#ef4444",
 };
@@ -45,7 +45,7 @@ const STATUS_LABELS: Record<string, string> = {
   draft: "Draft",
   pending_review: "Pending Review",
   pending_approval: "Pending Approval",
-  sent_back: "Sent Back",
+  returned_to_maker: "Returned by Approver",
   approved: "Approved",
   rejected: "Rejected",
 };
@@ -162,7 +162,7 @@ export default function StaffReports() {
   const pendingCount =
     (statusCounts["pending_review"] || 0) +
     (statusCounts["pending_approval"] || 0) +
-    (statusCounts["sent_back"] || 0);
+    (statusCounts["returned_to_maker"] || 0);
 
   const tatData = vendors
     ?.filter((v) => v.approved_at)
@@ -201,7 +201,7 @@ export default function StaffReports() {
   const pendingData =
     vendors
       ?.filter((v) =>
-        ["pending_review", "pending_approval", "sent_back"].includes(
+        ["pending_review", "pending_approval", "returned_to_maker"].includes(
           v.current_status
         )
       )
@@ -258,7 +258,7 @@ export default function StaffReports() {
     draft: "bg-muted text-muted-foreground",
     pending_review: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
     pending_approval: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
-    sent_back: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
+    returned_to_maker: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
     approved: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
     rejected: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
   };

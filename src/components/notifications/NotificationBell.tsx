@@ -6,7 +6,7 @@ import { formatDistanceToNow } from "date-fns";
 const TYPE_STYLES: Record<string, string> = {
   approval: "border-l-green-500",
   rejection: "border-l-red-500",
-  sent_back: "border-l-orange-500",
+  returned_to_maker: "border-l-orange-500",
   in_app: "border-l-primary",
 };
 

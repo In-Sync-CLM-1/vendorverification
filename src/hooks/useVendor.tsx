@@ -1,7 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "./useAuth";
-import { toast } from "sonner";
+// Type definitions shared between staff hooks. The vendor-side hooks that
+// previously lived here were removed when the vendor self-service portal
+// was retired — vendors now interact only through the public referral
+// registration flow.
 
 export interface Vendor {
   id: string;
@@ -23,7 +23,7 @@ export interface Vendor {
   bank_ifsc: string | null;
   bank_name: string | null;
   bank_branch: string | null;
-  current_status: "draft" | "pending_review" | "pending_approval" | "approved" | "rejected";
+  current_status: "draft" | "pending_review" | "pending_approval" | "approved" | "rejected" | "returned_to_maker";
   submitted_at: string | null;
   approved_at: string | null;
   rejected_at: string | null;
@@ -49,172 +49,4 @@ export interface VendorDocument {
   document_types?: {
     name: string;
   };
-}
-
-export function useVendorProfile() {
-  const { user, userType } = useAuth();
-
-  return useQuery({
-    queryKey: ["vendor-profile", user?.id],
-    queryFn: async () => {
-      if (!user) return null;
-
-      // First get vendor_user record
-      const { data: vendorUser, error: vuError } = await supabase
-        .from("vendor_users")
-        .select("vendor_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (vuError) throw vuError;
-      if (!vendorUser) return null;
-
-      // Use RPC to get decrypted vendor details
-      const { data: vendor, error } = await supabase
-        .rpc("get_vendor_decrypted", { p_vendor_id: vendorUser.vendor_id });
-
-      if (error) throw error;
-      return vendor as unknown as Vendor;
-    },
-    enabled: !!user && userType === "vendor",
-  });
-}
-
-export function useVendorDocuments(vendorId: string | null) {
-  return useQuery({
-    queryKey: ["vendor-documents", vendorId],
-    queryFn: async () => {
-      if (!vendorId) return [];
-
-      const { data, error } = await supabase
-        .from("vendor_documents")
-        .select("*, document_types(name)")
-        .eq("vendor_id", vendorId)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      return data as VendorDocument[];
-    },
-    enabled: !!vendorId,
-  });
-}
-
-export function useUpdateVendor() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ vendorId, data }: { vendorId: string; data: Partial<Vendor> }) => {
-      const { error } = await supabase
-        .from("vendors")
-        .update(data)
-        .eq("id", vendorId);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["vendor-profile"] });
-      toast.success("Information saved");
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to save");
-    },
-  });
-}
-
-export function useSubmitVendorApplication() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (vendorId: string) => {
-      const { error } = await supabase
-        .from("vendors")
-        .update({ 
-          current_status: "pending_review",
-          submitted_at: new Date().toISOString()
-        })
-        .eq("id", vendorId);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["vendor-profile"] });
-      toast.success("Application submitted for review!");
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to submit");
-    },
-  });
-}
-
-export function useUploadDocument() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      vendorId,
-      documentTypeId,
-      file,
-      expiryDate,
-    }: {
-      vendorId: string;
-      documentTypeId: string;
-      file: File;
-      expiryDate?: string;
-    }) => {
-      // Upload file to storage
-      const fileName = `${vendorId}/${documentTypeId}/${Date.now()}_${file.name}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from("vendor-documents")
-        .upload(fileName, file);
-
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from("vendor-documents")
-        .getPublicUrl(fileName);
-
-      // Check if document already exists for this type
-      const { data: existingDoc } = await supabase
-        .from("vendor_documents")
-        .select("id, version_number")
-        .eq("vendor_id", vendorId)
-        .eq("document_type_id", documentTypeId)
-        .order("version_number", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      // Get vendor's tenant_id
-      const { data: vendorRecord } = await supabase
-        .from("vendors")
-        .select("tenant_id")
-        .eq("id", vendorId)
-        .maybeSingle();
-
-      // Create document record
-      const { error: dbError } = await supabase
-        .from("vendor_documents")
-        .insert({
-          vendor_id: vendorId,
-          tenant_id: vendorRecord?.tenant_id,
-          document_type_id: documentTypeId,
-          file_url: urlData.publicUrl,
-          file_name: file.name,
-          file_size_bytes: file.size,
-          version_number: existingDoc ? existingDoc.version_number + 1 : 1,
-          expiry_date: expiryDate || null,
-          status: "uploaded",
-        });
-
-      if (dbError) throw dbError;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["vendor-documents"] });
-      toast.success("Document uploaded successfully");
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to upload document");
-    },
-  });
 }
