@@ -1,4 +1,4 @@
-project_id = "dqmsdovyzcfjnifwjrfm"
+project_id = "fibpamjksquymscdlfal"
 
 [functions.submit-vendor-referral]
 verify_jwt = false

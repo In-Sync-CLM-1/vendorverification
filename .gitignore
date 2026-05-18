@@ -26,6 +26,9 @@ dist-ssr
 # Supabase CLI temp files
 supabase/.temp/
 
+# Migration artifacts (DB dumps, captured creds)
+migration-audit/
+
 # Claude Code local settings
 .claude/
 
