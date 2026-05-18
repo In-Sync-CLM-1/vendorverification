@@ -2,7 +2,7 @@
 
 In-Sync Vendor Empanelment — financial due diligence platform for vendor commitments. KYC verification (Credit Score, Bank Statement, GST, PAN, Aadhaar), document upload with AI tampering detection, multi-tenant org workflows, and a public/partner API.
 
-**Production:** https://civ.in-sync.co.in
+**Production:** https://vendorverification.in-sync.co.in
 
 ## Stack
 
@@ -28,7 +28,14 @@ npm run lint
 
 ## Deploy
 
-Pushes to `main` auto-deploy via GitHub Actions to Azure Static Web Apps (`civ.in-sync.co.in`). Backend (Supabase edge functions and migrations) is deployed separately via the Supabase Management API.
+Frontend deploys to Cloudflare Pages (project `vendorverification-sync`, domain `vendorverification.in-sync.co.in`):
+
+```sh
+npm run build
+npx wrangler pages deploy dist --project-name=vendorverification-sync --branch=main
+```
+
+Backend (Supabase edge functions and migrations) is deployed separately via the Supabase Management API.
 
 ## Environment
 
