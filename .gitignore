@@ -31,6 +31,8 @@ migration-audit/
 
 # Claude Code local settings
 .claude/
+.claude-tmp/
+.wrangler/
 
 # Environment variables — never commit secrets
 # .env.production contains only public Vite keys (URL + anon key) needed at
