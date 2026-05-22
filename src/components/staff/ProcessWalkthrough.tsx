@@ -218,7 +218,7 @@ const slides: Slide[] = [
         <AnimatedList items={[
           "Formats: PDF, JPG, PNG (max 10 MB)",
           "Stored in Supabase Storage with RLS",
-          "Each upload triggers AI analysis (Claude Haiku)",
+          "Each upload triggers AI analysis",
           "Mandatory documents marked with *",
         ]} />
         <div className="flex flex-wrap gap-1.5 mt-3">
@@ -265,7 +265,7 @@ const slides: Slide[] = [
   // 8 — AI Document Analysis
   {
     title: "AI Document Analysis",
-    subtitle: "Claude Haiku",
+    subtitle: "Vision + tool calling",
     duration: 7,
     render: () => (
       <div className="flex flex-col items-center justify-center h-full px-5 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -273,7 +273,7 @@ const slides: Slide[] = [
           <Bot className="h-5 w-5 text-purple-600" />
         </div>
         <h3 className="text-lg font-semibold mb-0.5">AI-Powered Document Analysis</h3>
-        <p className="text-sm text-muted-foreground mb-4">Claude Haiku via vision + tool calling</p>
+        <p className="text-sm text-muted-foreground mb-4">Vision + tool calling for structured extraction</p>
         <div className="w-full max-w-xs space-y-1.5">
           {[
             { label: "Field Extraction", desc: "Name, value, confidence score per field", icon: <FileText className="h-3.5 w-3.5 text-blue-600" />, delay: 300 },
