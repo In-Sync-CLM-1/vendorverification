@@ -162,7 +162,7 @@ serve(async (req) => {
     let userId: string;
 
     if (existingAuthUser) {
-      const { data: updated, error: updateErr } = await supabase.auth.admin.updateUser(
+      const { data: updated, error: updateErr } = await supabase.auth.admin.updateUserById(
         existingAuthUser.id,
         { password: admin_password }
       );
