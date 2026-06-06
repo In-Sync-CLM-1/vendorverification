@@ -211,7 +211,7 @@ Deno.serve(async (req) => {
                 content: {
                   type: "template",
                   template: {
-                    name: "vendor_invitation",
+                    name: "vendor_invitation_v2",
                     language: { code: "en" },
                     components: [
                       {
@@ -243,22 +243,23 @@ Deno.serve(async (req) => {
 
         try {
           const parsed = JSON.parse(waText);
-          // Exotel v2 returns: { response: [{ data: { messages: [{ id }] } }] } on success
-          exotelMessageId =
-            parsed?.response?.[0]?.data?.messages?.[0]?.id ??
-            parsed?.response?.[0]?.data?.id ??
-            null;
-          if (!waRes.ok) {
+          // Exotel v2 success shape: { response: { whatsapp: { messages: [{ code, status, data: { sid }, error_data }] } } }
+          const msg = parsed?.response?.whatsapp?.messages?.[0];
+          exotelMessageId = msg?.data?.sid ?? msg?.data?.id ?? null;
+          const accepted = waRes.ok && (msg?.code === 200 || msg?.code === 202) && !!exotelMessageId;
+          logStatus = accepted ? "sent" : "failed";
+          if (!accepted) {
             errorMessage =
-              parsed?.response?.[0]?.error_data?.description ??
-              parsed?.response?.[0]?.error_data?.message ??
+              msg?.error_data?.description ??
+              msg?.error_data?.message ??
               waText.slice(0, 500);
           }
         } catch {
-          if (!waRes.ok) errorMessage = waText.slice(0, 500);
+          logStatus = "failed";
+          errorMessage = waText.slice(0, 500);
         }
 
-        if (!waRes.ok) {
+        if (logStatus === "failed") {
           console.error("WhatsApp send failed:", waRes.status, errorMessage);
         }
 
@@ -267,7 +268,7 @@ Deno.serve(async (req) => {
           vendor_id: null,
           phone_number: toPhone,
           direction: "outbound",
-          template_name: "vendor_invitation",
+          template_name: "vendor_invitation_v2",
           template_variables: { "1": safeCompany, "2": registrationUrl },
           message_content: `Hi ${safeCompany}, you have been invited to register as a vendor on the Vendor Verification Portal.\n\nComplete your registration here: ${registrationUrl}\n\nThis invitation is valid for 7 days.`,
           status: logStatus,

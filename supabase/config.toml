@@ -3,6 +3,12 @@ project_id = "fibpamjksquymscdlfal"
 [functions.submit-vendor-referral]
 verify_jwt = false
 
+[functions.submit-vendor-self-register]
+verify_jwt = false
+
+[functions.upload-self-register-document]
+verify_jwt = false
+
 [functions.upload-referral-document]
 verify_jwt = false
 

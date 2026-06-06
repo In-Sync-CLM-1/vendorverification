@@ -176,7 +176,6 @@ serve(async (req) => {
         bank_ifsc: bank_ifsc || null,
         salutation: salutation || null,
         constitution_type: constitution_type || null,
-        consent_version: consent_version || null,
         referred_by: null,
         tenant_id: resolvedTenantId,
         current_status: "pending_review",
