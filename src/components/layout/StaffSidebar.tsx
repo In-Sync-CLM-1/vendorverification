@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   ClipboardList,
   ShieldCheck,
+  ShieldAlert,
   Users,
   List,
   Settings,
@@ -39,6 +40,7 @@ const EMAIL_NAME_MAP: Record<string, string> = {
 const mainItems = [
   { title: "Dashboard", url: "/staff/dashboard", icon: LayoutDashboard },
   { title: "Approval Queue", url: "/staff/queue", icon: ClipboardList },
+  { title: "Fraud Alerts", url: "/staff/fraud-alerts", icon: ShieldAlert },
   { title: "Vendor List", url: "/staff/vendors", icon: List },
   { title: "Bulk Import", url: "/staff/bulk-import", icon: Upload },
 ];
