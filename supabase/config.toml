@@ -18,6 +18,9 @@ verify_jwt = false
 [functions.send-vendor-invitation]
 verify_jwt = false
 
+[functions.bulk-invite-vendors]
+verify_jwt = false
+
 [functions.verify-public-otp]
 verify_jwt = false
 

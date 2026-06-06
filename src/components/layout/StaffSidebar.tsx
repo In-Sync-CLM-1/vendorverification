@@ -12,6 +12,7 @@ import {
   Users,
   List,
   Settings,
+  Send,
   LogOut,
   UserCircle,
   CreditCard,
@@ -43,6 +44,7 @@ const mainItems = [
   { title: "Fraud Alerts", url: "/staff/fraud-alerts", icon: ShieldAlert },
   { title: "Vendor List", url: "/staff/vendors", icon: List },
   { title: "Bulk Import", url: "/staff/bulk-import", icon: Upload },
+  { title: "Bulk Invite", url: "/staff/bulk-invite", icon: Send },
 ];
 
 const adminItems = [
