@@ -34,14 +34,7 @@ Every push to `main` triggers `.github/workflows/deploy.yml`, which:
 2. Applies any new SQL migrations via the Supabase Management API (`scripts/deploy-migrations.mjs`).
 3. Re-deploys all edge functions via the Supabase Management API (`scripts/deploy-functions.mjs`).
 
-Manual fallback if Actions is unavailable:
-
-```sh
-npm run build
-npx wrangler pages deploy dist --project-name=vendorverification-sync --branch=main
-SUPABASE_ACCESS_TOKEN=… node scripts/deploy-migrations.mjs
-SUPABASE_ACCESS_TOKEN=… node scripts/deploy-functions.mjs
-```
+All deploys go through Actions on push to `main` — there is no manual Wrangler/CLI fallback.
 
 ## Environment
 
