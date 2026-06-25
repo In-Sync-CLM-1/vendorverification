@@ -43,7 +43,7 @@ function maskFieldValue(fieldName: string, value: string): string {
   return value;
 }
 
-const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
+const VISION_MODEL = "meta-llama/llama-4-maverick-17b-128e-instruct";
 const TEXT_MODEL = "llama-3.3-70b-versatile";
 
 const SYSTEM_PROMPT = `You are a document analysis AI for an Indian vendor onboarding platform. You analyze uploaded documents (GST Certificates, PAN Cards, Cancelled Cheques, Trade Licenses, Certificates of Incorporation, etc.) and extract key information.
