@@ -79,6 +79,14 @@ Deno.serve(async (req) => {
     // Generate OTP and store
     const otpCode = generateOtp();
 
+    // Invalidate any previous unverified OTPs for this identifier so vendors
+    // who request multiple codes can only use the latest one.
+    await supabase
+      .from("public_otp_verifications")
+      .update({ expires_at: new Date().toISOString() })
+      .eq("identifier", normalizedIdentifier)
+      .is("verified_at", null);
+
     // tenant_id is optional (NULL for org-registration OTPs — no tenant exists yet).
     // Removed the "fall back to first tenant in DB" default which silently mis-attributed
     // OTPs from new tenants to whichever tenant happened to be first.
