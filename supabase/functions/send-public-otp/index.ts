@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
               content: {
                 type: "template",
                 template: {
-                  name: "otp",
+                  name: "vendorverification_otp_v1",
                   language: { code: "en" },
                   components: [
                     {
@@ -173,7 +173,8 @@ Deno.serve(async (req) => {
         body: JSON.stringify(payload),
       });
 
-      if (!exotelResponse.ok) {
+      // Exotel WA messaging: 202 = accepted/queued; 200 = silent failure (bad template, wrong creds, etc.)
+      if (exotelResponse.status !== 202) {
         const errorText = await exotelResponse.text();
         console.error("Exotel API error:", exotelResponse.status, errorText);
         return new Response(
