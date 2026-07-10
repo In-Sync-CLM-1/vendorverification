@@ -178,7 +178,7 @@ step(
 await admin.from("vendor_invoice_payments").delete().eq("invoice_id", inv.id);
 await admin.from("vendor_invoices").delete().eq("id", inv.id);
 const cfResp = await fetch(
-  `https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/r2/buckets/vendorverification-files/objects/${fileKey}`,
+  `https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/r2/buckets/vendorverification-files/objects/${encodeURIComponent(fileKey)}`,
   { method: "DELETE", headers: { Authorization: `Bearer ${env.CLOUDFLARE_API_TOKEN}` } }
 );
 console.log(`🧹 cleanup: rows deleted, R2 object delete HTTP ${cfResp.status}`);
