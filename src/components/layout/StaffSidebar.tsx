@@ -18,6 +18,7 @@ import {
   CreditCard,
   Upload,
   Building2,
+  ReceiptIndianRupee,
 } from "lucide-react";
 import {
   Sidebar,
@@ -43,6 +44,7 @@ const mainItems = [
   { title: "Approval Queue", url: "/staff/queue", icon: ClipboardList },
   { title: "Fraud Alerts", url: "/staff/fraud-alerts", icon: ShieldAlert },
   { title: "Vendor List", url: "/staff/vendors", icon: List },
+  { title: "Invoices", url: "/staff/invoices", icon: ReceiptIndianRupee },
   { title: "Bulk Import", url: "/staff/bulk-import", icon: Upload },
   { title: "Bulk Invite", url: "/staff/bulk-invite", icon: Send },
 ];

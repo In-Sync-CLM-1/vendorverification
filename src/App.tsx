@@ -15,6 +15,8 @@ import NotFound from "./pages/NotFound";
 import VendorReferralRegistration from "./pages/vendor/VendorReferralRegistration";
 import VendorVerifyAadhaar from "./pages/vendor/VendorVerifyAadhaar";
 import PrivacyPolicy from "./pages/vendor/PrivacyPolicy";
+import VendorPortalLogin from "./pages/vendor/VendorPortalLogin";
+import VendorPortalDashboard from "./pages/vendor/VendorPortalDashboard";
 import WalkthroughPage from "./pages/WalkthroughPage";
 import HowItWorksPage from "./pages/HowItWorksPage";
 
@@ -28,6 +30,7 @@ import VendorList from "./pages/staff/VendorList";
 import BulkImportVendors from "./pages/staff/BulkImportVendors";
 import BulkInviteVendors from "./pages/staff/BulkInviteVendors";
 import FraudAlertsDashboard from "./pages/staff/FraudAlertsDashboard";
+import StaffInvoices from "./pages/staff/StaffInvoices";
 
 // Admin Pages
 import AdminUserManagement from "./pages/admin/AdminUserManagement";
@@ -54,6 +57,8 @@ const App = () => (
             <Route path="/register" element={<OrgRegistration />} />
             <Route path="/register/ref/:token" element={<VendorReferralRegistration />} />
             <Route path="/vendor/verify-aadhaar/:verificationId" element={<VendorVerifyAadhaar />} />
+            <Route path="/vendor/portal" element={<VendorPortalLogin />} />
+            <Route path="/vendor/portal/dashboard" element={<VendorPortalDashboard />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/walkthrough" element={<WalkthroughPage />} />
             <Route path="/how-it-works" element={<HowItWorksPage />} />
@@ -66,6 +71,7 @@ const App = () => (
             <Route path="/staff/profile" element={<StaffProfile />} />
             <Route path="/staff/vendors" element={<VendorList />} />
             <Route path="/staff/fraud-alerts" element={<FraudAlertsDashboard />} />
+            <Route path="/staff/invoices" element={<StaffInvoices />} />
             <Route path="/staff/bulk-import" element={<BulkImportVendors />} />
             <Route path="/staff/bulk-invite" element={<BulkInviteVendors />} />
 

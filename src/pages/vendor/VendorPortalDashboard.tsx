@@ -1,0 +1,345 @@
+import { Fragment, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { InvoiceCharts } from "@/components/invoices/InvoiceCharts";
+import { PaymentBreakupTable } from "@/components/invoices/PaymentBreakupTable";
+import { InvoiceUploadDialog } from "@/components/invoices/InvoiceUploadDialog";
+import {
+  formatINR,
+  INVOICE_STATUS_META,
+  openInvoiceFile,
+  paymentSettled,
+  VendorInvoice,
+  InvoicePayment,
+} from "@/lib/invoices";
+import {
+  FileText,
+  IndianRupee,
+  Clock,
+  Landmark,
+  Upload,
+  LogOut,
+  Loader2,
+  ChevronDown,
+  Paperclip,
+} from "lucide-react";
+import { toast } from "sonner";
+
+export default function VendorPortalDashboard() {
+  const navigate = useNavigate();
+  const { user, userType, loading: authLoading, signOut } = useAuth();
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const { data: vendor, isLoading: vendorLoading } = useQuery({
+    queryKey: ["portal-vendor", user?.id],
+    queryFn: async () => {
+      const { data: link } = await supabase
+        .from("vendor_users")
+        .select("vendor_id")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      if (!link) return null;
+      const { data } = await supabase
+        .from("vendors")
+        .select("id, company_name, vendor_code, current_status")
+        .eq("id", link.vendor_id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
+  const { data: invoices = [], refetch: refetchInvoices, isLoading: invLoading } = useQuery({
+    queryKey: ["portal-invoices", vendor?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vendor_invoices")
+        .select("*")
+        .eq("vendor_id", vendor!.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data || []) as VendorInvoice[];
+    },
+    enabled: !!vendor?.id,
+  });
+
+  const { data: payments = [], refetch: refetchPayments } = useQuery({
+    queryKey: ["portal-payments", vendor?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vendor_invoice_payments")
+        .select("*")
+        .eq("vendor_id", vendor!.id)
+        .order("payment_date", { ascending: false });
+      if (error) throw error;
+      return (data || []) as InvoicePayment[];
+    },
+    enabled: !!vendor?.id,
+  });
+
+  if (!authLoading && !user) {
+    navigate("/vendor/portal", { replace: true });
+    return null;
+  }
+  if (!authLoading && userType === "staff") {
+    navigate("/staff/invoices", { replace: true });
+    return null;
+  }
+
+  if (authLoading || vendorLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!vendor) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="max-w-md">
+          <CardContent className="p-8 text-center space-y-3">
+            <FileText className="h-10 w-10 text-muted-foreground mx-auto" />
+            <p className="font-medium">No vendor account linked</p>
+            <p className="text-sm text-muted-foreground">
+              We couldn't find a vendor registered with your login. Please sign in with the
+              email or WhatsApp number registered during empanelment.
+            </p>
+            <Button variant="outline" onClick={async () => { await signOut(); navigate("/vendor/portal"); }}>
+              Try a different login
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const settledByInvoice = new Map<string, number>();
+  for (const p of payments) {
+    settledByInvoice.set(p.invoice_id, (settledByInvoice.get(p.invoice_id) || 0) + paymentSettled(p));
+  }
+
+  const totalInvoiced = invoices.reduce((s, i) => s + Number(i.invoice_amount), 0);
+  const totalSettled = payments.reduce((s, p) => s + paymentSettled(p), 0);
+  const totalTds = payments.reduce((s, p) => s + Number(p.tds_amount || 0), 0);
+  const outstanding = invoices
+    .filter((i) => !["rejected", "paid"].includes(i.status))
+    .reduce((s, i) => s + Number(i.invoice_amount) - (settledByInvoice.get(i.id) || 0), 0);
+
+  const tiles = [
+    { label: "Invoices Submitted", value: String(invoices.length), icon: FileText },
+    { label: "Total Invoiced", value: formatINR(totalInvoiced), icon: IndianRupee },
+    { label: "Outstanding", value: formatINR(Math.max(outstanding, 0)), icon: Clock },
+    { label: "Paid / Settled", value: formatINR(totalSettled), icon: Landmark, sub: totalTds > 0 ? `incl. TDS ${formatINR(totalTds)}` : undefined },
+  ];
+
+  return (
+    <div className="min-h-screen bg-muted/30">
+      {/* Header */}
+      <header className="bg-card border-b sticky top-0 z-10">
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="min-w-0">
+            <p className="font-semibold truncate">{vendor.company_name}</p>
+            <p className="text-xs text-muted-foreground">
+              Vendor Portal · {vendor.vendor_code}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button onClick={() => setUploadOpen(true)} size="sm">
+              <Upload className="h-4 w-4 mr-2" /> Upload Invoice
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async () => {
+                await signOut();
+                navigate("/vendor/portal");
+              }}
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+        {/* KPI tiles */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {tiles.map((t) => (
+            <Card key={t.label}>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                  <t.icon className="h-4 w-4" />
+                  <p className="text-xs">{t.label}</p>
+                </div>
+                <p className="text-xl font-bold">{t.value}</p>
+                {t.sub && <p className="text-xs text-muted-foreground mt-0.5">{t.sub}</p>}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Analytics */}
+        <InvoiceCharts
+          invoices={invoices.map((i) => ({
+            invoice_amount: Number(i.invoice_amount),
+            invoice_date: i.invoice_date,
+            status: i.status,
+          }))}
+          payments={payments.map((p) => ({
+            payment_date: p.payment_date,
+            advance_adjusted: Number(p.advance_adjusted),
+            tds_amount: Number(p.tds_amount),
+            payout_amount: Number(p.payout_amount),
+          }))}
+        />
+
+        {/* Invoice list */}
+        <Card>
+          <CardContent className="p-0">
+            <div className="p-4 border-b flex items-center justify-between">
+              <div>
+                <h2 className="font-semibold">Your Invoices</h2>
+                <p className="text-sm text-muted-foreground">
+                  Tap an invoice to see its payment breakup
+                </p>
+              </div>
+            </div>
+
+            {invLoading ? (
+              <div className="p-8 text-center">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+              </div>
+            ) : invoices.length === 0 ? (
+              <div className="p-10 text-center space-y-3">
+                <FileText className="h-10 w-10 text-muted-foreground mx-auto" />
+                <p className="font-medium">No invoices yet</p>
+                <p className="text-sm text-muted-foreground">
+                  Upload your first invoice to get paid.
+                </p>
+                <Button onClick={() => setUploadOpen(true)}>
+                  <Upload className="h-4 w-4 mr-2" /> Upload Invoice
+                </Button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Invoice</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>PO</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="text-right">Settled</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Files</TableHead>
+                      <TableHead className="w-8" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {invoices.map((inv) => {
+                      const meta = INVOICE_STATUS_META[inv.status];
+                      const settled = settledByInvoice.get(inv.id) || 0;
+                      const invPayments = payments.filter((p) => p.invoice_id === inv.id);
+                      const isOpen = expandedId === inv.id;
+                      return (
+                        <Fragment key={inv.id}>
+                          <TableRow
+                            className="cursor-pointer"
+                            onClick={() => setExpandedId(isOpen ? null : inv.id)}
+                          >
+                                <TableCell className="font-medium">{inv.invoice_number}</TableCell>
+                                <TableCell className="whitespace-nowrap">
+                                  {new Date(inv.invoice_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                                </TableCell>
+                                <TableCell>{inv.po_number || "—"}</TableCell>
+                                <TableCell className="text-right font-medium">{formatINR(Number(inv.invoice_amount))}</TableCell>
+                                <TableCell className="text-right">{settled > 0 ? formatINR(settled) : "—"}</TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" className={meta.className}>{meta.label}</Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 px-2"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openInvoiceFile(inv.invoice_file_key).catch((err) => toast.error(err.message));
+                                      }}
+                                    >
+                                      <Paperclip className="h-3.5 w-3.5 mr-1" /> Invoice
+                                    </Button>
+                                    {inv.po_file_key && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 px-2"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          openInvoiceFile(inv.po_file_key!).catch((err) => toast.error(err.message));
+                                        }}
+                                      >
+                                        <Paperclip className="h-3.5 w-3.5 mr-1" /> PO
+                                      </Button>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                                </TableCell>
+                          </TableRow>
+                          {isOpen && (
+                            <TableRow className="bg-muted/30 hover:bg-muted/30">
+                              <TableCell colSpan={8} className="p-4">
+                                {inv.status === "rejected" && inv.rejection_reason && (
+                                  <p className="text-sm text-destructive mb-3">
+                                    Rejection reason: {inv.rejection_reason}
+                                  </p>
+                                )}
+                                {inv.description && (
+                                  <p className="text-sm text-muted-foreground mb-3">{inv.description}</p>
+                                )}
+                                <p className="text-sm font-medium mb-2">Payment details</p>
+                                <PaymentBreakupTable payments={invPayments} />
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </Fragment>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </main>
+
+      <InvoiceUploadDialog
+        open={uploadOpen}
+        onOpenChange={setUploadOpen}
+        vendorId={vendor.id}
+        onUploaded={() => {
+          refetchInvoices();
+          refetchPayments();
+        }}
+      />
+    </div>
+  );
+}

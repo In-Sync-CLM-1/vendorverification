@@ -10,10 +10,134 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.1"
+    PostgrestVersion: "14.5"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
+      api_keys: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          key_hash: string
+          key_prefix: string
+          last_used_at: string | null
+          name: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          key_hash: string
+          key_prefix: string
+          last_used_at?: string | null
+          name: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          key_hash?: string
+          key_prefix?: string
+          last_used_at?: string | null
+          name?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_keys_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "api_keys_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_decrypted"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "api_keys_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billing_transactions: {
+        Row: {
+          amount: number
+          category: Database["public"]["Enums"]["billing_category"]
+          created_at: string
+          description: string | null
+          id: string
+          reference_id: string | null
+          tenant_id: string
+          type: Database["public"]["Enums"]["billing_transaction_type"]
+        }
+        Insert: {
+          amount: number
+          category: Database["public"]["Enums"]["billing_category"]
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          tenant_id: string
+          type: Database["public"]["Enums"]["billing_transaction_type"]
+        }
+        Update: {
+          amount?: number
+          category?: Database["public"]["Enums"]["billing_category"]
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          tenant_id?: string
+          type?: Database["public"]["Enums"]["billing_transaction_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_transactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       breach_notifications: {
         Row: {
           affected_vendor_ids: string[] | null
@@ -22,6 +146,7 @@ export type Database = {
           id: string
           impact: string
           remedial_steps: string
+          tenant_id: string
           title: string
           triggered_at: string
           triggered_by: string
@@ -33,6 +158,7 @@ export type Database = {
           id?: string
           impact: string
           remedial_steps: string
+          tenant_id: string
           title: string
           triggered_at?: string
           triggered_by: string
@@ -44,11 +170,20 @@ export type Database = {
           id?: string
           impact?: string
           remedial_steps?: string
+          tenant_id?: string
           title?: string
           triggered_at?: string
           triggered_by?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "breach_notifications_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       category_documents: {
         Row: {
@@ -57,6 +192,7 @@ export type Database = {
           document_type_id: string
           id: string
           is_mandatory: boolean
+          tenant_id: string
         }
         Insert: {
           category_id: string
@@ -64,6 +200,7 @@ export type Database = {
           document_type_id: string
           id?: string
           is_mandatory?: boolean
+          tenant_id: string
         }
         Update: {
           category_id?: string
@@ -71,6 +208,7 @@ export type Database = {
           document_type_id?: string
           id?: string
           is_mandatory?: boolean
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -87,6 +225,13 @@ export type Database = {
             referencedRelation: "document_types"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "category_documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
         ]
       }
       consent_records: {
@@ -97,6 +242,7 @@ export type Database = {
           id: string
           ip_address: string | null
           purpose: string
+          tenant_id: string
           user_agent: string | null
           user_identifier: string
           vendor_id: string | null
@@ -109,6 +255,7 @@ export type Database = {
           id?: string
           ip_address?: string | null
           purpose?: string
+          tenant_id: string
           user_agent?: string | null
           user_identifier: string
           vendor_id?: string | null
@@ -121,12 +268,20 @@ export type Database = {
           id?: string
           ip_address?: string | null
           purpose?: string
+          tenant_id?: string
           user_agent?: string | null
           user_identifier?: string
           vendor_id?: string | null
           withdrawn_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "consent_records_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "consent_records_vendor_id_fkey"
             columns: ["vendor_id"]
@@ -143,6 +298,81 @@ export type Database = {
           },
         ]
       }
+      coupon_redemptions: {
+        Row: {
+          applied_at: string
+          coupon_id: string
+          id: string
+          razorpay_payment_id: string | null
+          tenant_id: string
+        }
+        Insert: {
+          applied_at?: string
+          coupon_id: string
+          id?: string
+          razorpay_payment_id?: string | null
+          tenant_id: string
+        }
+        Update: {
+          applied_at?: string
+          coupon_id?: string
+          id?: string
+          razorpay_payment_id?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupon_redemptions_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_redemptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coupons: {
+        Row: {
+          code: string
+          created_at: string
+          discount_percent: number
+          id: string
+          is_active: boolean
+          max_uses: number | null
+          times_used: number
+          valid_from: string
+          valid_until: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          discount_percent: number
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          times_used?: number
+          valid_from?: string
+          valid_until: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          discount_percent?: number
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          times_used?: number
+          valid_from?: string
+          valid_until?: string
+        }
+        Relationships: []
+      }
       data_requests: {
         Row: {
           admin_notes: string | null
@@ -153,6 +383,7 @@ export type Database = {
           request_type: string
           requested_by: string
           status: string
+          tenant_id: string
           vendor_id: string
         }
         Insert: {
@@ -164,6 +395,7 @@ export type Database = {
           request_type: string
           requested_by: string
           status?: string
+          tenant_id: string
           vendor_id: string
         }
         Update: {
@@ -175,9 +407,17 @@ export type Database = {
           request_type?: string
           requested_by?: string
           status?: string
+          tenant_id?: string
           vendor_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "data_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "data_requests_vendor_id_fkey"
             columns: ["vendor_id"]
@@ -209,6 +449,7 @@ export type Database = {
           id: string
           tampering_indicators: Json
           tampering_score: number | null
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -225,6 +466,7 @@ export type Database = {
           id?: string
           tampering_indicators?: Json
           tampering_score?: number | null
+          tenant_id: string
           updated_at?: string
         }
         Update: {
@@ -241,6 +483,7 @@ export type Database = {
           id?: string
           tampering_indicators?: Json
           tampering_score?: number | null
+          tenant_id?: string
           updated_at?: string
         }
         Relationships: [
@@ -251,67 +494,11 @@ export type Database = {
             referencedRelation: "vendor_documents"
             referencedColumns: ["id"]
           },
-        ]
-      }
-      fraud_alerts: {
-        Row: {
-          id: string
-          vendor_id: string
-          alert_type: Database["public"]["Enums"]["fraud_alert_type"]
-          severity: Database["public"]["Enums"]["fraud_alert_severity"]
-          title: string
-          description: string
-          details: Json
-          status: Database["public"]["Enums"]["fraud_alert_status"]
-          created_at: string
-          reviewed_by: string | null
-          reviewed_at: string | null
-          dismiss_reason: string | null
-          tenant_id: string
-        }
-        Insert: {
-          id?: string
-          vendor_id: string
-          alert_type: Database["public"]["Enums"]["fraud_alert_type"]
-          severity?: Database["public"]["Enums"]["fraud_alert_severity"]
-          title: string
-          description: string
-          details?: Json
-          status?: Database["public"]["Enums"]["fraud_alert_status"]
-          created_at?: string
-          reviewed_by?: string | null
-          reviewed_at?: string | null
-          dismiss_reason?: string | null
-          tenant_id: string
-        }
-        Update: {
-          id?: string
-          vendor_id?: string
-          alert_type?: Database["public"]["Enums"]["fraud_alert_type"]
-          severity?: Database["public"]["Enums"]["fraud_alert_severity"]
-          title?: string
-          description?: string
-          details?: Json
-          status?: Database["public"]["Enums"]["fraud_alert_status"]
-          created_at?: string
-          reviewed_by?: string | null
-          reviewed_at?: string | null
-          dismiss_reason?: string | null
-          tenant_id?: string
-        }
-        Relationships: [
           {
-            foreignKeyName: "fraud_alerts_vendor_id_fkey"
-            columns: ["vendor_id"]
+            foreignKeyName: "document_analyses_tenant_id_fkey"
+            columns: ["tenant_id"]
             isOneToOne: false
-            referencedRelation: "vendors"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fraud_alerts_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors_decrypted"
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -326,6 +513,7 @@ export type Database = {
           max_file_size_mb: number | null
           name: string
           sample_url: string | null
+          tenant_id: string
         }
         Insert: {
           accepted_formats?: string[] | null
@@ -336,6 +524,7 @@ export type Database = {
           max_file_size_mb?: number | null
           name: string
           sample_url?: string | null
+          tenant_id: string
         }
         Update: {
           accepted_formats?: string[] | null
@@ -346,8 +535,87 @@ export type Database = {
           max_file_size_mb?: number | null
           name?: string
           sample_url?: string | null
+          tenant_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "document_types_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fraud_alerts: {
+        Row: {
+          alert_type: Database["public"]["Enums"]["fraud_alert_type"]
+          created_at: string
+          description: string
+          details: Json
+          dismiss_reason: string | null
+          id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          severity: Database["public"]["Enums"]["fraud_alert_severity"]
+          status: Database["public"]["Enums"]["fraud_alert_status"]
+          tenant_id: string
+          title: string
+          vendor_id: string
+        }
+        Insert: {
+          alert_type: Database["public"]["Enums"]["fraud_alert_type"]
+          created_at?: string
+          description: string
+          details?: Json
+          dismiss_reason?: string | null
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          severity?: Database["public"]["Enums"]["fraud_alert_severity"]
+          status?: Database["public"]["Enums"]["fraud_alert_status"]
+          tenant_id: string
+          title: string
+          vendor_id: string
+        }
+        Update: {
+          alert_type?: Database["public"]["Enums"]["fraud_alert_type"]
+          created_at?: string
+          description?: string
+          details?: Json
+          dismiss_reason?: string | null
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          severity?: Database["public"]["Enums"]["fraud_alert_severity"]
+          status?: Database["public"]["Enums"]["fraud_alert_status"]
+          tenant_id?: string
+          title?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fraud_alerts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fraud_alerts_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fraud_alerts_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_decrypted"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
@@ -359,6 +627,7 @@ export type Database = {
           read_at: string | null
           recipient_id: string
           related_vendor_id: string | null
+          tenant_id: string
           title: string
         }
         Insert: {
@@ -370,6 +639,7 @@ export type Database = {
           read_at?: string | null
           recipient_id: string
           related_vendor_id?: string | null
+          tenant_id: string
           title: string
         }
         Update: {
@@ -381,6 +651,7 @@ export type Database = {
           read_at?: string | null
           recipient_id?: string
           related_vendor_id?: string | null
+          tenant_id?: string
           title?: string
         }
         Relationships: [
@@ -396,6 +667,69 @@ export type Database = {
             columns: ["related_vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors_decrypted"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_subscriptions: {
+        Row: {
+          billing_cycle_end: string | null
+          billing_cycle_start: string | null
+          created_at: string
+          id: string
+          monthly_price: number
+          plan: Database["public"]["Enums"]["subscription_plan"]
+          razorpay_customer_id: string | null
+          razorpay_subscription_id: string | null
+          status: Database["public"]["Enums"]["subscription_status"]
+          tenant_id: string
+          updated_at: string
+          vendor_limit: number
+          vendors_used: number
+        }
+        Insert: {
+          billing_cycle_end?: string | null
+          billing_cycle_start?: string | null
+          created_at?: string
+          id?: string
+          monthly_price?: number
+          plan?: Database["public"]["Enums"]["subscription_plan"]
+          razorpay_customer_id?: string | null
+          razorpay_subscription_id?: string | null
+          status?: Database["public"]["Enums"]["subscription_status"]
+          tenant_id: string
+          updated_at?: string
+          vendor_limit?: number
+          vendors_used?: number
+        }
+        Update: {
+          billing_cycle_end?: string | null
+          billing_cycle_start?: string | null
+          created_at?: string
+          id?: string
+          monthly_price?: number
+          plan?: Database["public"]["Enums"]["subscription_plan"]
+          razorpay_customer_id?: string | null
+          razorpay_subscription_id?: string | null
+          status?: Database["public"]["Enums"]["subscription_status"]
+          tenant_id?: string
+          updated_at?: string
+          vendor_limit?: number
+          vendors_used?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_subscriptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -467,6 +801,7 @@ export type Database = {
           id: string
           purpose: string
           table_name: string
+          tenant_id: string
           user_id: string
           vendor_id: string | null
         }
@@ -476,6 +811,7 @@ export type Database = {
           id?: string
           purpose?: string
           table_name: string
+          tenant_id: string
           user_id: string
           vendor_id?: string | null
         }
@@ -485,10 +821,19 @@ export type Database = {
           id?: string
           purpose?: string
           table_name?: string
+          tenant_id?: string
           user_id?: string
           vendor_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pii_access_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -501,6 +846,7 @@ export type Database = {
           is_active: boolean
           phone: string | null
           phone_encrypted: string | null
+          tenant_id: string
           updated_at: string
           user_id: string
         }
@@ -514,6 +860,7 @@ export type Database = {
           is_active?: boolean
           phone?: string | null
           phone_encrypted?: string | null
+          tenant_id: string
           updated_at?: string
           user_id: string
         }
@@ -527,10 +874,19 @@ export type Database = {
           is_active?: boolean
           phone?: string | null
           phone_encrypted?: string | null
+          tenant_id?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       public_otp_verifications: {
         Row: {
@@ -544,6 +900,7 @@ export type Database = {
           max_attempts: number
           otp_code: string
           session_id: string
+          tenant_id: string | null
           verified_at: string | null
         }
         Insert: {
@@ -557,6 +914,7 @@ export type Database = {
           max_attempts?: number
           otp_code: string
           session_id?: string
+          tenant_id?: string | null
           verified_at?: string | null
         }
         Update: {
@@ -570,9 +928,18 @@ export type Database = {
           max_attempts?: number
           otp_code?: string
           session_id?: string
+          tenant_id?: string | null
           verified_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "public_otp_verifications_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       staff_referral_codes: {
         Row: {
@@ -580,6 +947,7 @@ export type Database = {
           id: string
           is_active: boolean
           referral_code: string
+          tenant_id: string
           user_id: string
         }
         Insert: {
@@ -587,6 +955,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           referral_code: string
+          tenant_id: string
           user_id: string
         }
         Update: {
@@ -594,7 +963,97 @@ export type Database = {
           id?: string
           is_active?: boolean
           referral_code?: string
+          tenant_id?: string
           user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_referral_codes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscription_plans: {
+        Row: {
+          description: string | null
+          id: Database["public"]["Enums"]["subscription_plan"]
+          is_active: boolean
+          monthly_price: number
+          name: string
+          vendor_limit: number
+        }
+        Insert: {
+          description?: string | null
+          id: Database["public"]["Enums"]["subscription_plan"]
+          is_active?: boolean
+          monthly_price: number
+          name: string
+          vendor_limit: number
+        }
+        Update: {
+          description?: string | null
+          id?: Database["public"]["Enums"]["subscription_plan"]
+          is_active?: boolean
+          monthly_price?: number
+          name?: string
+          vendor_limit?: number
+        }
+        Relationships: []
+      }
+      tenants: {
+        Row: {
+          accent_color: string | null
+          created_at: string
+          dpo_email: string | null
+          id: string
+          is_active: boolean
+          logo_url: string | null
+          name: string
+          primary_color: string | null
+          privacy_policy_url: string | null
+          short_name: string
+          slug: string
+          support_email: string | null
+          support_phone: string | null
+          updated_at: string
+          vendor_code_prefix: string
+        }
+        Insert: {
+          accent_color?: string | null
+          created_at?: string
+          dpo_email?: string | null
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name: string
+          primary_color?: string | null
+          privacy_policy_url?: string | null
+          short_name: string
+          slug: string
+          support_email?: string | null
+          support_phone?: string | null
+          updated_at?: string
+          vendor_code_prefix?: string
+        }
+        Update: {
+          accent_color?: string | null
+          created_at?: string
+          dpo_email?: string | null
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name?: string
+          primary_color?: string | null
+          privacy_policy_url?: string | null
+          short_name?: string
+          slug?: string
+          support_email?: string | null
+          support_phone?: string | null
+          updated_at?: string
+          vendor_code_prefix?: string
         }
         Relationships: []
       }
@@ -603,21 +1062,32 @@ export type Database = {
           created_at: string
           id: string
           role: Database["public"]["Enums"]["app_role"]
+          tenant_id: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           role: Database["public"]["Enums"]["app_role"]
+          tenant_id: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          tenant_id?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vendor_categories: {
         Row: {
@@ -626,6 +1096,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          tenant_id: string
         }
         Insert: {
           created_at?: string
@@ -633,6 +1104,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          tenant_id: string
         }
         Update: {
           created_at?: string
@@ -640,8 +1112,17 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          tenant_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "vendor_categories_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vendor_documents: {
         Row: {
@@ -656,6 +1137,7 @@ export type Database = {
           reviewed_at: string | null
           reviewed_by: string | null
           status: Database["public"]["Enums"]["document_status"]
+          tenant_id: string
           updated_at: string
           vendor_id: string
           version_number: number
@@ -672,6 +1154,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: Database["public"]["Enums"]["document_status"]
+          tenant_id: string
           updated_at?: string
           vendor_id: string
           version_number?: number
@@ -688,6 +1171,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: Database["public"]["Enums"]["document_status"]
+          tenant_id?: string
           updated_at?: string
           vendor_id?: string
           version_number?: number
@@ -698,6 +1182,13 @@ export type Database = {
             columns: ["document_type_id"]
             isOneToOne: false
             referencedRelation: "document_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
           {
@@ -726,6 +1217,7 @@ export type Database = {
           created_by: string
           expires_at: string
           id: string
+          tenant_id: string
           token: string
           used_at: string | null
           vendor_id: string | null
@@ -739,6 +1231,7 @@ export type Database = {
           created_by: string
           expires_at?: string
           id?: string
+          tenant_id: string
           token: string
           used_at?: string | null
           vendor_id?: string | null
@@ -752,6 +1245,7 @@ export type Database = {
           created_by?: string
           expires_at?: string
           id?: string
+          tenant_id?: string
           token?: string
           used_at?: string | null
           vendor_id?: string | null
@@ -762,6 +1256,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "vendor_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_invitations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
           {
@@ -780,6 +1281,174 @@ export type Database = {
           },
         ]
       }
+      vendor_invoice_payments: {
+        Row: {
+          advance_adjusted: number
+          created_at: string
+          gst_amount: number
+          id: string
+          invoice_id: string
+          is_full_settlement: boolean
+          payment_date: string
+          payout_amount: number
+          recorded_by: string | null
+          remarks: string | null
+          tds_amount: number
+          tenant_id: string
+          total_settled: number | null
+          utr_reference: string | null
+          vendor_id: string
+        }
+        Insert: {
+          advance_adjusted?: number
+          created_at?: string
+          gst_amount?: number
+          id?: string
+          invoice_id: string
+          is_full_settlement?: boolean
+          payment_date?: string
+          payout_amount?: number
+          recorded_by?: string | null
+          remarks?: string | null
+          tds_amount?: number
+          tenant_id: string
+          total_settled?: number | null
+          utr_reference?: string | null
+          vendor_id: string
+        }
+        Update: {
+          advance_adjusted?: number
+          created_at?: string
+          gst_amount?: number
+          id?: string
+          invoice_id?: string
+          is_full_settlement?: boolean
+          payment_date?: string
+          payout_amount?: number
+          recorded_by?: string | null
+          remarks?: string | null
+          tds_amount?: number
+          tenant_id?: string
+          total_settled?: number | null
+          utr_reference?: string | null
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_invoice_payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_invoice_payments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_invoice_payments_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_invoice_payments_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_decrypted"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_invoices: {
+        Row: {
+          created_at: string
+          description: string | null
+          gst_amount: number
+          id: string
+          invoice_amount: number
+          invoice_date: string
+          invoice_file_key: string
+          invoice_number: string
+          po_file_key: string | null
+          po_number: string | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["invoice_status"]
+          submitted_by: string | null
+          tenant_id: string
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          gst_amount?: number
+          id?: string
+          invoice_amount: number
+          invoice_date: string
+          invoice_file_key: string
+          invoice_number: string
+          po_file_key?: string | null
+          po_number?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          submitted_by?: string | null
+          tenant_id: string
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          gst_amount?: number
+          id?: string
+          invoice_amount?: number
+          invoice_date?: string
+          invoice_file_key?: string
+          invoice_number?: string
+          po_file_key?: string | null
+          po_number?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          submitted_by?: string | null
+          tenant_id?: string
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_invoices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_invoices_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_invoices_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_decrypted"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendor_users: {
         Row: {
           created_at: string
@@ -787,7 +1456,8 @@ export type Database = {
           is_active: boolean
           is_primary_contact: boolean
           last_login_at: string | null
-          phone_number: string
+          phone_number: string | null
+          tenant_id: string
           user_id: string
           vendor_id: string
         }
@@ -797,7 +1467,8 @@ export type Database = {
           is_active?: boolean
           is_primary_contact?: boolean
           last_login_at?: string | null
-          phone_number: string
+          phone_number?: string | null
+          tenant_id: string
           user_id: string
           vendor_id: string
         }
@@ -807,11 +1478,19 @@ export type Database = {
           is_active?: boolean
           is_primary_contact?: boolean
           last_login_at?: string | null
-          phone_number?: string
+          phone_number?: string | null
+          tenant_id?: string
           user_id?: string
           vendor_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "vendor_users_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "vendor_users_vendor_id_fkey"
             columns: ["vendor_id"]
@@ -836,6 +1515,7 @@ export type Database = {
           request_data: Json | null
           response_data: Json | null
           status: string
+          tenant_id: string
           updated_at: string
           vendor_id: string
           verification_source: string
@@ -850,6 +1530,7 @@ export type Database = {
           request_data?: Json | null
           response_data?: Json | null
           status?: string
+          tenant_id: string
           updated_at?: string
           vendor_id: string
           verification_source?: string
@@ -864,6 +1545,7 @@ export type Database = {
           request_data?: Json | null
           response_data?: Json | null
           status?: string
+          tenant_id?: string
           updated_at?: string
           vendor_id?: string
           verification_source?: string
@@ -872,6 +1554,13 @@ export type Database = {
           verified_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "vendor_verifications_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "vendor_verifications_vendor_id_fkey"
             columns: ["vendor_id"]
@@ -928,6 +1617,7 @@ export type Database = {
           secondary_mobile_encrypted: string | null
           sent_back_reason: string | null
           submitted_at: string | null
+          tenant_id: string
           trade_name: string | null
           updated_at: string
           vendor_code: string | null
@@ -971,6 +1661,7 @@ export type Database = {
           secondary_mobile_encrypted?: string | null
           sent_back_reason?: string | null
           submitted_at?: string | null
+          tenant_id: string
           trade_name?: string | null
           updated_at?: string
           vendor_code?: string | null
@@ -1014,6 +1705,7 @@ export type Database = {
           secondary_mobile_encrypted?: string | null
           sent_back_reason?: string | null
           submitted_at?: string | null
+          tenant_id?: string
           trade_name?: string | null
           updated_at?: string
           vendor_code?: string | null
@@ -1024,6 +1716,112 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "vendor_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendors_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      webhook_deliveries: {
+        Row: {
+          attempts: number | null
+          created_at: string | null
+          endpoint_id: string
+          event: string
+          id: string
+          payload: Json
+          response_status: number | null
+          status: string | null
+          vendor_id: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          created_at?: string | null
+          endpoint_id: string
+          event: string
+          id?: string
+          payload: Json
+          response_status?: number | null
+          status?: string | null
+          vendor_id?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          created_at?: string | null
+          endpoint_id?: string
+          event?: string
+          id?: string
+          payload?: Json
+          response_status?: number | null
+          status?: string | null
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_deliveries_endpoint_id_fkey"
+            columns: ["endpoint_id"]
+            isOneToOne: false
+            referencedRelation: "webhook_endpoints"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webhook_deliveries_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webhook_deliveries_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_decrypted"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      webhook_endpoints: {
+        Row: {
+          created_at: string | null
+          events: string[]
+          id: string
+          is_active: boolean | null
+          name: string
+          secret: string
+          tenant_id: string
+          url: string
+        }
+        Insert: {
+          created_at?: string | null
+          events?: string[]
+          id?: string
+          is_active?: boolean | null
+          name: string
+          secret: string
+          tenant_id: string
+          url: string
+        }
+        Update: {
+          created_at?: string | null
+          events?: string[]
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          secret?: string
+          tenant_id?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_endpoints_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -1044,6 +1842,7 @@ export type Database = {
           status: string | null
           template_name: string | null
           template_variables: Json | null
+          tenant_id: string
           vendor_id: string | null
         }
         Insert: {
@@ -1061,6 +1860,7 @@ export type Database = {
           status?: string | null
           template_name?: string | null
           template_variables?: Json | null
+          tenant_id: string
           vendor_id?: string | null
         }
         Update: {
@@ -1078,9 +1878,17 @@ export type Database = {
           status?: string | null
           template_name?: string | null
           template_variables?: Json | null
+          tenant_id?: string
           vendor_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "whatsapp_messages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "whatsapp_messages_vendor_id_fkey"
             columns: ["vendor_id"]
@@ -1106,6 +1914,7 @@ export type Database = {
           exotel_subdomain: string | null
           id: string
           is_active: boolean | null
+          tenant_id: string
           updated_at: string
           waba_id: string | null
           whatsapp_source_number: string | null
@@ -1118,6 +1927,7 @@ export type Database = {
           exotel_subdomain?: string | null
           id?: string
           is_active?: boolean | null
+          tenant_id: string
           updated_at?: string
           waba_id?: string | null
           whatsapp_source_number?: string | null
@@ -1130,11 +1940,20 @@ export type Database = {
           exotel_subdomain?: string | null
           id?: string
           is_active?: boolean | null
+          tenant_id?: string
           updated_at?: string
           waba_id?: string | null
           whatsapp_source_number?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       whatsapp_templates: {
         Row: {
@@ -1145,6 +1964,7 @@ export type Database = {
           is_active: boolean | null
           status: string | null
           template_name: string
+          tenant_id: string
           updated_at: string
           variables: Json | null
         }
@@ -1156,6 +1976,7 @@ export type Database = {
           is_active?: boolean | null
           status?: string | null
           template_name: string
+          tenant_id: string
           updated_at?: string
           variables?: Json | null
         }
@@ -1167,10 +1988,19 @@ export type Database = {
           is_active?: boolean | null
           status?: string | null
           template_name?: string
+          tenant_id?: string
           updated_at?: string
           variables?: Json | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       workflow_assignments: {
         Row: {
@@ -1180,6 +2010,7 @@ export type Database = {
           due_at: string | null
           id: string
           stage: Database["public"]["Enums"]["vendor_status"]
+          tenant_id: string
           vendor_id: string
         }
         Insert: {
@@ -1189,6 +2020,7 @@ export type Database = {
           due_at?: string | null
           id?: string
           stage: Database["public"]["Enums"]["vendor_status"]
+          tenant_id: string
           vendor_id: string
         }
         Update: {
@@ -1198,9 +2030,17 @@ export type Database = {
           due_at?: string | null
           id?: string
           stage?: Database["public"]["Enums"]["vendor_status"]
+          tenant_id?: string
           vendor_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "workflow_assignments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "workflow_assignments_vendor_id_fkey"
             columns: ["vendor_id"]
@@ -1225,6 +2065,7 @@ export type Database = {
           created_at: string
           from_status: Database["public"]["Enums"]["vendor_status"] | null
           id: string
+          tenant_id: string
           time_in_stage_minutes: number | null
           to_status: Database["public"]["Enums"]["vendor_status"]
           vendor_id: string
@@ -1236,6 +2077,7 @@ export type Database = {
           created_at?: string
           from_status?: Database["public"]["Enums"]["vendor_status"] | null
           id?: string
+          tenant_id: string
           time_in_stage_minutes?: number | null
           to_status: Database["public"]["Enums"]["vendor_status"]
           vendor_id: string
@@ -1247,11 +2089,19 @@ export type Database = {
           created_at?: string
           from_status?: Database["public"]["Enums"]["vendor_status"] | null
           id?: string
+          tenant_id?: string
           time_in_stage_minutes?: number | null
           to_status?: Database["public"]["Enums"]["vendor_status"]
           vendor_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "workflow_history_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "workflow_history_vendor_id_fkey"
             columns: ["vendor_id"]
@@ -1427,8 +2277,24 @@ export type Database = {
       }
       check_encryption_key_exists: { Args: never; Returns: boolean }
       decrypt_pii: { Args: { ciphertext: string }; Returns: string }
+      delete_organization: { Args: { _tenant_id: string }; Returns: Json }
       encrypt_pii: { Args: { plaintext: string }; Returns: string }
+      extend_organization_trial: {
+        Args: { _additional_days: number; _tenant_id: string }
+        Returns: Json
+      }
+      find_vendor_by_contact: {
+        Args: { p_identifier: string }
+        Returns: {
+          company_name: string
+          current_status: Database["public"]["Enums"]["vendor_status"]
+          tenant_id: string
+          vendor_code: string
+          vendor_id: string
+        }[]
+      }
       generate_referral_code: { Args: never; Returns: string }
+      get_user_tenant_id: { Args: { _user_id: string }; Returns: string }
       get_vendor_decrypted: { Args: { p_vendor_id: string }; Returns: Json }
       get_vendor_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
@@ -1438,9 +2304,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_vendor_usage: { Args: { _tenant_id: string }; Returns: number }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_internal_staff: { Args: { _user_id: string }; Returns: boolean }
+      is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       is_vendor_user: { Args: { _user_id: string }; Returns: boolean }
+      set_organization_active: {
+        Args: { _active: boolean; _tenant_id: string }
+        Returns: Json
+      }
       upsert_vault_secret: {
         Args: { secret_name: string; secret_value: string }
         Returns: undefined
@@ -1448,14 +2320,46 @@ export type Database = {
     }
     Enums: {
       app_role: "maker" | "checker" | "approver" | "admin" | "platform_admin"
-      fraud_alert_type: "duplicate_gst" | "duplicate_pan" | "duplicate_bank" | "similar_name" | "tampering" | "verification_failed"
-      fraud_alert_severity: "critical" | "high" | "medium" | "low"
-      fraud_alert_status: "pending" | "reviewed" | "dismissed" | "confirmed"
+      billing_category:
+        | "subscription_payment"
+        | "free_trial_credit"
+        | "refund"
+        | "adjustment"
+        | "gst"
+        | "api_call"
+      billing_transaction_type: "credit" | "debit"
       document_status:
         | "uploaded"
         | "under_review"
         | "approved"
         | "rejected"
+        | "expired"
+      fraud_alert_severity: "critical" | "high" | "medium" | "low"
+      fraud_alert_status: "pending" | "reviewed" | "dismissed" | "confirmed"
+      fraud_alert_type:
+        | "duplicate_gst"
+        | "duplicate_pan"
+        | "duplicate_bank"
+        | "similar_name"
+        | "tampering"
+        | "verification_failed"
+      invoice_status:
+        | "submitted"
+        | "under_review"
+        | "approved"
+        | "rejected"
+        | "partially_paid"
+        | "paid"
+      subscription_plan:
+        | "free_trial"
+        | "starter"
+        | "professional"
+        | "enterprise"
+      subscription_status:
+        | "trial"
+        | "active"
+        | "past_due"
+        | "cancelled"
         | "expired"
       vendor_status:
         | "draft"
@@ -1467,6 +2371,7 @@ export type Database = {
         | "rejected"
         | "consent_withdrawn"
         | "deactivated"
+        | "returned_to_maker"
       workflow_action:
         | "submitted"
         | "forwarded"
@@ -1599,17 +2504,57 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: ["maker", "checker", "approver", "admin", "platform_admin"],
-      fraud_alert_type: ["duplicate_gst", "duplicate_pan", "duplicate_bank", "similar_name", "tampering", "verification_failed"],
-      fraud_alert_severity: ["critical", "high", "medium", "low"],
-      fraud_alert_status: ["pending", "reviewed", "dismissed", "confirmed"],
+      billing_category: [
+        "subscription_payment",
+        "free_trial_credit",
+        "refund",
+        "adjustment",
+        "gst",
+        "api_call",
+      ],
+      billing_transaction_type: ["credit", "debit"],
       document_status: [
         "uploaded",
         "under_review",
         "approved",
         "rejected",
+        "expired",
+      ],
+      fraud_alert_severity: ["critical", "high", "medium", "low"],
+      fraud_alert_status: ["pending", "reviewed", "dismissed", "confirmed"],
+      fraud_alert_type: [
+        "duplicate_gst",
+        "duplicate_pan",
+        "duplicate_bank",
+        "similar_name",
+        "tampering",
+        "verification_failed",
+      ],
+      invoice_status: [
+        "submitted",
+        "under_review",
+        "approved",
+        "rejected",
+        "partially_paid",
+        "paid",
+      ],
+      subscription_plan: [
+        "free_trial",
+        "starter",
+        "professional",
+        "enterprise",
+      ],
+      subscription_status: [
+        "trial",
+        "active",
+        "past_due",
+        "cancelled",
         "expired",
       ],
       vendor_status: [
@@ -1622,6 +2567,7 @@ export const Constants = {
         "rejected",
         "consent_withdrawn",
         "deactivated",
+        "returned_to_maker",
       ],
       workflow_action: [
         "submitted",
