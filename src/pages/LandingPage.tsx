@@ -310,6 +310,9 @@ export default function LandingPage() {
             </span>
           </div>
           <div className="flex items-center gap-3">
+            <Button variant="ghost" onClick={() => navigate("/vendor/portal")}>
+              Vendor Login
+            </Button>
             <Button variant="ghost" onClick={() => navigate("/staff/login")}>
               Login
             </Button>

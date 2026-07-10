@@ -116,28 +116,37 @@ Deno.serve(async (req) => {
       }
 
       // ── 2. Link auth user to vendor via vendor_users ──
+      // The plaintext contact columns on vendors are masked after PII
+      // encryption, so matching must go through find_vendor_by_contact,
+      // which compares against the decrypted values.
       if (authUserId) {
-        const { data: vendor } = await supabase
-          .from("vendors")
-          .select("id, tenant_id")
-          .or(`primary_mobile.eq.${phoneDigits},primary_mobile.eq.${identifier},primary_email.eq.${identifier}`)
-          .limit(1)
-          .maybeSingle();
+        const { data: match, error: matchError } = await supabase.rpc("find_vendor_by_contact", {
+          p_identifier: identifier,
+        });
+        if (matchError) console.error("find_vendor_by_contact error:", matchError);
+        const vendor = Array.isArray(match) ? match[0] : match;
 
         if (vendor) {
+          // vendor_users has UNIQUE(user_id) — one link per auth user
           const { data: existingLink } = await supabase
             .from("vendor_users")
-            .select("id")
+            .select("id, vendor_id")
             .eq("user_id", authUserId)
-            .eq("vendor_id", vendor.id)
             .maybeSingle();
 
           if (!existingLink) {
             await supabase.from("vendor_users").insert({
               user_id: authUserId,
-              vendor_id: vendor.id,
+              vendor_id: vendor.vendor_id,
               tenant_id: vendor.tenant_id,
+              phone_number: isPhone ? identifier : null,
+              last_login_at: new Date().toISOString(),
             });
+          } else {
+            await supabase
+              .from("vendor_users")
+              .update({ last_login_at: new Date().toISOString() })
+              .eq("id", existingLink.id);
           }
         }
       }
