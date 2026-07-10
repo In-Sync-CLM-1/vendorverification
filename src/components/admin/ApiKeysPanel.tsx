@@ -170,7 +170,8 @@ export function ApiKeysPanel() {
             <code className="font-mono">verify_bank_account</code>,{" "}
             <code className="font-mono">get_vendor</code>,{" "}
             <code className="font-mono">submit_vendor</code>,{" "}
-            <code className="font-mono">list_approved_vendors</code>
+            <code className="font-mono">list_approved_vendors</code>,{" "}
+            <code className="font-mono">list_invoices</code>
           </p>
         </CardContent>
       </Card>

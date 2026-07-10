@@ -129,6 +129,52 @@ Deno.serve(async (req) => {
       return jsonOk({ data }, requestId);
     }
 
+    // ── list_invoices ────────────────────────────────────────────────
+    // Read-only listing of this tenant's vendor invoices (every status) with
+    // their recorded payments — no verification is performed, so no quota draw.
+    if (action === "list_invoices") {
+      const { data: invoices, error: listErr } = await supabase
+        .from("vendor_invoices")
+        .select(
+          "invoice_number, invoice_date, invoice_amount, gst_amount, description, po_number, status, rejection_reason, reviewed_at, created_at, vendors(company_name, trade_name, vendor_code), vendor_invoice_payments(payment_date, advance_adjusted, gst_amount, tds_amount, payout_amount, total_settled, utr_reference, remarks, is_full_settlement)"
+        )
+        .eq("tenant_id", tenantId)
+        .order("created_at", { ascending: false });
+
+      if (listErr) {
+        return jsonErr("query_failed", listErr.message, 500, requestId);
+      }
+
+      const data = (invoices || []).map((inv: any) => ({
+        invoice_number: inv.invoice_number,
+        invoice_date: inv.invoice_date,
+        invoice_amount: inv.invoice_amount,
+        gst_amount: inv.gst_amount,
+        description: inv.description,
+        po_number: inv.po_number,
+        status: inv.status,
+        rejection_reason: inv.rejection_reason,
+        reviewed_at: inv.reviewed_at,
+        created_at: inv.created_at,
+        vendor_company_name: inv.vendors?.company_name ?? null,
+        vendor_trade_name: inv.vendors?.trade_name ?? null,
+        vendor_code: inv.vendors?.vendor_code ?? null,
+        payments: (inv.vendor_invoice_payments || []).map((p: any) => ({
+          payment_date: p.payment_date,
+          advance_adjusted: p.advance_adjusted,
+          gst_amount: p.gst_amount,
+          tds_amount: p.tds_amount,
+          payout_amount: p.payout_amount,
+          total_settled: p.total_settled,
+          utr_reference: p.utr_reference,
+          remarks: p.remarks,
+          is_full_settlement: p.is_full_settlement,
+        })),
+      }));
+
+      return jsonOk({ data }, requestId);
+    }
+
     // Deduct from quota for all actions
     const { data: usageResult } = await supabase.rpc("increment_vendor_usage", {
       _tenant_id: tenantId,
