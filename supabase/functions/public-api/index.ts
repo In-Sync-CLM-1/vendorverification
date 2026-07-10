@@ -100,6 +100,35 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ── list_approved_vendors ───────────────────────────────────────
+    // Read-only listing of this tenant's already-approved vendors — no
+    // verification is performed, so it doesn't draw from the quota below.
+    if (action === "list_approved_vendors") {
+      const { data: vendors, error: listErr } = await supabase
+        .from("vendors")
+        .select("vendor_code, company_name, trade_name, approved_at, primary_contact_name, primary_mobile, primary_email, vendor_categories(name)")
+        .eq("tenant_id", tenantId)
+        .eq("current_status", "approved")
+        .order("approved_at", { ascending: false });
+
+      if (listErr) {
+        return jsonErr("query_failed", listErr.message, 500, requestId);
+      }
+
+      const data = (vendors || []).map((v: any) => ({
+        vendor_code: v.vendor_code,
+        company_name: v.company_name,
+        trade_name: v.trade_name,
+        category: v.vendor_categories?.name ?? null,
+        contact_name: v.primary_contact_name,
+        contact_mobile: v.primary_mobile,
+        contact_email: v.primary_email,
+        approved_at: v.approved_at,
+      }));
+
+      return jsonOk({ data }, requestId);
+    }
+
     // Deduct from quota for all actions
     const { data: usageResult } = await supabase.rpc("increment_vendor_usage", {
       _tenant_id: tenantId,
