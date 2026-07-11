@@ -573,6 +573,93 @@ export function flowTrendOption(
   };
 }
 
+/** Highest → lowest paid vendors: ranked horizontal bars of ₹ actually settled. */
+export function paidRankingOption(rows: { name: string; settled: number }[]): EChartsCoreOption {
+  const display = rows.slice().reverse(); // highest on top
+  return {
+    textStyle: CHART_TEXT,
+    grid: { left: 8, right: 64, top: 8, bottom: 8, containLabel: true },
+    tooltip: {
+      ...TOOLTIP_COMMON,
+      formatter: (p: { dataIndex: number }) => {
+        const r = display[p.dataIndex];
+        return `<b>${fullINR(r.settled)}</b> paid<br/><span style="color:${VIZ.inkMuted}">${r.name}</span>`;
+      },
+    },
+    xAxis: {
+      type: "value",
+      ...AXIS_COMMON,
+      axisLabel: { ...AXIS_COMMON.axisLabel, formatter: (v: number) => compactINR(v) },
+    },
+    yAxis: {
+      type: "category",
+      data: display.map((r) => truncate(r.name, 22)),
+      ...AXIS_COMMON,
+      splitLine: { show: false },
+      axisLabel: { ...AXIS_COMMON.axisLabel, fontSize: 11, color: VIZ.inkSecondary },
+    },
+    series: [
+      {
+        type: "bar",
+        data: display.map((r) => r.settled),
+        barMaxWidth: 16,
+        itemStyle: { color: VIZ.blue, borderRadius: [0, 4, 4, 0] },
+        label: {
+          show: true,
+          position: "right",
+          fontSize: 10.5,
+          color: VIZ.inkMuted,
+          formatter: (p: { value: number }) => compactINR(p.value),
+        },
+      },
+    ],
+  };
+}
+
+/** Approval-speed trend: avg days from invoice to review decision, per bucket. */
+export function approveTrendOption(labels: string[], avgDays: (number | null)[]): EChartsCoreOption {
+  return {
+    textStyle: CHART_TEXT,
+    grid: { left: 8, right: 40, top: 24, bottom: 8, containLabel: true },
+    tooltip: {
+      ...TOOLTIP_COMMON,
+      trigger: "axis",
+      axisPointer: { type: "line", lineStyle: { color: VIZ.axis, width: 1 } },
+      valueFormatter: (v: number | null) => (v === null || v === undefined ? "no approvals" : `${v} days`),
+    },
+    xAxis: { type: "category", data: labels, ...AXIS_COMMON, splitLine: { show: false } },
+    yAxis: {
+      type: "value",
+      name: "days",
+      nameTextStyle: { fontSize: 10, color: VIZ.inkMuted, align: "left" },
+      ...AXIS_COMMON,
+      minInterval: 1,
+    },
+    series: [
+      {
+        name: "Avg days to approve",
+        type: "line",
+        data: avgDays,
+        connectNulls: true,
+        color: VIZ.blue,
+        lineStyle: { width: 2 },
+        symbol: "circle",
+        symbolSize: 7,
+        itemStyle: { borderColor: VIZ.surface, borderWidth: 2 },
+        endLabel: {
+          show: true,
+          formatter: (p: { value: number }) => (p.value != null ? `${p.value}d` : ""),
+          color: VIZ.inkSecondary,
+          fontSize: 11,
+          fontWeight: 600,
+          distance: 6,
+        },
+        areaStyle: { color: VIZ.blue, opacity: 0.08 },
+      },
+    ],
+  };
+}
+
 /** Rejection analysis: ₹ blocked per reason. Rejection IS the bad state, so it wears the status color. */
 export function rejectionOption(
   rows: { reason: string; count: number; amount: number }[],

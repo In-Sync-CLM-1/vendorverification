@@ -39,6 +39,8 @@ import {
   delayHistogramOption,
   flowTrendOption,
   rejectionOption,
+  paidRankingOption,
+  approveTrendOption,
 } from "@/components/analytics/invoiceChartOptions";
 import { compactINR, fullINR, VIZ } from "@/lib/vizPalette";
 import { INVOICE_STATUS_META } from "@/lib/invoices";
@@ -287,20 +289,39 @@ export default function StaffInvoiceAnalytics() {
                 </Card>
               </div>
 
-              {/* ── Settlement composition ── */}
-              <Card>
-                <CardHeader className="pb-1">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    What settlements were made of — payout, advance and TDS
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <EChart
-                    option={compositionOption(a.months, a.compPayout, a.compAdvance, a.compTds)}
-                    height={240}
-                  />
-                </CardContent>
-              </Card>
+              {/* ── Settlement mix + who got paid the most ── */}
+              <div className="grid lg:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader className="pb-1">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      What settlements were made of — payout, advance and TDS
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <EChart
+                      option={compositionOption(a.months, a.compPayout, a.compAdvance, a.compTds)}
+                      height={Math.max(240, Math.min(12, a.paidRanking.length) * 30 + 60)}
+                    />
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-1">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Highest to lowest paid — ₹ settled per vendor
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {a.paidRanking.length > 0 ? (
+                      <EChart
+                        option={paidRankingOption(a.paidRanking)}
+                        height={Math.max(240, Math.min(12, a.paidRanking.length) * 30 + 60)}
+                      />
+                    ) : (
+                      <p className="text-sm text-muted-foreground py-10 text-center">No payments in this period</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
 
               {/* ══════════════ Process intelligence (deep analysis) ══════════════ */}
               <div className="pt-2">
@@ -431,23 +452,36 @@ export default function StaffInvoiceAnalytics() {
                 </Card>
               </div>
 
-              {/* rejection analysis */}
-              {a.rejectionRows.length > 0 && (
+              {/* rejection analysis + approval-speed trend */}
+              <div className="grid lg:grid-cols-2 gap-4">
                 <Card>
                   <CardHeader className="pb-1">
                     <CardTitle className="text-sm font-medium text-muted-foreground inline-flex items-center gap-1.5">
                       <TriangleAlert className="h-3.5 w-3.5 text-[#d03b3b]" />
-                      Why invoices get rejected — {compactINR(a.rejectedAmount)} blocked in this period
+                      Why invoices get rejected — {compactINR(a.rejectedAmount)} blocked
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <EChart
-                      option={rejectionOption(a.rejectionRows)}
-                      height={Math.max(120, Math.min(6, a.rejectionRows.length) * 42 + 40)}
-                    />
+                    {a.rejectionRows.length > 0 ? (
+                      <EChart option={rejectionOption(a.rejectionRows)} height={220} />
+                    ) : (
+                      <p className="text-sm text-muted-foreground py-10 text-center">
+                        No rejections in this period 🎉
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
-              )}
+                <Card>
+                  <CardHeader className="pb-1">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Is approval getting faster? — avg days to approve, by {a.flowGranularity}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <EChart option={approveTrendOption(a.flowLabels, a.approveTrend)} height={220} />
+                  </CardContent>
+                </Card>
+              </div>
 
               {/* ── Tables ── */}
               <Card>

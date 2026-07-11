@@ -457,6 +457,22 @@ export function useInvoiceAnalytics(range: AnalyticsRange, vendorFilter: string)
       toDate(k).toLocaleString("en-IN", weekly ? { day: "2-digit", month: "short" } : { month: "short", year: "2-digit" })
     );
 
+    // approval-speed trend: avg days-to-approve per flow bucket (by review date)
+    const approveTrendBuckets: number[][] = flowKeys.map(() => []);
+    for (const i of approvedFamily) {
+      if (!i.reviewed_at) continue;
+      const bi = flowIdx.get(bucketStart(i.reviewed_at.slice(0, 10)));
+      if (bi !== undefined) approveTrendBuckets[bi].push(daysBetween(i.invoice_date, i.reviewed_at.slice(0, 10)));
+    }
+    const approveTrend = approveTrendBuckets.map((xs) => avg(xs));
+
+    // highest → lowest paid vendors (by ₹ actually settled to them, range cohort)
+    const paidRanking = vendorRows
+      .filter((v) => v.settled > 0)
+      .map((v) => ({ name: v.name, settled: Math.round(v.settled) }))
+      .sort((x, y) => y.settled - x.settled)
+      .slice(0, 12);
+
     // rejection analysis
     const rejByReason = new Map<string, { count: number; amount: number }>();
     for (const i of rejected) {
@@ -519,7 +535,7 @@ export function useInvoiceAnalytics(range: AnalyticsRange, vendorFilter: string)
       funnel, processKpis, deepVendorRows, quadrant, delayHistogram,
       flowLabels, flowSubmitted, flowApproved, flowSettled: flowSettled.map(Math.round),
       flowGranularity: (weekly ? "week" : "month") as "week" | "month",
-      rejectionRows, byMonthCsv,
+      rejectionRows, byMonthCsv, approveTrend, paidRanking,
     };
   }, [invoices, payments, range, vendorFilter]);
 
