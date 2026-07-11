@@ -1366,6 +1366,9 @@ export type Database = {
       }
       vendor_invoices: {
         Row: {
+          ai_confidence_score: number | null
+          ai_extracted_data: Json | null
+          ai_model_version: string | null
           created_at: string
           description: string | null
           gst_amount: number
@@ -1386,6 +1389,9 @@ export type Database = {
           vendor_id: string
         }
         Insert: {
+          ai_confidence_score?: number | null
+          ai_extracted_data?: Json | null
+          ai_model_version?: string | null
           created_at?: string
           description?: string | null
           gst_amount?: number
@@ -1406,6 +1412,9 @@ export type Database = {
           vendor_id: string
         }
         Update: {
+          ai_confidence_score?: number | null
+          ai_extracted_data?: Json | null
+          ai_model_version?: string | null
           created_at?: string
           description?: string | null
           gst_amount?: number
