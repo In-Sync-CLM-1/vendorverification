@@ -37,6 +37,34 @@ export async function uploadInvoiceFile(file: File): Promise<string> {
   return data.file_key as string;
 }
 
+export interface InvoiceExtraction {
+  invoice_number: string | null;
+  invoice_number_confidence: number;
+  invoice_date: string | null;
+  invoice_date_confidence: number;
+  invoice_amount: number | null;
+  invoice_amount_confidence: number;
+  gst_amount: number | null;
+  gst_amount_confidence: number;
+  po_number: string | null;
+  po_number_confidence: number;
+  description: string | null;
+  overall_confidence: number;
+  ai_model_version: string;
+}
+
+/** Reads an already-uploaded invoice/PO file and extracts its fields via AI. Throws with a user-facing message on failure (caller should fall back to manual entry). */
+export async function analyzeInvoiceFile(fileKey: string): Promise<InvoiceExtraction> {
+  const { data, error } = await supabase.functions.invoke("analyze-invoice", {
+    body: { file_key: fileKey },
+  });
+  if (error) throw new Error("Could not read this file automatically, please fill in the details manually");
+  if (!data?.success) throw new Error(data?.error || "Could not read this file automatically, please fill in the details manually");
+  return data.data as InvoiceExtraction;
+}
+
+export const LOW_CONFIDENCE = 60;
+
 export async function openInvoiceFile(key: string) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("Not signed in");
