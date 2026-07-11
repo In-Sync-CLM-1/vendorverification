@@ -93,8 +93,10 @@ export function useInvoiceAnalytics(range: AnalyticsRange, vendorFilter: string)
         : Math.max(0, Number(inv.invoice_amount) - (settledByInvoice.get(inv.id) || 0));
 
     // ── date scope (flow metrics) ──
-    const fromIso = range.from ? range.from.toISOString().slice(0, 10) : "0000";
-    const toIso = range.to ? range.to.toISOString().slice(0, 10) : "9999";
+    const localDay = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const fromIso = range.from ? localDay(range.from) : "0000";
+    const toIso = range.to ? localDay(range.to) : "9999";
     const inRange = (iso: string | null | undefined) => !!iso && iso >= fromIso && iso <= toIso;
 
     const rangeInvoices = vInvoices.filter((i) => inRange(i.invoice_date));
@@ -294,6 +296,207 @@ export function useInvoiceAnalytics(range: AnalyticsRange, vendorFilter: string)
       }
     }
 
+    // ═══════════════ DEEP ANALYSIS (range cohort unless stated) ═══════════════
+
+    const daysBetween = (a: string, b: string) =>
+      Math.max(0, Math.round((toDate(b).getTime() - toDate(a).getTime()) / DAY));
+
+    // lifecycle funnel: submitted → approved → fully paid (count + ₹), with rejects aside
+    const decided = rangeInvoices.filter((i) => ["approved", "partially_paid", "paid", "rejected"].includes(i.status));
+    const approvedFamily = rangeInvoices.filter((i) => ["approved", "partially_paid", "paid"].includes(i.status));
+    const fullyPaid = rangeInvoices.filter((i) => i.status === "paid");
+    const sumAmt = (arr: InvoiceWithVendor[]) => arr.reduce((s, i) => s + Number(i.invoice_amount), 0);
+    const funnel = {
+      submitted: { count: rangeInvoices.length, amount: sumAmt(rangeInvoices) },
+      approved: { count: approvedFamily.length, amount: sumAmt(approvedFamily) },
+      paid: { count: fullyPaid.length, amount: sumAmt(fullyPaid) },
+      inReview: rangeInvoices.filter((i) => ["submitted", "under_review"].includes(i.status)).length,
+    };
+
+    // process health KPIs
+    const approveDaysAll: number[] = [];
+    for (const i of approvedFamily) if (i.reviewed_at) approveDaysAll.push(daysBetween(i.invoice_date, i.reviewed_at.slice(0, 10)));
+    const payDaysAll: number[] = [];
+    for (const i of fullyPaid) {
+      const last = lastPayByInvoice.get(i.id);
+      if (last) payDaysAll.push(daysBetween(i.invoice_date, last));
+    }
+    const avg = (xs: number[]) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : null);
+    const median = (xs: number[]) => {
+      if (!xs.length) return null;
+      const sorted = [...xs].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      return sorted.length % 2 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+    };
+    const withPo = rangeInvoices.filter((i) => i.po_number);
+    const gstInRange = rangeInvoices.filter((i) => i.status !== "rejected").reduce((s, i) => s + Number(i.gst_amount || 0), 0);
+    const tdsInRange = rangePayments.reduce((s, p) => s + Number(p.tds_amount || 0), 0);
+    const processKpis = {
+      approvalRatePct: decided.length ? Math.round((approvedFamily.length / decided.length) * 100) : null,
+      rejectionRatePct: decided.length ? Math.round(((decided.length - approvedFamily.length) / decided.length) * 100) : null,
+      avgApproveDays: avg(approveDaysAll),
+      medianPayDays: median(payDaysAll),
+      poCoveragePct: rangeInvoices.length ? Math.round((withPo.length / rangeInvoices.length) * 100) : null,
+      gstInRange,
+      tdsInRange,
+    };
+
+    // per-vendor deep metrics (density map + deep table)
+    interface DeepVendorRow {
+      vendorId: string; name: string; code: string;
+      invoices: number; invoiced: number; avgSize: number;
+      approvalPct: number | null; rejectionPct: number | null;
+      avgApproveDays: number | null; avgPayDays: number | null;
+      outstanding: number; tds: number; poPct: number;
+    }
+    const deepByVendor = new Map<string, {
+      name: string; code: string; invoices: number; nonRejected: number; invoiced: number;
+      decided: number; approvedF: number; appDays: number[]; payDays: number[];
+      outstanding: number; tds: number; withPo: number;
+    }>();
+    for (const i of rangeInvoices) {
+      let d = deepByVendor.get(i.vendor_id);
+      if (!d) {
+        d = { name: i.vendors?.company_name || "Unknown vendor", code: i.vendors?.vendor_code || "",
+          invoices: 0, nonRejected: 0, invoiced: 0, decided: 0, approvedF: 0, appDays: [], payDays: [], outstanding: 0, tds: 0, withPo: 0 };
+        deepByVendor.set(i.vendor_id, d);
+      }
+      d.invoices += 1;
+      if (i.po_number) d.withPo += 1;
+      if (i.status !== "rejected") {
+        d.invoiced += Number(i.invoice_amount);
+        d.nonRejected += 1;
+      }
+      if (["approved", "partially_paid", "paid", "rejected"].includes(i.status)) d.decided += 1;
+      if (["approved", "partially_paid", "paid"].includes(i.status)) {
+        d.approvedF += 1;
+        if (i.reviewed_at) d.appDays.push(daysBetween(i.invoice_date, i.reviewed_at.slice(0, 10)));
+      }
+      if (i.status === "paid") {
+        const last = lastPayByInvoice.get(i.id);
+        if (last) d.payDays.push(daysBetween(i.invoice_date, last));
+      }
+      d.outstanding += outstandingOf(i);
+    }
+    for (const p of rangePayments) {
+      const d = deepByVendor.get(p.vendor_id);
+      if (d) d.tds += Number(p.tds_amount || 0);
+    }
+    const deepVendorRows: DeepVendorRow[] = Array.from(deepByVendor.entries())
+      .map(([vendorId, d]) => ({
+        vendorId, name: d.name, code: d.code,
+        invoices: d.invoices, invoiced: Math.round(d.invoiced),
+        avgSize: d.nonRejected ? Math.round(d.invoiced / d.nonRejected) : 0,
+        approvalPct: d.decided ? Math.round((d.approvedF / d.decided) * 100) : null,
+        rejectionPct: d.decided ? Math.round(((d.decided - d.approvedF) / d.decided) * 100) : null,
+        avgApproveDays: avg(d.appDays),
+        avgPayDays: avg(d.payDays),
+        outstanding: Math.round(d.outstanding),
+        tds: Math.round(d.tds),
+        poPct: d.invoices ? Math.round((d.withPo / d.invoices) * 100) : 0,
+      }))
+      .sort((x, y) => y.invoiced - x.invoiced);
+
+    // exposure vs pay-speed quadrant (vendors with at least one fully paid invoice)
+    const quadrant = deepVendorRows
+      .filter((v) => v.avgPayDays !== null && v.invoiced > 0)
+      .map((v) => ({ name: v.name, invoiced: v.invoiced, payDays: v.avgPayDays!, outstanding: v.outstanding }));
+
+    // payment-delay distribution (fully paid in range)
+    const DELAY_BUCKETS = ["0–7", "8–15", "16–30", "31–45", "46–60", "61–90", "90+"];
+    const delayIdx = (d: number) => (d <= 7 ? 0 : d <= 15 ? 1 : d <= 30 ? 2 : d <= 45 ? 3 : d <= 60 ? 4 : d <= 90 ? 5 : 6);
+    const delayHistogram = DELAY_BUCKETS.map((label) => ({ label, count: 0, amount: 0 }));
+    for (const i of fullyPaid) {
+      const last = lastPayByInvoice.get(i.id);
+      if (!last) continue;
+      const b = delayIdx(daysBetween(i.invoice_date, last));
+      delayHistogram[b].count += 1;
+      delayHistogram[b].amount += Number(i.invoice_amount);
+    }
+
+    // weekly (or monthly, for long ranges) flow trend: submitted vs approved counts + ₹ settled
+    const spanDays = axisFrom && axisTo ? Math.round((axisTo.getTime() - axisFrom.getTime()) / DAY) : 999;
+    const weekly = spanDays <= 200;
+    // all date math in LOCAL time — toISOString() shifts IST dates back a day
+    const localIso = localDay;
+    const bucketStart = (iso: string) => {
+      const d = toDate(iso.slice(0, 10));
+      if (weekly) {
+        const day = (d.getDay() + 6) % 7; // Monday start
+        d.setDate(d.getDate() - day);
+      } else d.setDate(1);
+      return localIso(d);
+    };
+    const flowKeys: string[] = [];
+    {
+      const cur = toDate(bucketStart(localIso(axisFrom!)));
+      const end = axisTo || today;
+      while (cur <= end) {
+        flowKeys.push(localIso(cur));
+        if (weekly) cur.setDate(cur.getDate() + 7);
+        else cur.setMonth(cur.getMonth() + 1);
+      }
+    }
+    const flowIdx = new Map(flowKeys.map((k, i) => [k, i]));
+    const flowSubmitted = new Array(flowKeys.length).fill(0);
+    const flowApproved = new Array(flowKeys.length).fill(0);
+    const flowSettled = new Array(flowKeys.length).fill(0);
+    for (const i of rangeInvoices) {
+      const si = flowIdx.get(bucketStart(i.invoice_date));
+      if (si !== undefined) flowSubmitted[si] += 1;
+      if (i.reviewed_at && ["approved", "partially_paid", "paid"].includes(i.status)) {
+        const ai = flowIdx.get(bucketStart(i.reviewed_at.slice(0, 10)));
+        if (ai !== undefined) flowApproved[ai] += 1;
+      }
+    }
+    for (const p of rangePayments) {
+      const pi = flowIdx.get(bucketStart(p.payment_date));
+      if (pi !== undefined) flowSettled[pi] += paymentSettled(p);
+    }
+    const flowLabels = flowKeys.map((k) =>
+      toDate(k).toLocaleString("en-IN", weekly ? { day: "2-digit", month: "short" } : { month: "short", year: "2-digit" })
+    );
+
+    // approval-speed trend: avg days-to-approve per flow bucket (by review date)
+    const approveTrendBuckets: number[][] = flowKeys.map(() => []);
+    for (const i of approvedFamily) {
+      if (!i.reviewed_at) continue;
+      const bi = flowIdx.get(bucketStart(i.reviewed_at.slice(0, 10)));
+      if (bi !== undefined) approveTrendBuckets[bi].push(daysBetween(i.invoice_date, i.reviewed_at.slice(0, 10)));
+    }
+    const approveTrend = approveTrendBuckets.map((xs) => avg(xs));
+
+    // highest → lowest paid vendors (by ₹ actually settled to them, range cohort)
+    const paidRanking = vendorRows
+      .filter((v) => v.settled > 0)
+      .map((v) => ({ name: v.name, settled: Math.round(v.settled) }))
+      .sort((x, y) => y.settled - x.settled)
+      .slice(0, 12);
+
+    // rejection analysis
+    const rejByReason = new Map<string, { count: number; amount: number }>();
+    for (const i of rejected) {
+      const key = (i.rejection_reason || "No reason recorded").trim();
+      const r = rejByReason.get(key) || { count: 0, amount: 0 };
+      r.count += 1;
+      r.amount += Number(i.invoice_amount);
+      rejByReason.set(key, r);
+    }
+    const rejectionRows = Array.from(rejByReason.entries())
+      .map(([reason, r]) => ({ reason, ...r }))
+      .sort((a, b) => b.amount - a.amount);
+
+    // monthly rollup for the structured CSV
+    const byMonthCsv = months.map((m, idx) => ({
+      month: m.label,
+      invoiced: invoicedByMonth[idx],
+      settled: settledByMonth[idx],
+      outstandingEnd: runningOutstanding[idx],
+      payout: compPayout[idx],
+      advance: compAdvance[idx],
+      tds: compTds[idx],
+    }));
+
     const registerRows = rangeInvoices
       .map((i) => ({
         id: i.id,
@@ -328,6 +531,11 @@ export function useInvoiceAnalytics(range: AnalyticsRange, vendorFilter: string)
       vendorRows, dumbbell,
       agingRows: agingTop, agingTotals, overdueRows, registerRows,
       totalInvoiceCount: rangeInvoices.length,
+      // deep analysis
+      funnel, processKpis, deepVendorRows, quadrant, delayHistogram,
+      flowLabels, flowSubmitted, flowApproved, flowSettled: flowSettled.map(Math.round),
+      flowGranularity: (weekly ? "week" : "month") as "week" | "month",
+      rejectionRows, byMonthCsv, approveTrend, paidRanking,
     };
   }, [invoices, payments, range, vendorFilter]);
 
