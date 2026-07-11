@@ -100,6 +100,81 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ── list_approved_vendors ───────────────────────────────────────
+    // Read-only listing of this tenant's already-approved vendors — no
+    // verification is performed, so it doesn't draw from the quota below.
+    if (action === "list_approved_vendors") {
+      const { data: vendors, error: listErr } = await supabase
+        .from("vendors")
+        .select("vendor_code, company_name, trade_name, approved_at, primary_contact_name, primary_mobile, primary_email, vendor_categories(name)")
+        .eq("tenant_id", tenantId)
+        .eq("current_status", "approved")
+        .order("approved_at", { ascending: false });
+
+      if (listErr) {
+        return jsonErr("query_failed", listErr.message, 500, requestId);
+      }
+
+      const data = (vendors || []).map((v: any) => ({
+        vendor_code: v.vendor_code,
+        company_name: v.company_name,
+        trade_name: v.trade_name,
+        category: v.vendor_categories?.name ?? null,
+        contact_name: v.primary_contact_name,
+        contact_mobile: v.primary_mobile,
+        contact_email: v.primary_email,
+        approved_at: v.approved_at,
+      }));
+
+      return jsonOk({ data }, requestId);
+    }
+
+    // ── list_invoices ────────────────────────────────────────────────
+    // Read-only listing of this tenant's vendor invoices (every status) with
+    // their recorded payments — no verification is performed, so no quota draw.
+    if (action === "list_invoices") {
+      const { data: invoices, error: listErr } = await supabase
+        .from("vendor_invoices")
+        .select(
+          "invoice_number, invoice_date, invoice_amount, gst_amount, description, po_number, status, rejection_reason, reviewed_at, created_at, vendors(company_name, trade_name, vendor_code), vendor_invoice_payments(payment_date, advance_adjusted, gst_amount, tds_amount, payout_amount, total_settled, utr_reference, remarks, is_full_settlement)"
+        )
+        .eq("tenant_id", tenantId)
+        .order("created_at", { ascending: false });
+
+      if (listErr) {
+        return jsonErr("query_failed", listErr.message, 500, requestId);
+      }
+
+      const data = (invoices || []).map((inv: any) => ({
+        invoice_number: inv.invoice_number,
+        invoice_date: inv.invoice_date,
+        invoice_amount: inv.invoice_amount,
+        gst_amount: inv.gst_amount,
+        description: inv.description,
+        po_number: inv.po_number,
+        status: inv.status,
+        rejection_reason: inv.rejection_reason,
+        reviewed_at: inv.reviewed_at,
+        created_at: inv.created_at,
+        vendor_company_name: inv.vendors?.company_name ?? null,
+        vendor_trade_name: inv.vendors?.trade_name ?? null,
+        vendor_code: inv.vendors?.vendor_code ?? null,
+        payments: (inv.vendor_invoice_payments || []).map((p: any) => ({
+          payment_date: p.payment_date,
+          advance_adjusted: p.advance_adjusted,
+          gst_amount: p.gst_amount,
+          tds_amount: p.tds_amount,
+          payout_amount: p.payout_amount,
+          total_settled: p.total_settled,
+          utr_reference: p.utr_reference,
+          remarks: p.remarks,
+          is_full_settlement: p.is_full_settlement,
+        })),
+      }));
+
+      return jsonOk({ data }, requestId);
+    }
+
     // Deduct from quota for all actions
     const { data: usageResult } = await supabase.rpc("increment_vendor_usage", {
       _tenant_id: tenantId,
