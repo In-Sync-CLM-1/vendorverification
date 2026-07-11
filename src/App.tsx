@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -31,6 +32,7 @@ import BulkImportVendors from "./pages/staff/BulkImportVendors";
 import BulkInviteVendors from "./pages/staff/BulkInviteVendors";
 import FraudAlertsDashboard from "./pages/staff/FraudAlertsDashboard";
 import StaffInvoices from "./pages/staff/StaffInvoices";
+const StaffInvoiceAnalytics = lazy(() => import("./pages/staff/StaffInvoiceAnalytics"));
 
 // Admin Pages
 import AdminUserManagement from "./pages/admin/AdminUserManagement";
@@ -72,6 +74,14 @@ const App = () => (
             <Route path="/staff/vendors" element={<VendorList />} />
             <Route path="/staff/fraud-alerts" element={<FraudAlertsDashboard />} />
             <Route path="/staff/invoices" element={<StaffInvoices />} />
+            <Route
+              path="/staff/invoice-analytics"
+              element={
+                <Suspense fallback={<div className="min-h-screen" />}>
+                  <StaffInvoiceAnalytics />
+                </Suspense>
+              }
+            />
             <Route path="/staff/bulk-import" element={<BulkImportVendors />} />
             <Route path="/staff/bulk-invite" element={<BulkInviteVendors />} />
 

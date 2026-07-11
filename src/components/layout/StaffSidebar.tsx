@@ -19,6 +19,7 @@ import {
   Upload,
   Building2,
   ReceiptIndianRupee,
+  ChartColumnBig,
 } from "lucide-react";
 import {
   Sidebar,
@@ -45,6 +46,7 @@ const mainItems = [
   { title: "Fraud Alerts", url: "/staff/fraud-alerts", icon: ShieldAlert },
   { title: "Vendor List", url: "/staff/vendors", icon: List },
   { title: "Invoices", url: "/staff/invoices", icon: ReceiptIndianRupee },
+  { title: "Invoice Analytics", url: "/staff/invoice-analytics", icon: ChartColumnBig },
   { title: "Bulk Import", url: "/staff/bulk-import", icon: Upload },
   { title: "Bulk Invite", url: "/staff/bulk-invite", icon: Send },
 ];
