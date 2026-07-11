@@ -25,7 +25,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { InvoiceCharts } from "@/components/invoices/InvoiceCharts";
 import { PaymentBreakupTable } from "@/components/invoices/PaymentBreakupTable";
 import { RecordPaymentDialog } from "@/components/invoices/RecordPaymentDialog";
 import {
@@ -202,21 +201,6 @@ export default function StaffInvoices() {
               </Card>
             ))}
           </div>
-
-          {/* Analytics */}
-          <InvoiceCharts
-            invoices={invoices.map((i) => ({
-              invoice_amount: Number(i.invoice_amount),
-              invoice_date: i.invoice_date,
-              status: i.status,
-            }))}
-            payments={payments.map((p) => ({
-              payment_date: p.payment_date,
-              advance_adjusted: Number(p.advance_adjusted),
-              tds_amount: Number(p.tds_amount),
-              payout_amount: Number(p.payout_amount),
-            }))}
-          />
 
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between">

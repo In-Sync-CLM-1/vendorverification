@@ -40,15 +40,28 @@ const EMAIL_NAME_MAP: Record<string, string> = {
   "a@in-sync.co.in": "Amit Sengupta",
 };
 
-const mainItems = [
-  { title: "Dashboard", url: "/staff/dashboard", icon: LayoutDashboard },
-  { title: "Approval Queue", url: "/staff/queue", icon: ClipboardList },
-  { title: "Fraud Alerts", url: "/staff/fraud-alerts", icon: ShieldAlert },
-  { title: "Vendor List", url: "/staff/vendors", icon: List },
-  { title: "Invoices", url: "/staff/invoices", icon: ReceiptIndianRupee },
-  { title: "Invoice Analytics", url: "/staff/invoice-analytics", icon: ChartColumnBig },
-  { title: "Bulk Import", url: "/staff/bulk-import", icon: Upload },
-  { title: "Bulk Invite", url: "/staff/bulk-invite", icon: Send },
+const navSections = [
+  {
+    label: "Overview",
+    items: [{ title: "Dashboard", url: "/staff/dashboard", icon: LayoutDashboard }],
+  },
+  {
+    label: "Vendor Onboarding",
+    items: [
+      { title: "Approval Queue", url: "/staff/queue", icon: ClipboardList },
+      { title: "Vendor List", url: "/staff/vendors", icon: List },
+      { title: "Fraud Alerts", url: "/staff/fraud-alerts", icon: ShieldAlert },
+      { title: "Bulk Import", url: "/staff/bulk-import", icon: Upload },
+      { title: "Bulk Invite", url: "/staff/bulk-invite", icon: Send },
+    ],
+  },
+  {
+    label: "Invoices & Payments",
+    items: [
+      { title: "Invoices", url: "/staff/invoices", icon: ReceiptIndianRupee },
+      { title: "Invoice Analytics", url: "/staff/invoice-analytics", icon: ChartColumnBig },
+    ],
+  },
 ];
 
 const adminItems = [
@@ -140,27 +153,29 @@ export function StaffSidebar() {
           </SidebarGroup>
         ) : (
           <>
-            <SidebarGroup>
-              <SidebarGroupLabel>Main</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {mainItems.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton asChild tooltip={item.title} isActive={location.pathname === item.url}>
-                        <NavLink
-                          to={item.url}
-                          className="hover:bg-muted/50"
-                          activeClassName="bg-primary/10 text-primary font-medium"
-                        >
-                          <item.icon className="h-4 w-4" />
-                          <span>{item.title}</span>
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+            {navSections.map((section) => (
+              <SidebarGroup key={section.label}>
+                <SidebarGroupLabel>{section.label}</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {section.items.map((item) => (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton asChild tooltip={item.title} isActive={location.pathname === item.url}>
+                          <NavLink
+                            to={item.url}
+                            className="hover:bg-muted/50"
+                            activeClassName="bg-primary/10 text-primary font-medium"
+                          >
+                            <item.icon className="h-4 w-4" />
+                            <span>{item.title}</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            ))}
 
             {isAdmin && (
               <SidebarGroup>
