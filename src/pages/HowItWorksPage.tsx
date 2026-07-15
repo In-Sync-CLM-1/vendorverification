@@ -48,8 +48,8 @@ const WORKFLOW_STEPS = [
   },
   {
     icon: ScanSearch,
-    title: "5-in-1 Government Verification",
-    desc: "PAN, GST, Bank Account, and Aadhaar — verified against live government and financial APIs.",
+    title: "Government API Verification",
+    desc: "PAN, GST, and Bank Account — verified against live government and financial APIs.",
     color: "text-emerald-600",
     bg: "bg-emerald-50",
     ring: "ring-emerald-200",

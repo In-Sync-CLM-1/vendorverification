@@ -1,9 +1,7 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { AlertCircle, CheckCircle2, XCircle, Loader2, ShieldCheck, Link2, Copy, RefreshCw } from "lucide-react";
+import { AlertCircle, CheckCircle2, XCircle, Loader2, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   useVendorVerifications,
@@ -11,7 +9,6 @@ import {
   useVerifyGst,
   useVerifyBankAccount,
 } from "@/hooks/useVendorVerification";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { VerificationBadge } from "@/components/fraud/VerificationBadge";
 
@@ -34,9 +31,6 @@ export function VerificationPanel({
   const verifyPan = useVerifyPan();
   const verifyGst = useVerifyGst();
   const verifyBankAccount = useVerifyBankAccount();
-  const [aadhaarLink, setAadhaarLink] = useState<string | null>(null);
-  const [aadhaarLinkLoading, setAadhaarLinkLoading] = useState(false);
-  const [checkingAadhaar, setCheckingAadhaar] = useState(false);
 
   // Build verification status map
   const verificationStatusMap = verifications?.reduce((acc, v) => {
@@ -47,62 +41,6 @@ export function VerificationPanel({
     };
     return acc;
   }, {} as Record<string, any>) || {};
-
-  const handleGenerateAadhaarLink = async () => {
-    setAadhaarLinkLoading(true);
-    try {
-      // Look up tenant_id from the vendor (required NOT NULL column)
-      const { data: vendor } = await supabase
-        .from("vendors")
-        .select("tenant_id")
-        .eq("id", vendorId)
-        .maybeSingle();
-
-      // Create a pending verification record; vendor opens the link to complete DigiLocker
-      const { data, error } = await supabase
-        .from("vendor_verifications")
-        .insert({
-          vendor_id: vendorId,
-          tenant_id: vendor?.tenant_id,
-          verification_type: "aadhaar",
-          verification_source: "surepass",
-          status: "pending",
-          request_data: { initiated_at: new Date().toISOString() },
-        })
-        .select("id")
-        .single();
-
-      if (error) throw error;
-
-      const link = `${window.location.origin}/vendor/verify-aadhaar/${data.id}`;
-      setAadhaarLink(link);
-      navigator.clipboard.writeText(link).catch(() => {});
-      toast({ title: "Link generated", description: "Copied to clipboard — send to the vendor" });
-    } catch (error) {
-      toast({
-        title: "Failed to generate link",
-        description: error instanceof Error ? error.message : "Please try again",
-        variant: "destructive",
-      });
-    } finally {
-      setAadhaarLinkLoading(false);
-    }
-  };
-
-  const handleCheckAadhaarStatus = async () => {
-    setCheckingAadhaar(true);
-    try {
-      await refetch();
-      const latest = verifications?.find(v => v.verification_type === "aadhaar");
-      if (latest?.status === "success") {
-        toast({ title: "Aadhaar verified!", description: "Vendor has completed DigiLocker verification" });
-      } else {
-        toast({ title: "Not yet verified", description: "Vendor hasn't completed the DigiLocker flow yet" });
-      }
-    } finally {
-      setCheckingAadhaar(false);
-    }
-  };
 
   const handleVerifyGst = async () => {
     if (!gstin) {
@@ -349,89 +287,6 @@ export function VerificationPanel({
               )}
             </Button>
           )}
-        </div>
-
-        {/* Aadhaar Verification via DigiLocker */}
-        <div className="border rounded-lg p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <span className="font-medium">Aadhaar (DigiLocker)</span>
-              {verificationStatusMap.aadhaar && getStatusIcon(verificationStatusMap.aadhaar.status)}
-            </div>
-            {verificationStatusMap.aadhaar && (
-              <Badge className={cn("text-xs", getStatusBadgeVariant(verificationStatusMap.aadhaar.status))}>
-                {verificationStatusMap.aadhaar.status}
-              </Badge>
-            )}
-          </div>
-
-          {verificationStatusMap.aadhaar?.data && (
-            <div className="text-sm text-muted-foreground mb-3 space-y-1">
-              {verificationStatusMap.aadhaar.data.name && (
-                <p>Name: <span className="text-foreground font-medium">{verificationStatusMap.aadhaar.data.name}</span></p>
-              )}
-              {verificationStatusMap.aadhaar.data.dob && (
-                <p>DOB: <span className="text-foreground font-medium">{verificationStatusMap.aadhaar.data.dob}</span></p>
-              )}
-              {verificationStatusMap.aadhaar.data.gender && (
-                <p>Gender: <span className="text-foreground font-medium">{verificationStatusMap.aadhaar.data.gender}</span></p>
-              )}
-            </div>
-          )}
-
-          {/* Link display once generated */}
-          {aadhaarLink && (
-            <div className="flex items-center gap-2 mb-3">
-              <Input value={aadhaarLink} readOnly className="text-xs h-8 font-mono" />
-              <Button
-                variant="outline"
-                size="sm"
-                className="shrink-0"
-                onClick={() => {
-                  navigator.clipboard.writeText(aadhaarLink);
-                  toast({ title: "Copied to clipboard" });
-                }}
-              >
-                <Copy className="h-3 w-3" />
-              </Button>
-            </div>
-          )}
-
-          <div className="flex gap-2">
-            <Button
-              onClick={handleGenerateAadhaarLink}
-              disabled={aadhaarLinkLoading || verificationStatusMap.aadhaar?.status === "success"}
-              variant={verificationStatusMap.aadhaar ? "outline" : "default"}
-              size="sm"
-              className="flex-1"
-            >
-              {aadhaarLinkLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <>
-                  <Link2 className="h-4 w-4 mr-1" />
-                  {aadhaarLink ? "Regenerate Link" : "Generate Link"}
-                </>
-              )}
-            </Button>
-            {(aadhaarLink || verificationStatusMap.aadhaar?.status === "in_progress" || verificationStatusMap.aadhaar?.status === "pending") && (
-              <Button
-                onClick={handleCheckAadhaarStatus}
-                disabled={checkingAadhaar}
-                variant="outline"
-                size="sm"
-              >
-                {checkingAadhaar ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4" />
-                )}
-              </Button>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            Generate a link and share it with the vendor. They complete DigiLocker on their own device.
-          </p>
         </div>
 
       </CardContent>

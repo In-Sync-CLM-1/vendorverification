@@ -422,7 +422,7 @@
     </div>
     <div class="card">
       <h3><span class="icon-circle amber">2</span> Verify</h3>
-      <p>Six real-time API checks — PAN, GST, Bank Account, UPI, Aadhaar, and Experian Credit Report — plus AI document analysis.</p>
+      <p>Five real-time API checks — PAN, GST, Bank Account, UPI, and Experian Credit Report — plus AI document analysis.</p>
     </div>
     <div class="card">
       <h3><span class="icon-circle green">3</span> Approve</h3>
@@ -775,31 +775,6 @@
     </div>
   </div>
 
-  <!-- Aadhaar -->
-  <div class="card" id="v-aadhaar">
-    <h3><span class="icon-circle teal">A</span> Aadhaar Verification (DigiLocker) <span class="badge badge-info">Multi-step</span></h3>
-    <p class="mt-2">Aadhaar verification is a two-step process using DigiLocker integration.</p>
-
-    <div style="display:flex;gap:24px;margin-top:16px;flex-wrap:wrap;">
-      <div class="card" style="flex:1;min-width:280px;border:2px solid #99f6e4;">
-        <h3>Step 1 &mdash; Initiate</h3>
-        <p><strong>Function:</strong> <code>verify-aadhaar</code></p>
-        <p><strong>Endpoint:</strong> <code>POST /api/v1/digilocker/initialize</code></p>
-        <p class="mt-2"><strong>Input:</strong> <code>vendor_id</code></p>
-        <p class="mt-2"><strong>Returns:</strong> <code>client_id</code>, <code>token</code>, and <code>verification_id</code></p>
-        <p class="mt-2">Initializes the Surepass Digilocker SDK for the user.</p>
-      </div>
-      <div class="card" style="flex:1;min-width:280px;border:2px solid #99f6e4;">
-        <h3>Step 2 &mdash; Store Details</h3>
-        <p><strong>Function:</strong> <code>get-aadhaar-details</code></p>
-        <p><strong>Endpoint:</strong> Stores Aadhaar data from SDK callback</p>
-        <p class="mt-2"><strong>Input:</strong> <code>verification_id</code>, <code>aadhaar_data</code></p>
-        <p class="mt-2"><strong>Returns:</strong> Success confirmation</p>
-        <p class="mt-2">Called after user completes DigiLocker auth via the SDK.</p>
-      </div>
-    </div>
-  </div>
-
   <!-- Experian -->
   <div class="card" id="v-experian">
     <h3><span class="icon-circle red">E</span> Experian Credit Report <span class="badge badge-error">Inactive</span></h3>
@@ -835,7 +810,6 @@
         <tr><td>GST</td><td><code>verify-gst</code></td><td><code>/api/v1/corporate/gstin</code></td><td><span class="badge badge-success">Working</span></td></tr>
         <tr><td>Bank Account</td><td><code>verify-bank-account</code></td><td><code>/api/v1/bank-verification</code></td><td><span class="badge badge-success">Working</span></td></tr>
         <tr><td>UPI</td><td><code>verify-upi</code></td><td><code>/api/v1/upi-verification</code></td><td><span class="badge badge-success">Working</span></td></tr>
-        <tr><td>Aadhaar</td><td><code>verify-aadhaar</code> + <code>get-aadhaar-details</code></td><td><code>/api/v1/digilocker/initialize</code></td><td><span class="badge badge-info">Multi-step</span></td></tr>
         <tr><td>Experian Credit</td><td><code>credit-report-experian</code></td><td><code>/api/v1/credit-report/fetch-report</code></td><td><span class="badge badge-error">Inactive</span></td></tr>
       </tbody>
     </table>
@@ -1269,23 +1243,6 @@
 
 <span class="comment">// Response</span>
 { <span class="key">"success"</span>: <span class="bool">true</span>, <span class="key">"data"</span>: { <span class="key">"vpa"</span>: <span class="str">"user@upi"</span>, <span class="key">"name"</span>: <span class="str">"RAJESH"</span>, <span class="key">"is_valid"</span>: <span class="bool">true</span> } }
-      </div>
-    </div>
-
-    <div class="accordion-header" onclick="toggleAccordion(this)">
-      <h4 class="flex-center"><span class="icon-circle blue" style="width:28px;height:28px;font-size:.75rem;">POST</span>&ensp;verify-aadhaar + get-aadhaar-details</h4>
-      <span class="accordion-chevron">&#9660;</span>
-    </div>
-    <div class="accordion-body">
-      <p><strong>Purpose:</strong> Two-step Aadhaar verification via DigiLocker</p>
-      <div class="code-block">
-<span class="comment">// Step 1: verify-aadhaar (initialize SDK)</span>
-{ <span class="key">"vendor_id"</span>: <span class="str">"uuid"</span> }
-<span class="comment">// → Returns client_id, token, verification_id</span>
-
-<span class="comment">// Step 2: get-aadhaar-details (store SDK callback data)</span>
-{ <span class="key">"verification_id"</span>: <span class="str">"uuid"</span>, <span class="key">"aadhaar_data"</span>: { <span class="comment">/* SDK response */</span> } }
-<span class="comment">// → Returns success confirmation</span>
       </div>
     </div>
 

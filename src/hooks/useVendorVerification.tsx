@@ -46,22 +46,6 @@ export function useVerifyPan() {
   });
 }
 
-export function useVerifyAadhaarInit() {
-  return useMutation({
-    mutationFn: async ({ verificationId }: { verificationId: string }) => {
-      const response = await fetch(`${FUNCTIONS_BASE}/verify-aadhaar`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ verification_id: verificationId }),
-      });
-
-      const data = await safeParseJson(response);
-      if (!data.success) throw new Error(data.error || "Aadhaar verification initialization failed");
-      return data.data as { token: string; verification_id: string };
-    },
-  });
-}
-
 export function useVerifyGst() {
   return useMutation({
     mutationFn: async ({ gstin, vendorId }: { gstin: string; vendorId: string }) => {

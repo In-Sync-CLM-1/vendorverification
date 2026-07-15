@@ -13,7 +13,6 @@ import {
   FileText,
   Lock,
   CreditCard,
-  Fingerprint,
   Receipt,
   ScanSearch,
   Bot,
@@ -235,7 +234,7 @@ const slides: Slide[] = [
   // 7 — Verification APIs
   {
     title: "Verification APIs",
-    subtitle: "6 real-time checks",
+    subtitle: "5 real-time checks",
     duration: 8,
     render: () => (
       <div className="flex flex-col h-full px-5 pt-4 animate-in fade-in duration-500">
@@ -246,7 +245,6 @@ const slides: Slide[] = [
             { icon: <CreditCard className="h-3.5 w-3.5" />, name: "PAN", fn: "verify-pan", status: "working" as const, delay: 0 },
             { icon: <Receipt className="h-3.5 w-3.5" />, name: "GST", fn: "verify-gst", status: "working" as const, delay: 150 },
             { icon: <Landmark className="h-3.5 w-3.5" />, name: "Bank Account", fn: "verify-bank-account", status: "working" as const, delay: 300 },
-            { icon: <Fingerprint className="h-3.5 w-3.5" />, name: "Aadhaar (DigiLocker)", fn: "verify-aadhaar", status: "multi" as const, delay: 450 },
           ].map((v, i) => (
             <div key={i} className="flex items-center gap-2 py-1.5 px-2.5 rounded-md border bg-card animate-in fade-in slide-in-from-left-3 duration-400" style={{ animationDelay: `${v.delay}ms`, animationFillMode: "both" }}>
               <div className="text-primary">{v.icon}</div>
@@ -385,7 +383,7 @@ export const chapters: ChapterInfo[] = [
   { slideIndex: 0, icon: <Building2 className="h-4 w-4" />, title: "Overview", description: "Platform introduction", color: "bg-primary/10 text-primary" },
   { slideIndex: 1, icon: <ArrowRight className="h-4 w-4" />, title: "Status Lifecycle", description: "Draft to approved flow", color: "bg-slate-100 text-slate-600" },
   { slideIndex: 2, icon: <ClipboardCheck className="h-4 w-4" />, title: "Registration", description: "5-step vendor form", color: "bg-purple-100 text-purple-600" },
-  { slideIndex: 7, icon: <ShieldCheck className="h-4 w-4" />, title: "Verifications", description: "6 real-time API checks", color: "bg-blue-100 text-blue-600" },
+  { slideIndex: 7, icon: <ShieldCheck className="h-4 w-4" />, title: "Verifications", description: "5 real-time API checks", color: "bg-blue-100 text-blue-600" },
   { slideIndex: 8, icon: <Bot className="h-4 w-4" />, title: "AI Analysis", description: "Document intelligence", color: "bg-purple-100 text-purple-600" },
   { slideIndex: 9, icon: <Eye className="h-4 w-4" />, title: "Staff Workflow", description: "3-tier review process", color: "bg-amber-100 text-amber-600" },
   { slideIndex: 10, icon: <Lock className="h-4 w-4" />, title: "Security", description: "Encryption & compliance", color: "bg-red-100 text-red-600" },

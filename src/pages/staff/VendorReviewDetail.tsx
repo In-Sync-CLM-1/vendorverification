@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { StaffLayout } from "@/components/layout/StaffLayout";
 import { useUserRoles } from "@/hooks/useUserRoles";
@@ -93,13 +93,6 @@ export default function VendorReviewDetail() {
 
   const documentIds = useMemo(() => (documents || []).map(d => d.id), [documents]);
   const { analysesMap } = useDocumentAnalysesBatch(documentIds);
-
-  // Store vendor ID for DigiLocker callback
-  useEffect(() => {
-    if (vendor?.id) {
-      sessionStorage.setItem("current_vendor_id", vendor.id);
-    }
-  }, [vendor?.id]);
 
   if (vendorLoading || docsLoading) {
     return (

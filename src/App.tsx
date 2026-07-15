@@ -14,7 +14,6 @@ import NotFound from "./pages/NotFound";
 
 // Vendor Pages (referral registration only — no self-registration)
 import VendorReferralRegistration from "./pages/vendor/VendorReferralRegistration";
-import VendorVerifyAadhaar from "./pages/vendor/VendorVerifyAadhaar";
 import PrivacyPolicy from "./pages/vendor/PrivacyPolicy";
 import VendorPortalLogin from "./pages/vendor/VendorPortalLogin";
 import VendorPortalDashboard from "./pages/vendor/VendorPortalDashboard";
@@ -58,7 +57,6 @@ const App = () => (
             <Route path="/" element={<LandingPage />} />
             <Route path="/register" element={<OrgRegistration />} />
             <Route path="/register/ref/:token" element={<VendorReferralRegistration />} />
-            <Route path="/vendor/verify-aadhaar/:verificationId" element={<VendorVerifyAadhaar />} />
             <Route path="/vendor/portal" element={<VendorPortalLogin />} />
             <Route path="/vendor/portal/dashboard" element={<VendorPortalDashboard />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
