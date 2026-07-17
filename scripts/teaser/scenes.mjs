@@ -92,10 +92,16 @@ export const SCENES = [
   narration: "It starts with trust. Every new vendor's PAN, GST and bank account are verified against live government sources. Duplicates and tampered documents are flagged before you commit a single rupee.",
   beats: async ({ page, at, D, ready }) => {
     await page.goto(`${BASE}/staff/queue`, { waitUntil: 'domcontentloaded' });
-    await page.getByText(/queue|review/i).first().waitFor({ timeout: 25000 }).catch(() => {});
-    const waitUntil = await ready(1200);
+    await page.getByText(/approval queue/i).first().waitFor({ timeout: 25000 });
+    // the approver's default tab is empty — switch to the Approve tab (has vendors)
+    const approveTab = page.getByRole('tab', { name: /approve/i }).first()
+      .or(page.getByText(/^Approve$/).first());
+    await approveTab.waitFor({ timeout: 15000 });
+    const waitUntil = await ready(400);
+    await clickLocator(page, approveTab, { dur: 700 });
+    await page.getByText(/Metro Trade|Konkan Agro/i).first().waitFor({ timeout: 15000 }).catch(() => {});
     await waitUntil(at('verified against', 5));
-    await page.evaluate(() => window.scrollBy({ top: 220, behavior: 'smooth' }));
+    await page.evaluate(() => window.scrollBy({ top: 160, behavior: 'smooth' }));
     await waitUntil(at('Duplicates', 9, -0.4));
     // SPA-navigate via the sidebar so the shell stays on screen (no boot spinner)
     await clickLocator(page, page.getByRole('link', { name: /fraud alerts/i }).first(), { dur: 600 });
