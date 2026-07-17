@@ -1,5 +1,3 @@
-# Old domain → new domain (links in already-sent emails/WhatsApp keep working)
-https://vendorverification.in-sync.co.in/* https://vendor.in-sync.co.in/:splat 301
-
-# SPA fallback
+# SPA fallback (host-level redirect old->new lives in index.html;
+# Pages _redirects cannot match on hostname)
 /*    /index.html   200

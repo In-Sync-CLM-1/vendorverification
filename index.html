@@ -14,6 +14,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#0066B3" />
 
+    <!-- Domain rename: send browsers on the old host to vendor.in-sync.co.in
+         before anything renders (links in already-sent emails keep working) -->
+    <script>
+      if (location.hostname === "vendorverification.in-sync.co.in") {
+        location.replace("https://vendor.in-sync.co.in" + location.pathname + location.search + location.hash);
+      }
+    </script>
+
     <!-- Typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
