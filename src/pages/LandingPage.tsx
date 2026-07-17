@@ -575,7 +575,7 @@ export default function LandingPage() {
       </section>
 
       {/* Logo Marquee */}
-      <section className="relative border-t border-border/50 bg-gradient-to-b from-secondary/50 to-background py-14 sm:py-16">
+      <section className="relative border-t border-border/50 bg-background py-14 sm:py-16">
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -620,10 +620,10 @@ export default function LandingPage() {
       </section>
 
       {/* The Lifecycle — shown, not told */}
-      <section id="platform" className="relative py-20 sm:py-28 bg-background overflow-hidden">
-        <div aria-hidden className="absolute inset-0 bg-dots mask-fade-top opacity-70" />
-        <div aria-hidden className="absolute -top-24 right-[-10%] w-[32rem] h-[32rem] rounded-full bg-primary/[0.06] blur-3xl" />
-        <div aria-hidden className="absolute top-1/2 left-[-12%] w-[28rem] h-[28rem] rounded-full bg-accent/[0.07] blur-3xl" />
+      <section id="platform" className="relative py-20 sm:py-28 bg-secondary overflow-hidden">
+        <div aria-hidden className="absolute inset-0 bg-dots mask-fade-top opacity-60" />
+        <div aria-hidden className="absolute -top-24 right-[-10%] w-[32rem] h-[32rem] rounded-full bg-primary/10 blur-3xl" />
+        <div aria-hidden className="absolute top-1/2 left-[-12%] w-[28rem] h-[28rem] rounded-full bg-accent/10 blur-3xl" />
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -691,9 +691,9 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Before / After */}
-      <section className="relative py-20 sm:py-28 bg-gradient-to-br from-primary/[0.05] via-background to-accent/[0.07] border-y border-border/50 overflow-hidden">
-        <div aria-hidden className="absolute inset-0 bg-dots mask-fade-edges-x opacity-50" />
+      {/* Before / After — the dark mid-page anchor */}
+      <section className="relative py-20 sm:py-28 bg-gradient-to-br from-[hsl(210,45%,13%)] via-[hsl(207,55%,16%)] to-[hsl(204,70%,19%)] text-white overflow-hidden">
+        <div aria-hidden className="absolute inset-0 bg-grid-white mask-fade-center" />
         <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -702,7 +702,7 @@ export default function LandingPage() {
             className="text-center mb-14"
           >
             <Eyebrow>Why It Matters</Eyebrow>
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
               The week your team gets back
             </h2>
           </motion.div>
@@ -713,33 +713,32 @@ export default function LandingPage() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
             >
-              <Card className="border-destructive/30 h-full">
-                <CardContent className="p-8">
-                  <h3 className="text-xl font-bold text-destructive mb-6">
-                    The old way
-                  </h3>
-                  <ul className="space-y-4">
-                    {[
-                      "Onboarding lives in email threads",
-                      "7–10 days chasing documents",
-                      "“Any update on my payment?” — weekly",
-                      "Payment records in one person's Excel",
-                      "Risky vendors found after commitment",
-                      "Every audit is a scramble",
-                    ].map((item) => (
-                      <li
-                        key={item}
-                        className="flex items-start gap-3 text-muted-foreground"
-                      >
-                        <span className="mt-1 shrink-0 w-5 h-5 rounded-full bg-destructive/10 flex items-center justify-center">
-                          <span className="w-2 h-2 rounded-full bg-destructive" />
-                        </span>
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
+              {/* The old way stays in the dark */}
+              <div className="h-full rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-8">
+                <h3 className="text-xl font-bold text-red-300 mb-6">
+                  The old way
+                </h3>
+                <ul className="space-y-4">
+                  {[
+                    "Onboarding lives in email threads",
+                    "7–10 days chasing documents",
+                    "“Any update on my payment?” — weekly",
+                    "Payment records in one person's Excel",
+                    "Risky vendors found after commitment",
+                    "Every audit is a scramble",
+                  ].map((item) => (
+                    <li
+                      key={item}
+                      className="flex items-start gap-3 text-white/60"
+                    >
+                      <span className="mt-1 shrink-0 w-5 h-5 rounded-full bg-red-400/15 flex items-center justify-center">
+                        <span className="w-2 h-2 rounded-full bg-red-400" />
+                      </span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </motion.div>
 
             <motion.div
@@ -747,31 +746,30 @@ export default function LandingPage() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
             >
-              <Card className="border-accent/30 h-full">
-                <CardContent className="p-8">
-                  <h3 className="text-xl font-bold text-accent mb-6">
-                    With Vendor-Sync
-                  </h3>
-                  <ul className="space-y-4">
-                    {[
-                      "KYC, fraud checks & approvals in one flow",
-                      "Vendors submit; AI does the reading",
-                      "Vendors notified — the calls stop",
-                      "Every settlement visible to both sides",
-                      "Risky vendors flagged before you commit",
-                      "The audit trail is already written",
-                    ].map((item) => (
-                      <li
-                        key={item}
-                        className="flex items-start gap-3 text-foreground"
-                      >
-                        <CheckCircle2 className="mt-0.5 shrink-0 h-5 w-5 text-accent" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
+              {/* Vendor-Sync is literally the bright side */}
+              <div className="h-full rounded-xl bg-card text-foreground shadow-2xl ring-1 ring-white/20 p-8">
+                <h3 className="text-xl font-bold text-accent mb-6">
+                  With Vendor-Sync
+                </h3>
+                <ul className="space-y-4">
+                  {[
+                    "KYC, fraud checks & approvals in one flow",
+                    "Vendors submit; AI does the reading",
+                    "Vendors notified — the calls stop",
+                    "Every settlement visible to both sides",
+                    "Risky vendors flagged before you commit",
+                    "The audit trail is already written",
+                  ].map((item) => (
+                    <li
+                      key={item}
+                      className="flex items-start gap-3 text-foreground"
+                    >
+                      <CheckCircle2 className="mt-0.5 shrink-0 h-5 w-5 text-accent" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </motion.div>
           </div>
         </div>
@@ -869,7 +867,7 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonials */}
-      <section className="relative py-20 sm:py-28 bg-gradient-to-b from-accent/[0.06] via-background to-secondary/40 border-y border-border/50 overflow-hidden">
+      <section className="relative py-20 sm:py-28 bg-[hsl(92,40%,93%)] border-y border-border/50 overflow-hidden">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
