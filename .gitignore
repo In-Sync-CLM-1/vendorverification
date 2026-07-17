@@ -41,3 +41,4 @@ migration-audit/
 .env.*
 !.env.example
 !.env.production
+scripts/teaser/recordings/
