@@ -16,7 +16,7 @@ export function ReferralHeader({ currentStep = 0 }: ReferralHeaderProps) {
         <a href="/">
           <img
             src={logo}
-            alt={tenant?.short_name || "Vendor Verification Portal"}
+            alt={tenant?.short_name || "Vendor-Sync"}
             className="h-8 object-contain shrink-0"
           />
         </a>

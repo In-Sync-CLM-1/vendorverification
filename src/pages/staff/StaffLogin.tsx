@@ -22,7 +22,7 @@ export default function StaffLogin() {
           <Card className="w-full max-w-md">
             <CardHeader className="text-center">
               <div className="mx-auto mb-4">
-                <a href="/"><img src={logo} alt={tenant?.short_name || "Vendor Verification Portal"} className="h-[6rem] w-auto rounded-lg bg-white p-2 shadow-sm" /></a>
+                <a href="/"><img src={logo} alt={tenant?.short_name || "Vendor-Sync"} className="h-[6rem] w-auto rounded-lg bg-white p-2 shadow-sm" /></a>
               </div>
               <CardTitle className="text-2xl">Staff Login</CardTitle>
               <CardDescription>

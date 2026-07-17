@@ -222,7 +222,7 @@ export default function OrgRegistration() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <a href="/">
-              <img src={logo} alt="Vendor Verification Portal" className="h-10 w-auto" />
+              <img src={logo} alt="Vendor-Sync" className="h-10 w-auto" />
             </a>
           </div>
           <Button variant="ghost" onClick={() => navigate("/staff/login")}>
@@ -239,7 +239,7 @@ export default function OrgRegistration() {
             </div>
             <CardTitle className="text-2xl">Register Your Organization</CardTitle>
             <CardDescription>
-              Set up your vendor verification portal. First 3 verifications free.
+              Set up your Vendor-Sync workspace. First 3 verifications free.
             </CardDescription>
           </CardHeader>
           <CardContent>

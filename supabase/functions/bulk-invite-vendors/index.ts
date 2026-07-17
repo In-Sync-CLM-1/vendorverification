@@ -122,12 +122,12 @@ Deno.serve(async (req) => {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${resendApiKey}` },
           body: JSON.stringify({
-            from: "Vendor Verification Portal <noreply@in-sync.co.in>",
+            from: "Vendor-Sync <noreply@in-sync.co.in>",
             to: [email],
             subject: "Vendor Registration Invitation",
             html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
               <div style="text-align:center;padding:20px 0;border-bottom:2px solid #0066B3">
-                <h1 style="color:#0066B3;margin:0">Vendor Verification Portal</h1></div>
+                <h1 style="color:#0066B3;margin:0">Vendor-Sync</h1></div>
               <div style="padding:30px 0"><p>Dear <strong>${sanitize(company, 100)}</strong>,</p>
               <p>You have been invited to register as a vendor. Click below to complete your registration.</p>
               <div style="text-align:center;margin:30px 0">

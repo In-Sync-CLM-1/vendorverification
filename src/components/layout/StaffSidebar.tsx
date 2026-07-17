@@ -112,7 +112,7 @@ export function StaffSidebar() {
         <a href="/" className="bg-white rounded-xl p-2 shadow-sm shrink-0 block">
           <img
             src={logo}
-            alt={tenant?.short_name || "Vendor Verification Portal"}
+            alt={tenant?.short_name || "Vendor-Sync"}
             className="w-[120px] rounded-lg object-contain"
           />
         </a>

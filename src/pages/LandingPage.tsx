@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useTenant } from "@/contexts/TenantContext";
@@ -10,21 +11,22 @@ import {
   Brain,
   CheckCircle2,
   Lock,
-  RefreshCw,
   ClipboardCheck,
   Send,
   BadgeCheck,
   IndianRupee,
   Sparkles,
   AlertTriangle,
-  Workflow,
   FileText,
   UserCheck,
-  ChevronDown,
   Wallet,
-  Calendar,
   Quote,
   Play,
+  KeyRound,
+  Landmark,
+  BellRing,
+  UserCog,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,86 +41,83 @@ const fadeUp = {
   }),
 };
 
-const PHASES = [
+/** The lifecycle IS the pitch — five stages, one relationship. */
+const LIFECYCLE = [
   {
     step: "01",
-    icon: Send,
-    title: "Collect",
-    desc: "Share a secure link with your vendor. They submit financials, verify identity, and provide DPDP consent — all in one flow.",
-    color: "text-blue-600",
-    bg: "bg-blue-50",
-    border: "border-blue-200",
+    icon: ShieldCheck,
+    title: "Onboard with confidence",
+    desc: "Invite one vendor or import hundreds. PAN, GST and bank details are verified against live government sources, duplicates and fraud are flagged automatically, and every approval passes through a maker–checker–approver trail.",
+    points: ["Live PAN, GST & bank verification", "Fraud & duplicate detection", "Maker–checker–approver audit trail"],
   },
   {
     step: "02",
-    icon: ScanSearch,
-    title: "Analyse",
-    desc: "Credit Score, Bank Statement, GST filing history, PAN — verified against live government and financial APIs. Fraud flagged instantly.",
-    color: "text-emerald-600",
-    bg: "bg-emerald-50",
-    border: "border-emerald-200",
+    icon: KeyRound,
+    title: "One portal, zero passwords",
+    desc: "Approved vendors log in with a one-time code sent to their registered email or WhatsApp. No credentials to issue, no reset tickets, no shared spreadsheets.",
+    points: ["OTP login via email or WhatsApp", "Nothing for IT to provision", "Vendors see their own status, always"],
   },
   {
     step: "03",
-    icon: BadgeCheck,
-    title: "Decide",
-    desc: "Get a complete financial health picture before committing a single rupee. Review, approve, and download compliance-ready reports.",
-    color: "text-violet-600",
-    bg: "bg-violet-50",
-    border: "border-violet-200",
+    icon: FileText,
+    title: "Invoices without the inbox",
+    desc: "Vendors upload invoices from their portal. AI reads the document and pre-fills the details, submissions are locked the moment they land, and your team approves or rejects from a single queue.",
+    points: ["AI reads & pre-fills every invoice", "Locked after submission — clean audit trail", "One review queue for the whole team"],
+  },
+  {
+    step: "04",
+    icon: Landmark,
+    title: "Payments everyone can see",
+    desc: "Record settlements with the full advance, GST, TDS and payout breakup — or match an entire bank statement to open invoices in one screen. Vendors are notified automatically the moment anything changes.",
+    points: ["Advance / GST / TDS / payout breakup", "Match a full bank statement in one screen", "Vendors notified at every step — automatically"],
+  },
+  {
+    step: "05",
+    icon: UserCog,
+    title: "Details that stay current",
+    desc: "Vendors request their own bank and contact updates from the portal. Nothing changes on the record until your team approves — control stays with you, upkeep stays with them.",
+    points: ["Self-service change requests", "Staff approval before anything applies", "Every change logged and attributable"],
   },
 ];
 
-const FEATURES = [
+const CAPABILITIES = [
   {
     icon: Brain,
     title: "AI Document Analysis",
-    desc: "Extracts data from GST certificates, PAN cards, bank statements — and catches tampering. No manual review needed.",
-    color: "text-blue-600",
-    bg: "bg-blue-50",
+    desc: "Reads GST certificates, PAN cards and bank documents, extracts every field, and flags tampering — before a human ever opens the file.",
   },
   {
     icon: ScanSearch,
-    title: "Credit Score & Financial Checks",
-    desc: "Bank Statement Analysis, GST filing history, PAN — a complete financial picture of every vendor.",
-    color: "text-emerald-600",
-    bg: "bg-emerald-50",
+    title: "Live Government Checks",
+    desc: "PAN, GST and bank account verification against live government and financial APIs. Not a form-fill — a verdict.",
   },
   {
     icon: AlertTriangle,
-    title: "Fraud & Risk Detection",
-    desc: "Duplicate GST, PAN, or bank accounts? Fake documents? Financially unstable vendor? Caught before you commit.",
-    color: "text-amber-600",
-    bg: "bg-amber-50",
+    title: "Fraud & Duplicate Detection",
+    desc: "Duplicate GSTs, recycled bank accounts, near-identical company names, tampered documents — caught before commitment, not after.",
   },
   {
-    icon: Workflow,
-    title: "Review & Approve Workflow",
-    desc: "Two-stage review process with full audit trail. Send back for corrections, track every action, stay audit-ready.",
-    color: "text-violet-600",
-    bg: "bg-violet-50",
+    icon: FileText,
+    title: "AI-Read Invoices",
+    desc: "Vendors upload a PDF or photo; the invoice number, date, amounts and PO reference are extracted and pre-filled. They confirm, you review.",
   },
   {
-    icon: ShieldCheck,
-    title: "DPDP Compliant",
-    desc: "PII encryption, automatic masking, data export & erasure rights, consent management — built for India's data protection law.",
-    color: "text-rose-600",
-    bg: "bg-rose-50",
+    icon: Landmark,
+    title: "One-Screen Payment Matching",
+    desc: "Paste or upload a bank statement — outgoing payments are extracted and matched to open invoices. Confirm once, record everything.",
   },
   {
-    icon: ClipboardCheck,
-    title: "Downloadable Reports",
-    desc: "Export your due diligence dashboard as PDF anytime. Share with the CFO, attach to audits, prove compliance.",
-    color: "text-teal-600",
-    bg: "bg-teal-50",
+    icon: BellRing,
+    title: "Automatic Vendor Updates",
+    desc: "Approved, rejected, paid — vendors hear it from the platform by email and WhatsApp the moment it happens. The follow-up calls stop.",
   },
 ];
 
 const STATS = [
-  { value: "< 5 mins", label: "Verification Turnaround" },
-  { value: "5", label: "Government API Checks" },
-  { value: "80%", label: "Less Manual Work" },
-  { value: "100%", label: "DPDP Compliant" },
+  { value: "< 5 min", label: "Verification turnaround" },
+  { value: "5", label: "Live government API checks" },
+  { value: "0", label: "Vendor passwords to manage" },
+  { value: "100%", label: "Audit-ready trail" },
 ];
 
 const PRICING = [
@@ -151,16 +150,21 @@ const PRICING = [
   },
 ];
 
-const MODULAR_CHECKS = [
-  { name: "GST Verification", desc: "Filing history, status, and compliance check" },
-  { name: "Bank Statement Analysis", desc: "Account health, transaction patterns, and red flags" },
-  { name: "PAN Verification", desc: "Identity and tax compliance confirmation" },
-  { name: "Full Stack", desc: "All checks — Bank, GST, PAN + AI analysis" },
+const PLAN_FEATURES = [
+  "Credit score & financial health checks",
+  "Live PAN, GST & bank verification",
+  "AI document analysis & fraud detection",
+  "Maker–checker–approver workflow",
+  "Vendor portal with OTP login",
+  "Invoices & payments with full breakup",
+  "Bank-statement payment matching",
+  "Automatic vendor notifications",
+  "DPDP compliant, PDF reports",
 ];
 
 const TESTIMONIALS = [
   {
-    quote: "We caught a financially unstable vendor before committing a \u20B950L purchase order. The bank statement analysis alone saved us from a potential write-off.",
+    quote: "We caught a financially unstable vendor before committing a ₹50L purchase order. The bank statement analysis alone saved us from a potential write-off.",
     name: "Rajesh Mehta",
     title: "CFO",
     company: "Manufacturing Enterprise, Mumbai",
@@ -179,70 +183,46 @@ const TESTIMONIALS = [
   },
 ];
 
-const WORKFLOW_STEPS = [
+const ONBOARDING_STEPS = [
   {
     icon: Send,
-    title: "You Send an Invite",
-    desc: "Share a unique link with your vendor. One click — no manual forms to fill on your side.",
-    color: "text-blue-600",
-    bg: "bg-blue-50",
-    ring: "ring-blue-200",
+    title: "You send an invite",
+    desc: "Share a unique link with your vendor — or bulk-import hundreds at once. No manual forms on your side.",
   },
   {
     icon: UserCheck,
-    title: "Vendor Verifies Identity",
-    desc: "Vendor enters their mobile and email, verifies via OTP. Identity confirmed before anything else.",
-    color: "text-indigo-600",
-    bg: "bg-indigo-50",
-    ring: "ring-indigo-200",
+    title: "Vendor verifies identity",
+    desc: "The vendor confirms their mobile and email with a one-time code. Identity comes before anything else.",
   },
   {
     icon: FileText,
-    title: "Documents & Details Submitted",
-    desc: "Company details, banking info, GST certificate, PAN card, cancelled cheque — all collected in one go with DPDP consent.",
-    color: "text-violet-600",
-    bg: "bg-violet-50",
-    ring: "ring-violet-200",
+    title: "Documents & details submitted",
+    desc: "Company details, banking information, GST certificate, PAN, cancelled cheque — collected in one flow, with DPDP consent.",
   },
   {
     icon: Brain,
-    title: "AI Reads Every Document",
-    desc: "Our AI extracts data from uploaded documents, cross-checks fields, and flags tampering — with confidence scores.",
-    color: "text-pink-600",
-    bg: "bg-pink-50",
-    ring: "ring-pink-200",
+    title: "AI reads every document",
+    desc: "Fields are extracted and cross-checked, tampering is flagged, and each read carries a confidence score.",
   },
   {
     icon: ScanSearch,
-    title: "Government API Verification",
-    desc: "PAN, GST, and Bank Account — verified against live government and financial APIs.",
-    color: "text-emerald-600",
-    bg: "bg-emerald-50",
-    ring: "ring-emerald-200",
+    title: "Government APIs confirm",
+    desc: "PAN, GST and bank account verified against live government and financial sources.",
   },
   {
     icon: AlertTriangle,
-    title: "Fraud Flagged Automatically",
-    desc: "Duplicate GST/PAN, similar company names, tampered documents — flagged before they reach your reviewer.",
-    color: "text-amber-600",
-    bg: "bg-amber-50",
-    ring: "ring-amber-200",
+    title: "Fraud flagged automatically",
+    desc: "Duplicate GST or PAN, recycled bank accounts, similar company names — surfaced before your reviewer sees the file.",
   },
   {
     icon: ClipboardCheck,
-    title: "Reviewer Reviews & Forwards",
-    desc: "Your team reviews the AI analysis, verifies documents, and forwards to the approver — or sends back for corrections.",
-    color: "text-cyan-600",
-    bg: "bg-cyan-50",
-    ring: "ring-cyan-200",
+    title: "Reviewer checks & forwards",
+    desc: "Your team reviews the AI analysis and documents, then forwards to the approver — or sends back for corrections.",
   },
   {
     icon: BadgeCheck,
-    title: "Approver Signs Off",
-    desc: "Final approval with a complete audit trail. Vendor is onboarded. Your compliance report is ready to download.",
-    color: "text-green-600",
-    bg: "bg-green-50",
-    ring: "ring-green-200",
+    title: "Approver signs off",
+    desc: "Final approval, complete audit trail, compliance report ready to download. The vendor is live — portal access and all.",
   },
 ];
 
@@ -271,11 +251,19 @@ const CLIENT_LOGOS = [
   { src: "/logos/rb.jpg", alt: "RB" },
 ];
 
+/** Small uppercase section label — the consistent visual signature across the page. */
+function Eyebrow({ children }: { children: ReactNode }) {
+  return (
+    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent mb-4">
+      {children}
+    </p>
+  );
+}
+
 export default function LandingPage() {
   const navigate = useNavigate();
   const { tenant } = useTenant();
   const logo = useTenantLogo();
-  const orgName = tenant?.short_name || "In-Sync";
   const dpoEmail = tenant?.dpo_email || "dpo@company.com";
 
   const handleTryFree = (location: string) => {
@@ -304,16 +292,26 @@ export default function LandingPage() {
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src={logo} alt={orgName} className="h-10 w-auto" />
-            <span className="hidden sm:block text-lg font-bold text-primary">
-              {orgName}
-            </span>
+            <img src={logo} alt="Vendor-Sync" className="h-10 w-auto" />
+            <div className="leading-tight">
+              <span className="block text-lg font-bold tracking-tight text-primary">
+                Vendor-Sync
+              </span>
+              <span className="hidden sm:block text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                by In-Sync
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
+          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground">
+            <a href="#platform" className="hover:text-foreground transition-colors">Platform</a>
+            <a href="#how-it-works" className="hover:text-foreground transition-colors">How It Works</a>
+            <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
+          </nav>
+          <div className="flex items-center gap-2 sm:gap-3">
             <Button variant="ghost" onClick={() => navigate("/vendor/portal")}>
               Vendor Login
             </Button>
-            <Button variant="ghost" onClick={() => navigate("/staff/login")}>
+            <Button variant="ghost" className="hidden sm:inline-flex" onClick={() => navigate("/staff/login")}>
               Login
             </Button>
             <Button onClick={() => handleTryFree('navbar')}>
@@ -324,7 +322,7 @@ export default function LandingPage() {
       </header>
 
       {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary via-[hsl(204,100%,30%)] to-[hsl(204,100%,20%)] text-white">
+      <section className="relative overflow-hidden bg-gradient-to-br from-primary via-[hsl(204,100%,30%)] to-[hsl(204,100%,18%)] text-white">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-20 left-10 w-72 h-72 bg-white rounded-full blur-3xl" />
           <div className="absolute bottom-10 right-10 w-96 h-96 bg-accent rounded-full blur-3xl" />
@@ -342,33 +340,34 @@ export default function LandingPage() {
                 className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2 text-sm font-medium mb-8"
               >
                 <Sparkles className="h-4 w-4 text-accent" />
-                3 free verifications — no card required
+                Vendor lifecycle management · 3 free verifications
               </motion.div>
 
               <motion.h1
                 variants={fadeUp}
                 custom={1}
-                className="text-4xl sm:text-5xl lg:text-5xl font-bold leading-tight mb-6"
+                className="text-4xl sm:text-5xl lg:text-[3.4rem] font-bold leading-[1.08] tracking-tight mb-6"
               >
-                Financial due diligence
+                From first invite
                 <br />
-                <span className="text-accent">before you commit.</span>
+                <span className="text-accent">to final settlement.</span>
               </motion.h1>
 
               <motion.p
                 variants={fadeUp}
                 custom={2}
-                className="text-xl sm:text-2xl text-white/80 mb-10 max-w-2xl leading-relaxed"
+                className="text-lg sm:text-xl text-white/80 mb-8 max-w-2xl leading-relaxed"
               >
-                Credit Score, Bank Statement Analysis, GST &amp; PAN verification
-                — know your vendor&apos;s financial health before you sign a single
-                purchase order. Built for CFOs and Finance leaders.
+                Vendor-Sync onboards your vendors with verified KYC, collects
+                their invoices, and keeps every payment transparent — so your
+                team stops chasing documents, and your vendors stop chasing
+                payments.
               </motion.p>
 
               <motion.div
                 variants={fadeUp}
                 custom={3}
-                className="flex flex-col sm:flex-row gap-4"
+                className="flex flex-col sm:flex-row gap-4 mb-10"
               >
                 <Button
                   size="lg"
@@ -386,6 +385,22 @@ export default function LandingPage() {
                   <Play className="h-4 w-4 mr-2" />
                   Request a Demo
                 </Button>
+              </motion.div>
+
+              {/* Lifecycle strip — the whole story in one glance */}
+              <motion.div
+                variants={fadeUp}
+                custom={4}
+                className="flex flex-wrap items-center gap-x-2 gap-y-2 text-sm text-white/70"
+              >
+                {["Verify", "Onboard", "Invoice", "Settle"].map((stage, i, arr) => (
+                  <span key={stage} className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/5 px-3 py-1 font-medium">
+                      {stage}
+                    </span>
+                    {i < arr.length - 1 && <ArrowRight className="h-3.5 w-3.5 text-white/40" />}
+                  </span>
+                ))}
               </motion.div>
             </motion.div>
 
@@ -417,7 +432,7 @@ export default function LandingPage() {
                 transition={{ delay: i * 0.1 }}
                 className="text-center"
               >
-                <div className="text-3xl sm:text-4xl font-bold text-primary">
+                <div className="text-3xl sm:text-4xl font-bold tracking-tight text-primary">
                   {stat.value}
                 </div>
                 <div className="text-sm text-muted-foreground mt-1">
@@ -474,55 +489,68 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* How It Works — 3 Phases */}
-      <section id="how-it-works" className="py-16 sm:py-24 bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* The Lifecycle — the centerpiece */}
+      <section id="platform" className="py-20 sm:py-28 bg-background">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-16"
+            className="max-w-3xl mb-16"
           >
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
-              Three Steps to Financial Clarity
+            <Eyebrow>The Platform</Eyebrow>
+            <h2 className="text-3xl sm:text-4xl lg:text-[2.6rem] font-bold tracking-tight text-foreground mb-5 leading-tight">
+              One platform for the entire
+              <br className="hidden sm:block" /> vendor relationship
             </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              From vendor invite to complete financial due diligence — replacing
-              weeks of manual work with minutes.
+            <p className="text-lg text-muted-foreground leading-relaxed">
+              Most tools stop at onboarding. Vendor-Sync stays for the
+              relationship — because the vendor you verified on day one is the
+              same vendor invoicing you on day ninety.
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {PHASES.map((phase, i) => {
-              const Icon = phase.icon;
+          <div className="space-y-6">
+            {LIFECYCLE.map((stage, i) => {
+              const Icon = stage.icon;
               return (
                 <motion.div
-                  key={phase.title}
+                  key={stage.step}
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-30px" }}
-                  transition={{ delay: i * 0.15 }}
+                  viewport={{ once: true, margin: "-40px" }}
+                  transition={{ delay: i * 0.05, duration: 0.5 }}
                 >
-                  <Card
-                    className={`h-full border-2 ${phase.border} hover:shadow-lg transition-shadow`}
-                  >
-                    <CardContent className="p-8">
-                      <div className="flex items-center gap-4 mb-5">
-                        <div
-                          className={`w-14 h-14 rounded-2xl ${phase.bg} flex items-center justify-center`}
-                        >
-                          <Icon className={`h-7 w-7 ${phase.color}`} />
+                  <Card className="border border-border hover:border-primary/30 hover:shadow-lg transition-all duration-300 overflow-hidden">
+                    <CardContent className="p-0">
+                      <div className="grid lg:grid-cols-[1fr,1.1fr] gap-0">
+                        <div className="p-8 sm:p-10">
+                          <div className="flex items-center gap-4 mb-5">
+                            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                              <Icon className="h-6 w-6 text-primary" />
+                            </div>
+                            <span className="text-sm font-bold tracking-[0.2em] text-muted-foreground/60">
+                              STAGE {stage.step}
+                            </span>
+                          </div>
+                          <h3 className="text-2xl font-semibold tracking-tight text-foreground mb-3">
+                            {stage.title}
+                          </h3>
+                          <p className="text-muted-foreground leading-relaxed">
+                            {stage.desc}
+                          </p>
                         </div>
-                        <span className="text-4xl font-bold text-muted-foreground/30">
-                          {phase.step}
-                        </span>
+                        <div className="bg-muted/40 border-t lg:border-t-0 lg:border-l border-border p-8 sm:p-10 flex flex-col justify-center">
+                          <ul className="space-y-4">
+                            {stage.points.map((point) => (
+                              <li key={point} className="flex items-start gap-3">
+                                <CheckCircle2 className="mt-0.5 shrink-0 h-5 w-5 text-accent" />
+                                <span className="text-foreground font-medium">{point}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
                       </div>
-                      <h3 className="text-xl font-semibold text-foreground mb-3">
-                        {phase.title}
-                      </h3>
-                      <p className="text-muted-foreground leading-relaxed">
-                        {phase.desc}
-                      </p>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -532,47 +560,46 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Features */}
-      <section className="py-16 sm:py-24 bg-muted/30">
+      {/* Capabilities */}
+      <section className="py-20 sm:py-28 bg-muted/30 border-y border-border/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-16"
+            className="max-w-3xl mb-16"
           >
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
-              Built for Finance and Procurement Leaders
+            <Eyebrow>Under the Hood</Eyebrow>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-5">
+              The machinery that makes it effortless
             </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Every feature is designed to give CFOs and procurement heads
-              complete financial visibility before committing to a vendor.
+            <p className="text-lg text-muted-foreground leading-relaxed">
+              AI where it saves hours, government APIs where trust matters, and
+              automation where people used to chase people.
             </p>
           </motion.div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {FEATURES.map((feature, i) => {
-              const Icon = feature.icon;
+            {CAPABILITIES.map((cap, i) => {
+              const Icon = cap.icon;
               return (
                 <motion.div
-                  key={feature.title}
+                  key={cap.title}
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-30px" }}
-                  transition={{ delay: i * 0.1 }}
+                  transition={{ delay: i * 0.08 }}
                 >
-                  <Card className="h-full hover:shadow-lg transition-shadow">
+                  <Card className="h-full border border-border hover:border-primary/30 hover:shadow-lg transition-all duration-300">
                     <CardContent className="p-8">
-                      <div
-                        className={`w-14 h-14 rounded-2xl ${feature.bg} flex items-center justify-center mb-5`}
-                      >
-                        <Icon className={`h-7 w-7 ${feature.color}`} />
+                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-5">
+                        <Icon className="h-6 w-6 text-primary" />
                       </div>
-                      <h3 className="text-xl font-semibold text-foreground mb-3">
-                        {feature.title}
+                      <h3 className="text-lg font-semibold tracking-tight text-foreground mb-2.5">
+                        {cap.title}
                       </h3>
-                      <p className="text-muted-foreground leading-relaxed">
-                        {feature.desc}
+                      <p className="text-muted-foreground leading-relaxed text-[15px]">
+                        {cap.desc}
                       </p>
                     </CardContent>
                   </Card>
@@ -584,16 +611,17 @@ export default function LandingPage() {
       </section>
 
       {/* Before / After */}
-      <section className="py-16 sm:py-24 bg-background">
+      <section className="py-20 sm:py-28 bg-background">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-12"
+            className="text-center mb-14"
           >
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
-              Stop Guessing. Start Verifying.
+            <Eyebrow>Why It Matters</Eyebrow>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+              The week your team gets back
             </h2>
           </motion.div>
 
@@ -606,15 +634,15 @@ export default function LandingPage() {
               <Card className="border-destructive/30 h-full">
                 <CardContent className="p-8">
                   <h3 className="text-xl font-bold text-destructive mb-6">
-                    Without {orgName}
+                    The old way
                   </h3>
                   <ul className="space-y-4">
                     {[
-                      "No visibility into vendor financial health",
-                      "7–10 days of manual document chasing",
-                      "Vendor data scattered in spreadsheets and emails",
-                      "Financially unstable vendors discovered after commitment",
-                      "Paper-based compliance trail that nobody trusts",
+                      "Onboarding scattered across email threads and spreadsheets",
+                      "7–10 days chasing documents for every new vendor",
+                      "“Any update on my payment?” calls, every single week",
+                      "Payment records living in one person's Excel file",
+                      "Risky vendors discovered after the money is committed",
                       "Every audit is a scramble",
                     ].map((item) => (
                       <li
@@ -640,16 +668,16 @@ export default function LandingPage() {
               <Card className="border-accent/30 h-full">
                 <CardContent className="p-8">
                   <h3 className="text-xl font-bold text-accent mb-6">
-                    With {orgName}
+                    With Vendor-Sync
                   </h3>
                   <ul className="space-y-4">
                     {[
-                      "Credit score, bank health, GST history — in under 5 minutes",
-                      "AI reads and validates every document automatically",
-                      "One dashboard — every vendor, every financial signal",
+                      "Verified onboarding — KYC, fraud checks and approvals in one flow",
+                      "Vendors submit their own documents; AI does the reading",
+                      "Vendors notified automatically — the follow-up calls stop",
+                      "Every settlement recorded with its full breakup, visible to both sides",
                       "Financially risky vendors flagged before you commit",
-                      "Digital audit trail — DPDP compliant from day one",
-                      "Download your due diligence report anytime. Audit done.",
+                      "The audit trail is already written. Download it.",
                     ].map((item) => (
                       <li
                         key={item}
@@ -667,107 +695,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Vendor Invoices & Payments module */}
-      <section className="py-16 sm:py-24 bg-gradient-to-br from-primary/5 via-background to-accent/5 border-y border-border/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <div className="inline-flex items-center gap-2 rounded-full bg-accent/10 text-accent px-4 py-1.5 text-sm font-medium mb-4">
-              <Sparkles className="h-4 w-4" />
-              New Module
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
-              Beyond Onboarding — Invoices &amp; Payments
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Once a vendor is approved, the relationship doesn't stop. Approved
-              vendors submit invoices online, and your finance team tracks every
-              payment — down to the last rupee.
-            </p>
-          </motion.div>
-
-          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-            >
-              <Card className="h-full hover:shadow-lg transition-shadow">
-                <CardContent className="p-8">
-                  <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mb-5">
-                    <FileText className="h-7 w-7 text-blue-600" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-foreground mb-3">
-                    For Your Vendors
-                  </h3>
-                  <ul className="space-y-3">
-                    {[
-                      "Secure OTP login — no passwords to manage",
-                      "Submit invoices with PO details in a minute",
-                      "Track invoice status and payment history in real time",
-                      "See the full payment breakup for every settlement",
-                    ].map((item) => (
-                      <li key={item} className="flex items-start gap-3 text-muted-foreground">
-                        <CheckCircle2 className="mt-0.5 shrink-0 h-5 w-5 text-accent" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-            >
-              <Card className="h-full hover:shadow-lg transition-shadow">
-                <CardContent className="p-8">
-                  <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center mb-5">
-                    <IndianRupee className="h-7 w-7 text-emerald-600" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-foreground mb-3">
-                    For Your Finance Team
-                  </h3>
-                  <ul className="space-y-3">
-                    {[
-                      "One queue to review and approve incoming invoices",
-                      "Record payments with advance, GST & TDS breakup",
-                      "Part-payments tracked until full & final settlement",
-                      "Invoiced-vs-paid analytics across every vendor",
-                    ].map((item) => (
-                      <li key={item} className="flex items-start gap-3 text-muted-foreground">
-                        <CheckCircle2 className="mt-0.5 shrink-0 h-5 w-5 text-accent" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mt-10"
-          >
-            <Button size="lg" variant="outline" onClick={() => navigate("/vendor/portal")}>
-              Vendor Login
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Application Workflow — How It Works (detailed) */}
-      <section className="py-16 sm:py-24 bg-muted/30">
+      {/* Onboarding, step by step */}
+      <section id="how-it-works" className="py-20 sm:py-28 bg-muted/30 border-y border-border/50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -775,22 +704,23 @@ export default function LandingPage() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
-              How It Works — Step by Step
+            <Eyebrow>How It Works</Eyebrow>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-4">
+              Verified onboarding, step by step
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              From invite to approved vendor — here&apos;s exactly what happens
-              at every stage.
+              From invite to approved vendor — exactly what happens at every
+              stage, and none of it on your team&apos;s desk.
             </p>
           </motion.div>
 
           <div className="relative">
-            {/* Vertical connector line */}
             <div className="absolute left-6 sm:left-8 top-0 bottom-0 w-0.5 bg-border" />
 
             <div className="space-y-6">
-              {WORKFLOW_STEPS.map((step, i) => {
+              {ONBOARDING_STEPS.map((step, i) => {
                 const Icon = step.icon;
+                const isLast = i === ONBOARDING_STEPS.length - 1;
                 return (
                   <motion.div
                     key={step.title}
@@ -800,23 +730,23 @@ export default function LandingPage() {
                     transition={{ duration: 0.4, delay: 0.05 }}
                     className="relative flex gap-4 sm:gap-6"
                   >
-                    {/* Step number + icon */}
                     <div className="relative z-10 flex flex-col items-center shrink-0">
                       <div
-                        className={`w-12 h-12 sm:w-16 sm:h-16 rounded-2xl ${step.bg} ring-4 ring-background ${step.ring} flex items-center justify-center`}
+                        className={`w-12 h-12 sm:w-16 sm:h-16 rounded-2xl ring-4 ring-background flex items-center justify-center ${
+                          isLast ? "bg-accent/15" : "bg-primary/10"
+                        }`}
                       >
-                        <Icon className={`h-6 w-6 sm:h-7 sm:w-7 ${step.color}`} />
+                        <Icon className={`h-6 w-6 sm:h-7 sm:w-7 ${isLast ? "text-accent" : "text-primary"}`} />
                       </div>
                     </div>
 
-                    {/* Content */}
                     <div className="pt-1 sm:pt-3 pb-2 flex-1">
                       <div className="flex items-center gap-3 mb-1">
                         <span className="text-xs font-bold text-muted-foreground/50 uppercase tracking-wider">
                           Step {i + 1}
                         </span>
                       </div>
-                      <h3 className="text-lg font-semibold text-foreground mb-1">
+                      <h3 className="text-lg font-semibold tracking-tight text-foreground mb-1">
                         {step.title}
                       </h3>
                       <p className="text-muted-foreground leading-relaxed text-sm sm:text-base">
@@ -828,16 +758,15 @@ export default function LandingPage() {
               })}
             </div>
 
-            {/* Bottom connector arrow */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="flex justify-center mt-8"
+              className="flex justify-center mt-10"
             >
               <div className="flex items-center gap-2 text-sm font-semibold text-accent bg-accent/10 rounded-full px-5 py-2.5">
                 <CheckCircle2 className="h-5 w-5" />
-                Vendor verified. Audit trail complete.
+                Vendor live — portal, invoicing and payment visibility included.
               </div>
             </motion.div>
           </div>
@@ -845,7 +774,7 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-16 sm:py-24 bg-background">
+      <section className="py-20 sm:py-28 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -853,11 +782,12 @@ export default function LandingPage() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
-              Trusted by Finance Leaders
+            <Eyebrow>Customers</Eyebrow>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-4">
+              Trusted by finance leaders
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Hear from CFOs and procurement heads who verify before they commit.
+              From CFOs and procurement heads who verify before they commit.
             </p>
           </motion.div>
 
@@ -893,7 +823,7 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="py-16 sm:py-24 bg-muted/30">
+      <section id="pricing" className="py-20 sm:py-28 bg-muted/30 border-y border-border/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -901,11 +831,16 @@ export default function LandingPage() {
             viewport={{ once: true }}
             className="text-center mb-4"
           >
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
-              Simple, Transparent Pricing
+            <Eyebrow>Pricing</Eyebrow>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-4">
+              Simple, transparent pricing
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Quarterly subscription + pay-per-verification wallet. No hidden fees.
+              Quarterly subscription, pay-per-verification wallet — and the full
+              platform on every plan. Vendor portal, invoices, payments and
+              notifications included. Run individual checks — GST-only,
+              bank-only, PAN-only — or the full stack; each counts as one
+              verification.
             </p>
           </motion.div>
 
@@ -950,7 +885,7 @@ export default function LandingPage() {
                       {plan.desc}
                     </p>
                     <div className="mb-2">
-                      <span className="text-4xl font-bold text-foreground flex items-center justify-center">
+                      <span className="text-4xl font-bold tracking-tight text-foreground flex items-center justify-center">
                         <IndianRupee className="h-7 w-7" />
                         {plan.price}
                       </span>
@@ -986,15 +921,7 @@ export default function LandingPage() {
                       </Button>
                     </div>
                     <ul className="mt-8 space-y-3 text-left text-sm">
-                      {[
-                        "Credit Score & financial checks",
-                        "Bank Statement Analysis",
-                        "GST & PAN verification",
-                        "AI document analysis & fraud detection",
-                        "Review & approve workflow",
-                        "DPDP compliant",
-                        "PDF report downloads",
-                      ].map((f) => (
+                      {PLAN_FEATURES.map((f) => (
                         <li key={f} className="flex items-start gap-2">
                           <CheckCircle2 className="h-4 w-4 text-accent shrink-0 mt-0.5" />
                           <span className="text-muted-foreground">{f}</span>
@@ -1021,12 +948,12 @@ export default function LandingPage() {
                 </div>
                 <div>
                   <h4 className="font-semibold text-foreground mb-1">
-                    Wallet for Overages
+                    Wallet for overages
                   </h4>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    Exceeded your included verifications? Top up your wallet
-                    and keep going. Minimum recharge ₹2,000. Unused wallet
-                    balance carries over — no expiry.
+                    Exceeded your included verifications? Top up your wallet and
+                    keep going. Minimum recharge ₹2,000. Unused balance carries
+                    over — no expiry.
                   </p>
                 </div>
               </CardContent>
@@ -1035,79 +962,27 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Modular Verification Options */}
-      <section className="py-16 sm:py-24 bg-background">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
-              Run the Checks You Need
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Need only a GST check? Just a bank verification? Pick individual
-              modules or run the full stack — each verification counts as one
-              from your plan.
-            </p>
-          </motion.div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {MODULAR_CHECKS.map((check, i) => (
-              <motion.div
-                key={check.name}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-20px" }}
-                transition={{ delay: i * 0.08 }}
-              >
-                <Card
-                  className={`h-full hover:shadow-md transition-shadow ${
-                    check.name === "Full Stack"
-                      ? "border-2 border-primary bg-primary/5"
-                      : ""
-                  }`}
-                >
-                  <CardContent className="p-5">
-                    <div className="flex items-center gap-2 mb-2">
-                      <CheckCircle2
-                        className={`h-5 w-5 ${
-                          check.name === "Full Stack"
-                            ? "text-primary"
-                            : "text-accent"
-                        }`}
-                      />
-                      <h4 className="font-semibold text-foreground">
-                        {check.name}
-                      </h4>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {check.desc}
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Final CTA */}
-      <section className="py-16 sm:py-24 bg-gradient-to-br from-primary via-[hsl(204,100%,30%)] to-[hsl(204,100%,22%)] text-white">
+      <section className="py-20 sm:py-28 bg-gradient-to-br from-primary via-[hsl(204,100%,30%)] to-[hsl(204,100%,18%)] text-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-3xl sm:text-4xl font-bold mb-6">
-              Know your vendor&apos;s financial health — before you commit.
+            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2 text-sm font-medium mb-8">
+              <Building2 className="h-4 w-4 text-accent" />
+              Vendor-Sync — vendor lifecycle management
+            </div>
+            <h2 className="text-3xl sm:text-5xl font-bold tracking-tight mb-6 leading-tight">
+              Every vendor.
+              <br />
+              <span className="text-accent">Verified to settled.</span>
             </h2>
-            <p className="text-xl text-white/80 mb-10 max-w-2xl mx-auto">
-              3 free verifications. No card required. See the full financial
-              picture in under 5 minutes.
+            <p className="text-xl text-white/80 mb-10 max-w-2xl mx-auto leading-relaxed">
+              Start with 3 free verifications — no card required. Onboard your
+              first vendor today, and make this the last quarter of
+              payment-chasing calls.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <Button
@@ -1145,11 +1020,11 @@ export default function LandingPage() {
             </div>
             <div className="flex items-center gap-2">
               <FileCheck2 className="h-4 w-4" />
-              <span>AI-Powered Verification</span>
+              <span>Live Government API Checks</span>
             </div>
             <div className="flex items-center gap-2">
-              <RefreshCw className="h-4 w-4" />
-              <span>Real-Time API Checks</span>
+              <ClipboardCheck className="h-4 w-4" />
+              <span>Complete Audit Trail</span>
             </div>
           </div>
         </div>
@@ -1159,8 +1034,10 @@ export default function LandingPage() {
       <footer className="bg-card border-t border-border py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-3">
-            <img src={logo} alt={orgName} className="h-8 w-auto" />
-            <span>{orgName} — Financial Due Diligence Platform</span>
+            <img src={logo} alt="Vendor-Sync" className="h-8 w-auto" />
+            <span>
+              <span className="font-semibold text-foreground">Vendor-Sync</span> by In-Sync — Vendor Lifecycle Management
+            </span>
           </div>
           <div className="flex items-center gap-4">
             <a href="/privacy-policy" className="hover:underline">

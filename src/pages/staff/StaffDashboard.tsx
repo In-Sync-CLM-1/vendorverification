@@ -166,7 +166,7 @@ export default function StaffDashboard() {
           </style>
         </head>
         <body>
-          <h1>Vendor Verification Dashboard</h1>
+          <h1>Vendor-Sync Dashboard Report</h1>
           <p class="subtitle">Generated on ${format(new Date(), "dd MMMM yyyy, hh:mm a")} by ${profile?.full_name || "Staff"}</p>
 
           <div class="grid">

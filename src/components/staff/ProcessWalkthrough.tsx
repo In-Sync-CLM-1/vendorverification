@@ -38,16 +38,16 @@ interface Slide {
 const slides: Slide[] = [
   // 0 — Title
   {
-    title: "Vendor Verification",
-    subtitle: "Vendor Management",
+    title: "Vendor-Sync",
+    subtitle: "Vendor Lifecycle Management",
     duration: 5,
     render: () => (
       <div className="flex flex-col items-center justify-center h-full text-center px-5 animate-in fade-in slide-in-from-bottom-4 duration-700">
         <div className="h-11 w-11 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
           <Building2 className="h-5 w-5 text-primary" />
         </div>
-        <h2 className="text-2xl font-bold text-foreground mb-1">Vendor Verification Portal</h2>
-        <p className="text-muted-foreground text-sm max-w-sm">End-to-end registration, verification, and approval workflow</p>
+        <h2 className="text-2xl font-bold text-foreground mb-1">Vendor-Sync</h2>
+        <p className="text-muted-foreground text-sm max-w-sm">Verification, onboarding, invoicing &amp; settlement — one portal</p>
         <div className="flex gap-6 mt-5">
           {[
             { icon: <Building2 className="h-4 w-4" />, label: "Register", color: "text-blue-600 bg-blue-50" },

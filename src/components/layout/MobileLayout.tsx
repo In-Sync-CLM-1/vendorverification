@@ -22,7 +22,7 @@ export function MobileLayout({ children, showHeader = true, title }: MobileLayou
               <a href="/">
                 <img
                   src={logo}
-                  alt={tenant?.short_name || "Vendor Verification Portal"}
+                  alt={tenant?.short_name || "Vendor-Sync"}
                   className="h-10 w-auto rounded bg-white p-1"
                 />
               </a>
