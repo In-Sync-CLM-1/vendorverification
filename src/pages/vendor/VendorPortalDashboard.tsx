@@ -17,6 +17,7 @@ import {
 import { InvoiceCharts } from "@/components/invoices/InvoiceCharts";
 import { PaymentBreakupTable } from "@/components/invoices/PaymentBreakupTable";
 import { InvoiceUploadDialog } from "@/components/invoices/InvoiceUploadDialog";
+import { DetailChangeRequestDialog } from "@/components/vendor/DetailChangeRequestDialog";
 import {
   formatINR,
   INVOICE_STATUS_META,
@@ -35,6 +36,7 @@ import {
   Loader2,
   ChevronDown,
   Paperclip,
+  UserCog,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -42,6 +44,7 @@ export default function VendorPortalDashboard() {
   const navigate = useNavigate();
   const { user, userType, loading: authLoading, signOut } = useAuth();
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [changeRequestOpen, setChangeRequestOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const { data: vendor, isLoading: vendorLoading } = useQuery({
@@ -87,6 +90,21 @@ export default function VendorPortalDashboard() {
         .order("payment_date", { ascending: false });
       if (error) throw error;
       return (data || []) as InvoicePayment[];
+    },
+    enabled: !!vendor?.id,
+  });
+
+  const { data: changeRequests = [], refetch: refetchChangeRequests } = useQuery({
+    queryKey: ["portal-change-requests", vendor?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vendor_detail_change_requests")
+        .select("id, status, created_at, reviewed_at, review_comments")
+        .eq("vendor_id", vendor!.id)
+        .order("created_at", { ascending: false })
+        .limit(5);
+      if (error) throw error;
+      return data || [];
     },
     enabled: !!vendor?.id,
   });
@@ -159,6 +177,9 @@ export default function VendorPortalDashboard() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Button onClick={() => setChangeRequestOpen(true)} size="sm" variant="outline">
+              <UserCog className="h-4 w-4 mr-2" /> Update My Details
+            </Button>
             <Button onClick={() => setUploadOpen(true)} size="sm">
               <Upload className="h-4 w-4 mr-2" /> Upload Invoice
             </Button>
@@ -192,6 +213,38 @@ export default function VendorPortalDashboard() {
             </Card>
           ))}
         </div>
+
+        {/* Pending/recent detail-change requests */}
+        {changeRequests.length > 0 && (
+          <Card>
+            <CardContent className="p-4">
+              <h2 className="font-semibold mb-3">Your Detail Change Requests</h2>
+              <div className="space-y-2">
+                {changeRequests.map((r) => {
+                  const statusMeta =
+                    r.status === "approved"
+                      ? { label: "Applied", className: "bg-emerald-100 text-emerald-800 border-emerald-200" }
+                      : r.status === "rejected"
+                        ? { label: "Not Approved", className: "bg-red-100 text-red-800 border-red-200" }
+                        : { label: "Pending Review", className: "bg-amber-100 text-amber-800 border-amber-200" };
+                  return (
+                    <div key={r.id} className="flex items-center justify-between text-sm border rounded-md px-3 py-2">
+                      <div>
+                        <p className="text-muted-foreground text-xs">
+                          Requested {new Date(r.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                        </p>
+                        {r.status === "rejected" && r.review_comments && (
+                          <p className="text-xs text-destructive mt-0.5">{r.review_comments}</p>
+                        )}
+                      </div>
+                      <Badge variant="outline" className={statusMeta.className}>{statusMeta.label}</Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Analytics */}
         <InvoiceCharts
@@ -339,6 +392,13 @@ export default function VendorPortalDashboard() {
           refetchInvoices();
           refetchPayments();
         }}
+      />
+
+      <DetailChangeRequestDialog
+        open={changeRequestOpen}
+        onOpenChange={setChangeRequestOpen}
+        vendorId={vendor.id}
+        onSubmitted={refetchChangeRequests}
       />
     </div>
   );

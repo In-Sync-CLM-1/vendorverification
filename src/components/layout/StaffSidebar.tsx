@@ -21,6 +21,7 @@ import {
   ReceiptIndianRupee,
   ChartColumnBig,
   Landmark,
+  UserCog,
 } from "lucide-react";
 import {
   Sidebar,
@@ -54,6 +55,7 @@ const navSections = [
       { title: "Fraud Alerts", url: "/staff/fraud-alerts", icon: ShieldAlert },
       { title: "Bulk Import", url: "/staff/bulk-import", icon: Upload },
       { title: "Bulk Invite", url: "/staff/bulk-invite", icon: Send },
+      { title: "Detail Change Requests", url: "/staff/change-requests", icon: UserCog },
     ],
   },
   {
