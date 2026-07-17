@@ -6,7 +6,6 @@ import { useTenantLogo } from "@/hooks/useTenantLogo";
 import {
   ArrowRight,
   ShieldCheck,
-  ScanSearch,
   FileCheck2,
   Brain,
   CheckCircle2,
@@ -27,6 +26,8 @@ import {
   BellRing,
   UserCog,
   Building2,
+  ScanSearch,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -41,75 +42,211 @@ const fadeUp = {
   }),
 };
 
-/** The lifecycle IS the pitch — five stages, one relationship. */
+/* ────────────────────────────────────────────────────────────────
+   Product vignettes — small mock-UI compositions that SHOW each
+   lifecycle stage instead of describing it. Decorative only.
+   ──────────────────────────────────────────────────────────────── */
+
+function VignetteFrame({ children }: { children: ReactNode }) {
+  return (
+    <div aria-hidden className="relative rounded-2xl bg-gradient-to-br from-primary/[0.06] via-muted/60 to-accent/[0.07] border border-border p-5 sm:p-8">
+      <div className="rounded-xl border border-border bg-card shadow-lg overflow-hidden max-w-sm mx-auto">
+        <div className="flex items-center gap-1.5 border-b border-border bg-muted/40 px-3 py-2">
+          <span className="h-2 w-2 rounded-full bg-border" />
+          <span className="h-2 w-2 rounded-full bg-border" />
+          <span className="h-2 w-2 rounded-full bg-border" />
+        </div>
+        <div className="p-4">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function VignetteVerification() {
+  return (
+    <VignetteFrame>
+      <p className="text-xs font-semibold mb-2.5">Padmavati Communications · verification</p>
+      <div className="space-y-1.5">
+        {[
+          { label: "PAN", note: "AAACP····K", ok: true },
+          { label: "GSTIN", note: "27AAACP····1Z5", ok: true },
+          { label: "Bank account", note: "penny-drop confirmed", ok: true },
+        ].map((r) => (
+          <div key={r.label} className="flex items-center justify-between rounded-md bg-muted/50 px-2.5 py-1.5">
+            <span className="text-xs font-medium">{r.label}</span>
+            <span className="text-[11px] text-muted-foreground">{r.note}</span>
+            <CheckCircle2 className="h-3.5 w-3.5 text-accent shrink-0" />
+          </div>
+        ))}
+        <div className="flex items-center gap-2 rounded-md border border-warning/40 bg-warning/10 px-2.5 py-1.5">
+          <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0" />
+          <span className="text-[11px] text-foreground">Similar name found: “Padmavati Comm.” — flagged for review</span>
+        </div>
+      </div>
+      <div className="mt-3 flex items-center justify-between">
+        <span className="text-[11px] text-muted-foreground">Reviewer → Approver</span>
+        <span className="rounded-full bg-accent/15 text-accent px-2 py-0.5 text-[11px] font-semibold">Approved</span>
+      </div>
+    </VignetteFrame>
+  );
+}
+
+function VignetteLogin() {
+  return (
+    <VignetteFrame>
+      <p className="text-xs font-semibold mb-1">Vendor login</p>
+      <p className="text-[11px] text-muted-foreground mb-3">No password — a one-time code, sent where you already are</p>
+      <div className="rounded-md bg-muted/50 px-2.5 py-1.5 text-xs mb-3">anita@saffron····.com</div>
+      <div className="flex gap-1.5 mb-3">
+        {["4", "7", "2", "9", "", ""].map((d, i) => (
+          <span
+            key={i}
+            className={`h-9 w-8 rounded-md border text-center leading-9 text-sm font-bold ${d ? "border-primary/40 bg-primary/5 text-foreground" : "border-border bg-muted/30 text-muted-foreground"}`}
+          >
+            {d}
+          </span>
+        ))}
+      </div>
+      <p className="text-[11px] text-accent font-medium flex items-center gap-1">
+        <CheckCircle2 className="h-3 w-3" /> Code sent to email &amp; WhatsApp
+      </p>
+    </VignetteFrame>
+  );
+}
+
+function VignetteInvoice() {
+  return (
+    <VignetteFrame>
+      <div className="flex items-center gap-2 mb-2.5">
+        <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-xs font-medium">
+          <FileText className="h-3 w-3 text-primary" /> invoice_2047.pdf
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2 py-0.5 text-[10px] font-semibold">
+          <Sparkles className="h-2.5 w-2.5" /> AI read
+        </span>
+      </div>
+      <div className="space-y-1.5">
+        {[
+          { field: "Invoice No", value: "INV-2047", conf: "99%" },
+          { field: "Date", value: "12 Jul 2026", conf: "97%" },
+          { field: "Amount", value: "₹1,18,000", conf: "98%" },
+        ].map((r) => (
+          <div key={r.field} className="flex items-center justify-between rounded-md bg-muted/50 px-2.5 py-1.5">
+            <span className="text-[11px] text-muted-foreground w-20">{r.field}</span>
+            <span className="text-xs font-medium flex-1">{r.value}</span>
+            <span className="text-[10px] text-accent font-semibold">{r.conf}</span>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 text-[11px] text-muted-foreground flex items-center gap-1">
+        <Lock className="h-3 w-3" /> Locked after submission — a clean audit trail
+      </p>
+    </VignetteFrame>
+  );
+}
+
+function VignettePayment() {
+  return (
+    <VignetteFrame>
+      <div className="flex items-center justify-between mb-2.5">
+        <p className="text-xs font-semibold">INV-2047 · settlement</p>
+        <span className="rounded-full bg-accent/15 text-accent px-2 py-0.5 text-[11px] font-semibold">Paid</span>
+      </div>
+      <div className="space-y-1.5">
+        {[
+          { label: "Invoice amount", value: "₹1,18,000", strong: false },
+          { label: "Advance adjusted", value: "− ₹20,000", strong: false },
+          { label: "TDS (2%)", value: "− ₹2,360", strong: false },
+          { label: "Payout · UTR N2607…", value: "₹95,640", strong: true },
+        ].map((r) => (
+          <div
+            key={r.label}
+            className={`flex items-center justify-between rounded-md px-2.5 py-1.5 ${r.strong ? "bg-accent/10 border border-accent/30" : "bg-muted/50"}`}
+          >
+            <span className={`text-[11px] ${r.strong ? "font-semibold text-foreground" : "text-muted-foreground"}`}>{r.label}</span>
+            <span className={`text-xs ${r.strong ? "font-bold" : "font-medium"}`}>{r.value}</span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 rounded-lg rounded-tl-none border border-accent/30 bg-accent/10 px-2.5 py-1.5">
+        <p className="text-[11px] text-foreground flex items-start gap-1.5">
+          <BellRing className="h-3 w-3 mt-0.5 shrink-0 text-accent" />
+          ₹95,640 paid against INV-2047 — sent to the vendor on WhatsApp &amp; email, automatically
+        </p>
+      </div>
+    </VignetteFrame>
+  );
+}
+
+function VignetteChangeRequest() {
+  return (
+    <VignetteFrame>
+      <p className="text-xs font-semibold mb-2.5">Detail change request</p>
+      <div className="rounded-md bg-muted/50 px-2.5 py-2 mb-1.5">
+        <p className="text-[11px] text-muted-foreground mb-1">Bank account</p>
+        <p className="text-xs font-medium flex items-center gap-2">
+          ····0237 <ArrowRight className="h-3 w-3 text-muted-foreground" /> ····8841
+        </p>
+      </div>
+      <div className="rounded-md bg-muted/50 px-2.5 py-2 mb-3">
+        <p className="text-[11px] text-muted-foreground mb-1">Vendor note</p>
+        <p className="text-xs italic">“Old account is being closed”</p>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="rounded-full bg-warning/15 text-warning px-2 py-0.5 text-[11px] font-semibold">Pending review</span>
+        <span className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground">
+          <CheckCircle2 className="h-3 w-3" /> Approve &amp; apply
+        </span>
+      </div>
+      <p className="mt-2.5 text-[11px] text-muted-foreground">Nothing changes until your team approves.</p>
+    </VignetteFrame>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────
+   Content
+   ──────────────────────────────────────────────────────────────── */
+
 const LIFECYCLE = [
   {
     step: "01",
     icon: ShieldCheck,
     title: "Onboard with confidence",
-    desc: "Invite one vendor or import hundreds. PAN, GST and bank details are verified against live government sources, duplicates and fraud are flagged automatically, and every approval passes through a maker–checker–approver trail.",
-    points: ["Live PAN, GST & bank verification", "Fraud & duplicate detection", "Maker–checker–approver audit trail"],
+    desc: "PAN, GST and bank verified against live government sources — fraud and duplicates flagged before you commit.",
+    points: ["Live PAN, GST & bank checks", "Fraud & duplicates caught early", "Maker–checker–approver trail"],
+    vignette: VignetteVerification,
   },
   {
     step: "02",
     icon: KeyRound,
     title: "One portal, zero passwords",
-    desc: "Approved vendors log in with a one-time code sent to their registered email or WhatsApp. No credentials to issue, no reset tickets, no shared spreadsheets.",
-    points: ["OTP login via email or WhatsApp", "Nothing for IT to provision", "Vendors see their own status, always"],
+    desc: "Approved vendors log in with a one-time code to their registered email or WhatsApp.",
+    points: ["Nothing for IT to provision", "No reset tickets, ever", "Vendors see their own status"],
+    vignette: VignetteLogin,
   },
   {
     step: "03",
     icon: FileText,
     title: "Invoices without the inbox",
-    desc: "Vendors upload invoices from their portal. AI reads the document and pre-fills the details, submissions are locked the moment they land, and your team approves or rejects from a single queue.",
-    points: ["AI reads & pre-fills every invoice", "Locked after submission — clean audit trail", "One review queue for the whole team"],
+    desc: "Vendors upload, AI reads and pre-fills, your team approves from one queue.",
+    points: ["AI reads every invoice", "Locked after submission", "One review queue"],
+    vignette: VignetteInvoice,
   },
   {
     step: "04",
     icon: Landmark,
     title: "Payments everyone can see",
-    desc: "Record settlements with the full advance, GST, TDS and payout breakup — or match an entire bank statement to open invoices in one screen. Vendors are notified automatically the moment anything changes.",
-    points: ["Advance / GST / TDS / payout breakup", "Match a full bank statement in one screen", "Vendors notified at every step — automatically"],
+    desc: "Full advance / GST / TDS / payout breakup on every settlement — vendors notified the moment it lands.",
+    points: ["Match a bank statement in one screen", "Part-payments to full & final", "Automatic vendor notifications"],
+    vignette: VignettePayment,
   },
   {
     step: "05",
     icon: UserCog,
     title: "Details that stay current",
-    desc: "Vendors request their own bank and contact updates from the portal. Nothing changes on the record until your team approves — control stays with you, upkeep stays with them.",
-    points: ["Self-service change requests", "Staff approval before anything applies", "Every change logged and attributable"],
-  },
-];
-
-const CAPABILITIES = [
-  {
-    icon: Brain,
-    title: "AI Document Analysis",
-    desc: "Reads GST certificates, PAN cards and bank documents, extracts every field, and flags tampering — before a human ever opens the file.",
-  },
-  {
-    icon: ScanSearch,
-    title: "Live Government Checks",
-    desc: "PAN, GST and bank account verification against live government and financial APIs. Not a form-fill — a verdict.",
-  },
-  {
-    icon: AlertTriangle,
-    title: "Fraud & Duplicate Detection",
-    desc: "Duplicate GSTs, recycled bank accounts, near-identical company names, tampered documents — caught before commitment, not after.",
-  },
-  {
-    icon: FileText,
-    title: "AI-Read Invoices",
-    desc: "Vendors upload a PDF or photo; the invoice number, date, amounts and PO reference are extracted and pre-filled. They confirm, you review.",
-  },
-  {
-    icon: Landmark,
-    title: "One-Screen Payment Matching",
-    desc: "Paste or upload a bank statement — outgoing payments are extracted and matched to open invoices. Confirm once, record everything.",
-  },
-  {
-    icon: BellRing,
-    title: "Automatic Vendor Updates",
-    desc: "Approved, rejected, paid — vendors hear it from the platform by email and WhatsApp the moment it happens. The follow-up calls stop.",
+    desc: "Vendors request their own bank and contact updates; your team approves before anything applies.",
+    points: ["Self-service requests", "Staff approval gate", "Every change logged"],
+    vignette: VignetteChangeRequest,
   },
 ];
 
@@ -118,6 +255,32 @@ const STATS = [
   { value: "5", label: "Live government API checks" },
   { value: "0", label: "Vendor passwords to manage" },
   { value: "100%", label: "Audit-ready trail" },
+];
+
+const TRUST_BADGES = [
+  { icon: Lock, label: "256-bit encryption" },
+  { icon: ShieldCheck, label: "DPDP Act compliant" },
+  { icon: FileCheck2, label: "Live government API checks" },
+  { icon: ClipboardCheck, label: "Complete audit trail" },
+];
+
+const ONBOARDING_TRACK = [
+  { icon: Send, title: "Invite sent" },
+  { icon: UserCheck, title: "Identity verified (OTP)" },
+  { icon: FileText, title: "Documents submitted" },
+  { icon: Brain, title: "AI reads every document" },
+  { icon: ScanSearch, title: "Government APIs confirm" },
+  { icon: AlertTriangle, title: "Fraud flagged automatically" },
+  { icon: ClipboardCheck, title: "Reviewer checks" },
+  { icon: BadgeCheck, title: "Approver signs off" },
+];
+
+const INVOICING_TRACK = [
+  { icon: Upload, title: "Vendor uploads invoice" },
+  { icon: Sparkles, title: "AI reads & pre-fills" },
+  { icon: ClipboardCheck, title: "Your team approves" },
+  { icon: Landmark, title: "Payment recorded with breakup" },
+  { icon: BellRing, title: "Vendor notified automatically" },
 ];
 
 const PRICING = [
@@ -180,49 +343,6 @@ const TESTIMONIALS = [
     name: "Amit Desai",
     title: "Finance Head",
     company: "Infrastructure Group, Pune",
-  },
-];
-
-const ONBOARDING_STEPS = [
-  {
-    icon: Send,
-    title: "You send an invite",
-    desc: "Share a unique link with your vendor — or bulk-import hundreds at once. No manual forms on your side.",
-  },
-  {
-    icon: UserCheck,
-    title: "Vendor verifies identity",
-    desc: "The vendor confirms their mobile and email with a one-time code. Identity comes before anything else.",
-  },
-  {
-    icon: FileText,
-    title: "Documents & details submitted",
-    desc: "Company details, banking information, GST certificate, PAN, cancelled cheque — collected in one flow, with DPDP consent.",
-  },
-  {
-    icon: Brain,
-    title: "AI reads every document",
-    desc: "Fields are extracted and cross-checked, tampering is flagged, and each read carries a confidence score.",
-  },
-  {
-    icon: ScanSearch,
-    title: "Government APIs confirm",
-    desc: "PAN, GST and bank account verified against live government and financial sources.",
-  },
-  {
-    icon: AlertTriangle,
-    title: "Fraud flagged automatically",
-    desc: "Duplicate GST or PAN, recycled bank accounts, similar company names — surfaced before your reviewer sees the file.",
-  },
-  {
-    icon: ClipboardCheck,
-    title: "Reviewer checks & forwards",
-    desc: "Your team reviews the AI analysis and documents, then forwards to the approver — or sends back for corrections.",
-  },
-  {
-    icon: BadgeCheck,
-    title: "Approver signs off",
-    desc: "Final approval, complete audit trail, compliance report ready to download. The vendor is live — portal access and all.",
   },
 ];
 
@@ -419,10 +539,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Stats Bar */}
+      {/* Proof band — every number and badge in one place */}
       <section className="bg-card border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 mb-8">
             {STATS.map((stat, i) => (
               <motion.div
                 key={stat.label}
@@ -439,6 +559,14 @@ export default function LandingPage() {
                   {stat.label}
                 </div>
               </motion.div>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 border-t border-border pt-6 text-sm text-muted-foreground">
+            {TRUST_BADGES.map((b) => (
+              <span key={b.label} className="flex items-center gap-2">
+                <b.icon className="h-4 w-4 text-primary/70" />
+                {b.label}
+              </span>
             ))}
           </div>
         </div>
@@ -489,7 +617,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* The Lifecycle — the centerpiece */}
+      {/* The Lifecycle — shown, not told */}
       <section id="platform" className="py-20 sm:py-28 bg-background">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
@@ -505,104 +633,52 @@ export default function LandingPage() {
             </h2>
             <p className="text-lg text-muted-foreground leading-relaxed">
               Most tools stop at onboarding. Vendor-Sync stays for the
-              relationship — because the vendor you verified on day one is the
-              same vendor invoicing you on day ninety.
+              relationship — the vendor you verify on day one is the same
+              vendor invoicing you on day ninety.
             </p>
           </motion.div>
 
-          <div className="space-y-6">
+          <div className="space-y-16 sm:space-y-20">
             {LIFECYCLE.map((stage, i) => {
               const Icon = stage.icon;
+              const Vignette = stage.vignette;
+              const flip = i % 2 === 1;
               return (
                 <motion.div
                   key={stage.step}
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-40px" }}
-                  transition={{ delay: i * 0.05, duration: 0.5 }}
+                  viewport={{ once: true, margin: "-60px" }}
+                  transition={{ duration: 0.5 }}
+                  className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-center"
                 >
-                  <Card className="border border-border hover:border-primary/30 hover:shadow-lg transition-all duration-300 overflow-hidden">
-                    <CardContent className="p-0">
-                      <div className="grid lg:grid-cols-[1fr,1.1fr] gap-0">
-                        <div className="p-8 sm:p-10">
-                          <div className="flex items-center gap-4 mb-5">
-                            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                              <Icon className="h-6 w-6 text-primary" />
-                            </div>
-                            <span className="text-sm font-bold tracking-[0.2em] text-muted-foreground/60">
-                              STAGE {stage.step}
-                            </span>
-                          </div>
-                          <h3 className="text-2xl font-semibold tracking-tight text-foreground mb-3">
-                            {stage.title}
-                          </h3>
-                          <p className="text-muted-foreground leading-relaxed">
-                            {stage.desc}
-                          </p>
-                        </div>
-                        <div className="bg-muted/40 border-t lg:border-t-0 lg:border-l border-border p-8 sm:p-10 flex flex-col justify-center">
-                          <ul className="space-y-4">
-                            {stage.points.map((point) => (
-                              <li key={point} className="flex items-start gap-3">
-                                <CheckCircle2 className="mt-0.5 shrink-0 h-5 w-5 text-accent" />
-                                <span className="text-foreground font-medium">{point}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
+                  <div className={flip ? "lg:order-2" : ""}>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                        <Icon className="h-5 w-5 text-primary" />
                       </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* Capabilities */}
-      <section className="py-20 sm:py-28 bg-muted/30 border-y border-border/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="max-w-3xl mb-16"
-          >
-            <Eyebrow>Under the Hood</Eyebrow>
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-5">
-              The machinery that makes it effortless
-            </h2>
-            <p className="text-lg text-muted-foreground leading-relaxed">
-              AI where it saves hours, government APIs where trust matters, and
-              automation where people used to chase people.
-            </p>
-          </motion.div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {CAPABILITIES.map((cap, i) => {
-              const Icon = cap.icon;
-              return (
-                <motion.div
-                  key={cap.title}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-30px" }}
-                  transition={{ delay: i * 0.08 }}
-                >
-                  <Card className="h-full border border-border hover:border-primary/30 hover:shadow-lg transition-all duration-300">
-                    <CardContent className="p-8">
-                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-5">
-                        <Icon className="h-6 w-6 text-primary" />
-                      </div>
-                      <h3 className="text-lg font-semibold tracking-tight text-foreground mb-2.5">
-                        {cap.title}
-                      </h3>
-                      <p className="text-muted-foreground leading-relaxed text-[15px]">
-                        {cap.desc}
-                      </p>
-                    </CardContent>
-                  </Card>
+                      <span className="text-xs font-bold tracking-[0.2em] text-muted-foreground/60">
+                        STAGE {stage.step} / 05
+                      </span>
+                    </div>
+                    <h3 className="text-2xl sm:text-[1.7rem] font-semibold tracking-tight text-foreground mb-3">
+                      {stage.title}
+                    </h3>
+                    <p className="text-muted-foreground leading-relaxed mb-5">
+                      {stage.desc}
+                    </p>
+                    <ul className="space-y-2.5">
+                      {stage.points.map((point) => (
+                        <li key={point} className="flex items-start gap-2.5">
+                          <CheckCircle2 className="mt-0.5 shrink-0 h-4 w-4 text-accent" />
+                          <span className="text-sm font-medium text-foreground">{point}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className={flip ? "lg:order-1" : ""}>
+                    <Vignette />
+                  </div>
                 </motion.div>
               );
             })}
@@ -611,7 +687,7 @@ export default function LandingPage() {
       </section>
 
       {/* Before / After */}
-      <section className="py-20 sm:py-28 bg-background">
+      <section className="py-20 sm:py-28 bg-muted/30 border-y border-border/50">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -638,11 +714,11 @@ export default function LandingPage() {
                   </h3>
                   <ul className="space-y-4">
                     {[
-                      "Onboarding scattered across email threads and spreadsheets",
-                      "7–10 days chasing documents for every new vendor",
-                      "“Any update on my payment?” calls, every single week",
-                      "Payment records living in one person's Excel file",
-                      "Risky vendors discovered after the money is committed",
+                      "Onboarding lives in email threads",
+                      "7–10 days chasing documents",
+                      "“Any update on my payment?” — weekly",
+                      "Payment records in one person's Excel",
+                      "Risky vendors found after commitment",
                       "Every audit is a scramble",
                     ].map((item) => (
                       <li
@@ -672,12 +748,12 @@ export default function LandingPage() {
                   </h3>
                   <ul className="space-y-4">
                     {[
-                      "Verified onboarding — KYC, fraud checks and approvals in one flow",
-                      "Vendors submit their own documents; AI does the reading",
-                      "Vendors notified automatically — the follow-up calls stop",
-                      "Every settlement recorded with its full breakup, visible to both sides",
-                      "Financially risky vendors flagged before you commit",
-                      "The audit trail is already written. Download it.",
+                      "KYC, fraud checks & approvals in one flow",
+                      "Vendors submit; AI does the reading",
+                      "Vendors notified — the calls stop",
+                      "Every settlement visible to both sides",
+                      "Risky vendors flagged before you commit",
+                      "The audit trail is already written",
                     ].map((item) => (
                       <li
                         key={item}
@@ -695,86 +771,98 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Onboarding, step by step */}
-      <section id="how-it-works" className="py-20 sm:py-28 bg-muted/30 border-y border-border/50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* How It Works — both journeys, side by side */}
+      <section id="how-it-works" className="py-20 sm:py-28 bg-background">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-16"
+            className="text-center mb-14"
           >
             <Eyebrow>How It Works</Eyebrow>
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-4">
-              Verified onboarding, step by step
+              Two journeys, one portal
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              From invite to approved vendor — exactly what happens at every
-              stage, and none of it on your team&apos;s desk.
+              Onboarding runs once per vendor. Invoicing runs for the life of
+              the relationship. Vendor-Sync carries both.
             </p>
           </motion.div>
 
-          <div className="relative">
-            <div className="absolute left-6 sm:left-8 top-0 bottom-0 w-0.5 bg-border" />
-
-            <div className="space-y-6">
-              {ONBOARDING_STEPS.map((step, i) => {
-                const Icon = step.icon;
-                const isLast = i === ONBOARDING_STEPS.length - 1;
-                return (
-                  <motion.div
-                    key={step.title}
-                    initial={{ opacity: 0, x: -20 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true, margin: "-40px" }}
-                    transition={{ duration: 0.4, delay: 0.05 }}
-                    className="relative flex gap-4 sm:gap-6"
-                  >
-                    <div className="relative z-10 flex flex-col items-center shrink-0">
-                      <div
-                        className={`w-12 h-12 sm:w-16 sm:h-16 rounded-2xl ring-4 ring-background flex items-center justify-center ${
-                          isLast ? "bg-accent/15" : "bg-primary/10"
-                        }`}
-                      >
-                        <Icon className={`h-6 w-6 sm:h-7 sm:w-7 ${isLast ? "text-accent" : "text-primary"}`} />
-                      </div>
-                    </div>
-
-                    <div className="pt-1 sm:pt-3 pb-2 flex-1">
-                      <div className="flex items-center gap-3 mb-1">
-                        <span className="text-xs font-bold text-muted-foreground/50 uppercase tracking-wider">
-                          Step {i + 1}
-                        </span>
-                      </div>
-                      <h3 className="text-lg font-semibold tracking-tight text-foreground mb-1">
-                        {step.title}
-                      </h3>
-                      <p className="text-muted-foreground leading-relaxed text-sm sm:text-base">
-                        {step.desc}
-                      </p>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-
+          <div className="grid md:grid-cols-2 gap-8">
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="flex justify-center mt-10"
             >
-              <div className="flex items-center gap-2 text-sm font-semibold text-accent bg-accent/10 rounded-full px-5 py-2.5">
-                <CheckCircle2 className="h-5 w-5" />
-                Vendor live — portal, invoicing and payment visibility included.
-              </div>
+              <Card className="h-full">
+                <CardContent className="p-8">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <ShieldCheck className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-foreground">Verified onboarding</h3>
+                      <p className="text-xs text-muted-foreground">Once per vendor · under a week, not 7–10 days per document chase</p>
+                    </div>
+                  </div>
+                  <ol className="space-y-3">
+                    {ONBOARDING_TRACK.map((s, i) => (
+                      <li key={s.title} className="flex items-center gap-3">
+                        <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">
+                          {i + 1}
+                        </span>
+                        <s.icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span className="text-sm text-foreground">{s.title}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+            >
+              <Card className="h-full border-accent/40">
+                <CardContent className="p-8">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 rounded-xl bg-accent/15 flex items-center justify-center">
+                      <IndianRupee className="h-5 w-5 text-accent" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-foreground">Invoicing &amp; settlement</h3>
+                      <p className="text-xs text-muted-foreground">Every invoice · both sides see the same truth</p>
+                    </div>
+                  </div>
+                  <ol className="space-y-3">
+                    {INVOICING_TRACK.map((s, i) => (
+                      <li key={s.title} className="flex items-center gap-3">
+                        <span className="w-6 h-6 rounded-full bg-accent/15 text-accent text-xs font-bold flex items-center justify-center shrink-0">
+                          {i + 1}
+                        </span>
+                        <s.icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span className="text-sm text-foreground">{s.title}</span>
+                      </li>
+                    ))}
+                  </ol>
+                  <div className="mt-6 flex items-center gap-2 text-sm font-semibold text-accent bg-accent/10 rounded-full px-4 py-2">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    Repeat — without the follow-up calls
+                  </div>
+                </CardContent>
+              </Card>
             </motion.div>
           </div>
         </div>
       </section>
 
       {/* Testimonials */}
-      <section className="py-20 sm:py-28 bg-background">
+      <section className="py-20 sm:py-28 bg-muted/30 border-y border-border/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -786,9 +874,6 @@ export default function LandingPage() {
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-4">
               Trusted by finance leaders
             </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              From CFOs and procurement heads who verify before they commit.
-            </p>
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-8">
@@ -823,7 +908,7 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="py-20 sm:py-28 bg-muted/30 border-y border-border/50">
+      <section id="pricing" className="py-20 sm:py-28 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -836,11 +921,9 @@ export default function LandingPage() {
               Simple, transparent pricing
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Quarterly subscription, pay-per-verification wallet — and the full
-              platform on every plan. Vendor portal, invoices, payments and
-              notifications included. Run individual checks — GST-only,
-              bank-only, PAN-only — or the full stack; each counts as one
-              verification.
+              Quarterly subscription, pay-per-verification wallet — the full
+              platform on every plan. Run single checks (GST-only, bank-only)
+              or the full stack; each counts as one verification.
             </p>
           </motion.div>
 
@@ -1003,30 +1086,6 @@ export default function LandingPage() {
               </Button>
             </div>
           </motion.div>
-        </div>
-      </section>
-
-      {/* Trust Bar */}
-      <section className="bg-card border-t border-border py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <Lock className="h-4 w-4" />
-              <span>256-bit Encryption</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4" />
-              <span>DPDP Act Compliant</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <FileCheck2 className="h-4 w-4" />
-              <span>Live Government API Checks</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <ClipboardCheck className="h-4 w-4" />
-              <span>Complete Audit Trail</span>
-            </div>
-          </div>
         </div>
       </section>
 

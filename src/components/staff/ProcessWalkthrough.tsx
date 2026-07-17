@@ -22,6 +22,9 @@ import {
   AlertCircle,
   ClipboardCheck,
   Eye,
+  IndianRupee,
+  BellRing,
+  Sparkles,
 } from "lucide-react";
 
 /* ════════════════════════════════════════════════════
@@ -48,11 +51,12 @@ const slides: Slide[] = [
         </div>
         <h2 className="text-2xl font-bold text-foreground mb-1">Vendor-Sync</h2>
         <p className="text-muted-foreground text-sm max-w-sm">Verification, onboarding, invoicing &amp; settlement — one portal</p>
-        <div className="flex gap-6 mt-5">
+        <div className="flex gap-5 mt-5">
           {[
-            { icon: <Building2 className="h-4 w-4" />, label: "Register", color: "text-blue-600 bg-blue-50" },
             { icon: <ShieldCheck className="h-4 w-4" />, label: "Verify", color: "text-amber-600 bg-amber-50" },
-            { icon: <CheckCircle2 className="h-4 w-4" />, label: "Approve", color: "text-green-600 bg-green-50" },
+            { icon: <Building2 className="h-4 w-4" />, label: "Onboard", color: "text-blue-600 bg-blue-50" },
+            { icon: <Receipt className="h-4 w-4" />, label: "Invoice", color: "text-purple-600 bg-purple-50" },
+            { icon: <Landmark className="h-4 w-4" />, label: "Settle", color: "text-green-600 bg-green-50" },
           ].map((s, i) => (
             <div key={i} className="flex flex-col items-center gap-1.5 animate-in fade-in duration-500" style={{ animationDelay: `${(i + 1) * 300}ms`, animationFillMode: "both" }}>
               <div className={`h-9 w-9 rounded-full flex items-center justify-center ${s.color}`}>{s.icon}</div>
@@ -350,9 +354,110 @@ const slides: Slide[] = [
     ),
   },
 
-  // 11 — End
+  // 11 — Vendor Portal: invoice upload
   {
-    title: "Ready to Go",
+    title: "Invoices, AI-Read",
+    subtitle: "Vendor portal upload",
+    duration: 7,
+    render: () => (
+      <div className="flex flex-col items-center justify-center h-full px-5 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <h3 className="text-lg font-semibold mb-0.5">Vendors Upload, AI Reads</h3>
+        <p className="text-sm text-muted-foreground mb-3">Approved vendors submit invoices from their portal</p>
+        <div className="w-full max-w-xs rounded-lg border bg-card shadow-sm p-3">
+          <div className="flex items-center gap-2 mb-2 animate-in fade-in duration-400" style={{ animationDelay: "200ms", animationFillMode: "both" }}>
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-xs font-medium">
+              <FileText className="h-3 w-3 text-primary" /> invoice_2047.pdf
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 text-[10px] font-semibold">
+              <Sparkles className="h-2.5 w-2.5" /> AI read
+            </span>
+          </div>
+          <div className="space-y-1">
+            {[
+              { field: "Invoice No", value: "INV-2047", conf: "99%", delay: 400 },
+              { field: "Date", value: "12 Jul 2026", conf: "97%", delay: 550 },
+              { field: "Amount", value: "₹1,18,000", conf: "98%", delay: 700 },
+              { field: "PO Ref", value: "PO-0114", conf: "95%", delay: 850 },
+            ].map((r) => (
+              <div key={r.field} className="flex items-center justify-between rounded bg-muted/50 px-2 py-1 animate-in fade-in slide-in-from-left-2 duration-300" style={{ animationDelay: `${r.delay}ms`, animationFillMode: "both" }}>
+                <span className="text-xs text-muted-foreground">{r.field}</span>
+                <span className="text-xs font-medium">{r.value}</span>
+                <span className="text-[10px] text-green-600 font-semibold">{r.conf}</span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground animate-in fade-in duration-400" style={{ animationDelay: "1100ms", animationFillMode: "both" }}>
+            <Lock className="h-2.5 w-2.5" /> Details locked after submission — clean audit trail
+          </div>
+        </div>
+      </div>
+    ),
+  },
+
+  // 12 — Payment & settlement breakup
+  {
+    title: "Settlement Breakup",
+    subtitle: "Advance · GST · TDS · payout",
+    duration: 7,
+    render: () => (
+      <div className="flex flex-col items-center justify-center h-full px-5 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <h3 className="text-lg font-semibold mb-0.5">Payments Everyone Can See</h3>
+        <p className="text-sm text-muted-foreground mb-3">Every settlement recorded with its full breakup</p>
+        <div className="w-full max-w-xs rounded-lg border bg-card shadow-sm p-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold">INV-2047</span>
+            <span className="rounded-full bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 text-[10px] font-semibold animate-in fade-in duration-400" style={{ animationDelay: "1100ms", animationFillMode: "both" }}>Paid</span>
+          </div>
+          <div className="space-y-1">
+            {[
+              { label: "Invoice amount", value: "₹1,18,000", bold: false, delay: 200 },
+              { label: "Advance adjusted", value: "− ₹20,000", bold: false, delay: 400 },
+              { label: "TDS (2%)", value: "− ₹2,360", bold: false, delay: 600 },
+              { label: "Payout", value: "₹95,640", bold: true, delay: 800 },
+            ].map((r) => (
+              <div key={r.label} className={`flex items-center justify-between px-2 py-1 rounded animate-in fade-in slide-in-from-left-2 duration-300 ${r.bold ? "bg-green-50 border border-green-200" : "bg-muted/50"}`} style={{ animationDelay: `${r.delay}ms`, animationFillMode: "both" }}>
+                <span className={`text-xs ${r.bold ? "font-semibold text-green-800" : "text-muted-foreground"}`}>{r.label}</span>
+                <span className={`text-xs ${r.bold ? "font-bold text-green-800" : "font-medium"}`}>{r.value}</span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 flex items-center gap-1.5 text-[10px] text-muted-foreground animate-in fade-in duration-400" style={{ animationDelay: "1000ms", animationFillMode: "both" }}>
+            <IndianRupee className="h-2.5 w-2.5" /> UTR N2607152201 · part-payments tracked to full &amp; final
+          </div>
+        </div>
+      </div>
+    ),
+  },
+
+  // 13 — Vendor notified automatically
+  {
+    title: "Vendors Stay Informed",
+    subtitle: "Email + WhatsApp, automatic",
+    duration: 6,
+    render: () => (
+      <div className="flex flex-col items-center justify-center h-full px-5 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="h-10 w-10 rounded-xl bg-green-100 flex items-center justify-center mb-2">
+          <BellRing className="h-5 w-5 text-green-600" />
+        </div>
+        <h3 className="text-lg font-semibold mb-0.5">The Follow-Up Calls Stop</h3>
+        <p className="text-sm text-muted-foreground mb-4">Approved, rejected, paid — vendors hear it the moment it happens</p>
+        <div className="w-full max-w-xs space-y-2">
+          <div className="rounded-lg rounded-tl-none border border-green-200 bg-green-50 px-3 py-2 animate-in fade-in slide-in-from-left-4 duration-500" style={{ animationDelay: "300ms", animationFillMode: "both" }}>
+            <p className="text-xs text-green-900">₹95,640 paid against invoice INV-2047. Log in to the vendor portal for the full breakup.</p>
+            <p className="text-[10px] text-green-700 mt-1 text-right">WhatsApp · just now ✓✓</p>
+          </div>
+          <div className="rounded-lg border bg-card px-3 py-2 shadow-sm animate-in fade-in slide-in-from-left-4 duration-500" style={{ animationDelay: "700ms", animationFillMode: "both" }}>
+            <p className="text-[10px] font-semibold text-muted-foreground mb-0.5">Vendor-Sync &lt;noreply@in-sync.co.in&gt;</p>
+            <p className="text-xs font-medium">Payment recorded for invoice INV-2047</p>
+          </div>
+        </div>
+      </div>
+    ),
+  },
+
+  // 14 — End
+  {
+    title: "One Portal, Whole Lifecycle",
     subtitle: "",
     duration: 5,
     render: () => (
@@ -360,8 +465,8 @@ const slides: Slide[] = [
         <div className="h-11 w-11 rounded-full bg-green-100 flex items-center justify-center mb-3">
           <CheckCircle2 className="h-6 w-6 text-green-600" />
         </div>
-        <h2 className="text-2xl font-bold mb-1">Ready to Verify Vendors</h2>
-        <p className="text-sm text-muted-foreground max-w-sm">Sign in to access the dashboard, review queue, and start processing vendor applications.</p>
+        <h2 className="text-2xl font-bold mb-1">Every Vendor, Verified to Settled</h2>
+        <p className="text-sm text-muted-foreground max-w-sm">Verification, onboarding, invoicing and settlement — one portal for your team and your vendors.</p>
       </div>
     ),
   },
@@ -387,6 +492,7 @@ export const chapters: ChapterInfo[] = [
   { slideIndex: 8, icon: <Bot className="h-4 w-4" />, title: "AI Analysis", description: "Document intelligence", color: "bg-purple-100 text-purple-600" },
   { slideIndex: 9, icon: <Eye className="h-4 w-4" />, title: "Staff Workflow", description: "3-tier review process", color: "bg-amber-100 text-amber-600" },
   { slideIndex: 10, icon: <Lock className="h-4 w-4" />, title: "Security", description: "Encryption & compliance", color: "bg-red-100 text-red-600" },
+  { slideIndex: 11, icon: <Receipt className="h-4 w-4" />, title: "Invoices & Payments", description: "Upload to settlement", color: "bg-emerald-100 text-emerald-600" },
 ];
 
 /* ════════════════════════════════════════════════════
