@@ -325,27 +325,6 @@ const PLAN_FEATURES = [
   "DPDP compliant, PDF reports",
 ];
 
-const TESTIMONIALS = [
-  {
-    quote: "We caught a financially unstable vendor before committing a ₹50L purchase order. The bank statement analysis alone saved us from a potential write-off.",
-    name: "Rajesh Mehta",
-    title: "CFO",
-    company: "Manufacturing Enterprise, Mumbai",
-  },
-  {
-    quote: "What used to take our team 7-10 days of manual verification now happens in under 5 minutes. The GST and bank statement analysis is remarkably thorough.",
-    name: "Priya Sharma",
-    title: "Head of Procurement",
-    company: "IT Services Company, Bangalore",
-  },
-  {
-    quote: "The audit trail is what sold us. Every verification, every document, every approval — all downloadable as a PDF. Our auditors were impressed.",
-    name: "Amit Desai",
-    title: "Finance Head",
-    company: "Infrastructure Group, Pune",
-  },
-];
-
 const CLIENT_LOGOS = [
   { src: "/logos/quess.png", alt: "Quess Corp" },
   { src: "/logos/motherson.jpg", alt: "Motherson" },
@@ -927,46 +906,120 @@ export default function LandingPage() {
 
       {/* Testimonials */}
       <section className="relative py-20 sm:py-28 bg-[hsl(92,40%,93%)] border-y border-border/50 overflow-hidden">
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div aria-hidden className="absolute -top-20 right-[-8%] w-[30rem] h-[30rem] rounded-full bg-accent/15 blur-3xl" />
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-16"
+            className="text-center mb-14"
           >
             <Eyebrow>Customers</Eyebrow>
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-4">
-              Trusted by finance leaders
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+              Trusted by CFOs and procurement heads
             </h2>
+            <p className="text-lg text-muted-foreground mt-4 max-w-2xl mx-auto">
+              The people who sign the purchase orders, and the people who answer
+              for them at audit.
+            </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {TESTIMONIALS.map((t, i) => (
+          <div className="grid lg:grid-cols-5 gap-6">
+            {/* Featured: the save story */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-30px" }}
+              className="lg:col-span-3"
+            >
+              <Card className="h-full shadow-lg">
+                <CardContent className="p-8 sm:p-10 flex flex-col justify-between h-full">
+                  <div>
+                    <Quote className="h-9 w-9 text-accent/40 mb-6" />
+                    <p className="text-xl sm:text-2xl leading-snug tracking-tight text-foreground mb-8">
+                      We caught a financially unstable vendor before committing a{" "}
+                      <span className="font-bold text-primary">₹50L purchase order</span>.
+                      The bank statement analysis alone saved us from a potential
+                      write-off.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="h-11 w-11 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">
+                      RM
+                    </div>
+                    <div>
+                      <div className="font-semibold text-foreground">Rajesh Mehta</div>
+                      <div className="text-sm text-muted-foreground">
+                        CFO · Manufacturing Enterprise, Mumbai
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Supporting pair */}
+            <div className="lg:col-span-2 flex flex-col gap-6">
               <motion.div
-                key={t.name}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-30px" }}
-                transition={{ delay: i * 0.15 }}
+                transition={{ delay: 0.12 }}
+                className="flex-1"
               >
-                <Card className="h-full hover:shadow-lg transition-shadow">
-                  <CardContent className="p-8">
-                    <Quote className="h-8 w-8 text-accent/30 mb-4" />
-                    <p className="text-foreground leading-relaxed mb-6 italic">
-                      &ldquo;{t.quote}&rdquo;
+                <Card className="h-full">
+                  <CardContent className="p-7 flex flex-col justify-between h-full">
+                    <p className="text-foreground leading-relaxed mb-6">
+                      What used to take our team{" "}
+                      <span className="font-semibold">7–10 days</span> of manual
+                      verification now happens in{" "}
+                      <span className="font-semibold text-primary">under 5 minutes</span>.
+                      The GST and bank statement analysis is remarkably thorough.
                     </p>
-                    <div>
-                      <div className="font-semibold text-foreground">
-                        {t.name}
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-full bg-accent/15 text-accent flex items-center justify-center font-bold text-xs shrink-0">
+                        PS
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        {t.title}, {t.company}
+                      <div>
+                        <div className="font-semibold text-foreground text-sm">Priya Sharma</div>
+                        <div className="text-xs text-muted-foreground">
+                          Head of Procurement · IT Services, Bangalore
+                        </div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               </motion.div>
-            ))}
+
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-30px" }}
+                transition={{ delay: 0.24 }}
+                className="flex-1"
+              >
+                <Card className="h-full">
+                  <CardContent className="p-7 flex flex-col justify-between h-full">
+                    <p className="text-foreground leading-relaxed mb-6">
+                      The <span className="font-semibold">audit trail</span> is what
+                      sold us. Every verification, every document, every approval —
+                      all downloadable as a PDF. Our auditors were impressed.
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">
+                        AD
+                      </div>
+                      <div>
+                        <div className="font-semibold text-foreground text-sm">Amit Desai</div>
+                        <div className="text-xs text-muted-foreground">
+                          Finance Head · Infrastructure Group, Pune
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </div>
           </div>
         </div>
       </section>
