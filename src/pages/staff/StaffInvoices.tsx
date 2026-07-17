@@ -154,6 +154,19 @@ export default function StaffInvoices() {
             ? "Invoice rejected"
             : "Invoice moved to review"
       );
+
+      if (status === "approved" || status === "rejected") {
+        supabase.functions
+          .invoke("notify-vendor-invoice-status", {
+            body: {
+              event: status === "approved" ? "invoice_approved" : "invoice_rejected",
+              invoice_id: invoice.id,
+              extra: status === "rejected" ? { reason } : undefined,
+            },
+          })
+          .catch((e) => console.error("Vendor notification failed:", e));
+      }
+
       setRejectReason("");
       setSelected(null);
       refetchAll();

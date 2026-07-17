@@ -83,6 +83,17 @@ export function RecordPaymentDialog({
       if (error) throw new Error(error.message);
 
       toast.success("Payment recorded");
+
+      supabase.functions
+        .invoke("notify-vendor-invoice-status", {
+          body: {
+            event: "payment_recorded",
+            invoice_id: invoice.id,
+            extra: { amount: totalSettled, utr: utr.trim() || undefined },
+          },
+        })
+        .catch((e) => console.error("Vendor notification failed:", e));
+
       onOpenChange(false);
       setAdvance("");
       setGst("");
