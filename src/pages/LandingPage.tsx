@@ -691,10 +691,69 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Before / After — the dark mid-page anchor */}
+      {/* The Product + Before/After — the dark mid-page anchor */}
       <section className="relative py-20 sm:py-28 bg-gradient-to-br from-[hsl(210,45%,13%)] via-[hsl(207,55%,16%)] to-[hsl(204,70%,19%)] text-white overflow-hidden">
         <div aria-hidden className="absolute inset-0 bg-grid-white mask-fade-center" />
         <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Real product, not mockups */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <Eyebrow>The Product</Eyebrow>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">
+              This is what your finance team sees
+            </h2>
+            <p className="text-lg text-white/70 max-w-2xl mx-auto">
+              Real screens from the live demo workspace — every figure below is
+              the platform doing its job, not a mockup.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.6 }}
+            className="relative mb-24 lg:mb-32 lg:pl-16"
+          >
+            {/* Main shot: invoice analytics */}
+            <div className="rounded-xl border border-white/20 bg-white/5 shadow-2xl overflow-hidden">
+              <div className="flex items-center gap-2 border-b border-white/10 bg-white/[0.07] px-4 py-2.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-white/25" />
+                <span className="h-2.5 w-2.5 rounded-full bg-white/25" />
+                <span className="h-2.5 w-2.5 rounded-full bg-white/25" />
+                <span className="ml-3 hidden sm:block rounded-md bg-white/10 px-3 py-0.5 text-[11px] text-white/60 font-mono">
+                  vendor.in-sync.co.in/staff/invoice-analytics
+                </span>
+              </div>
+              <img
+                src="/screenshots/product-analytics.png"
+                alt="Vendor-Sync invoice analytics — billed vs settled cash motion, payment pipeline and vendor exposure"
+                loading="lazy"
+                className="w-full block"
+              />
+            </div>
+
+            {/* Offset shot: the invoice queue */}
+            <motion.div
+              initial={{ opacity: 0, y: 30, rotate: 0 }}
+              whileInView={{ opacity: 1, y: 0, rotate: -1.5 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ duration: 0.6, delay: 0.25 }}
+              className="hidden lg:block absolute -bottom-16 -left-8 w-[46%] rounded-lg border border-white/20 shadow-2xl overflow-hidden ring-1 ring-black/40"
+            >
+              <img
+                src="/screenshots/product-invoices.png"
+                alt="Vendor-Sync invoice queue — vendor invoices with amounts, settlement and status"
+                loading="lazy"
+                className="w-full block"
+              />
+            </motion.div>
+          </motion.div>
+
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
