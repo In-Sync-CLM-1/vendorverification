@@ -447,6 +447,7 @@ export default function LandingPage() {
           <div className="absolute top-20 left-10 w-72 h-72 bg-white rounded-full blur-3xl" />
           <div className="absolute bottom-10 right-10 w-96 h-96 bg-accent rounded-full blur-3xl" />
         </div>
+        <div aria-hidden className="absolute inset-0 bg-grid-white mask-fade-center" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 lg:py-32">
           <div className="flex flex-col lg:flex-row lg:items-center lg:gap-12">
             <motion.div
@@ -540,8 +541,9 @@ export default function LandingPage() {
       </section>
 
       {/* Proof band — every number and badge in one place */}
-      <section className="bg-card border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <section className="relative bg-card border-b border-border overflow-hidden">
+        <div aria-hidden className="absolute inset-0 bg-dots mask-fade-edges-x opacity-60" />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 mb-8">
             {STATS.map((stat, i) => (
               <motion.div
@@ -573,7 +575,7 @@ export default function LandingPage() {
       </section>
 
       {/* Logo Marquee */}
-      <section className="relative border-t border-border/50 bg-muted/30 py-14 sm:py-16">
+      <section className="relative border-t border-border/50 bg-gradient-to-b from-secondary/50 to-background py-14 sm:py-16">
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -618,8 +620,11 @@ export default function LandingPage() {
       </section>
 
       {/* The Lifecycle — shown, not told */}
-      <section id="platform" className="py-20 sm:py-28 bg-background">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="platform" className="relative py-20 sm:py-28 bg-background overflow-hidden">
+        <div aria-hidden className="absolute inset-0 bg-dots mask-fade-top opacity-70" />
+        <div aria-hidden className="absolute -top-24 right-[-10%] w-[32rem] h-[32rem] rounded-full bg-primary/[0.06] blur-3xl" />
+        <div aria-hidden className="absolute top-1/2 left-[-12%] w-[28rem] h-[28rem] rounded-full bg-accent/[0.07] blur-3xl" />
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -687,8 +692,9 @@ export default function LandingPage() {
       </section>
 
       {/* Before / After */}
-      <section className="py-20 sm:py-28 bg-muted/30 border-y border-border/50">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="relative py-20 sm:py-28 bg-gradient-to-br from-primary/[0.05] via-background to-accent/[0.07] border-y border-border/50 overflow-hidden">
+        <div aria-hidden className="absolute inset-0 bg-dots mask-fade-edges-x opacity-50" />
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -772,8 +778,9 @@ export default function LandingPage() {
       </section>
 
       {/* How It Works — both journeys, side by side */}
-      <section id="how-it-works" className="py-20 sm:py-28 bg-background">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="how-it-works" className="relative py-20 sm:py-28 bg-background overflow-hidden">
+        <div aria-hidden className="absolute top-24 left-1/2 -translate-x-1/2 w-[40rem] h-[24rem] rounded-full bg-primary/[0.05] blur-3xl" />
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -862,8 +869,8 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-20 sm:py-28 bg-muted/30 border-y border-border/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="relative py-20 sm:py-28 bg-gradient-to-b from-accent/[0.06] via-background to-secondary/40 border-y border-border/50 overflow-hidden">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -908,8 +915,9 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="py-20 sm:py-28 bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="pricing" className="relative py-20 sm:py-28 bg-background overflow-hidden">
+        <div aria-hidden className="absolute inset-0 bg-dots mask-fade-top opacity-60" />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -1046,8 +1054,9 @@ export default function LandingPage() {
       </section>
 
       {/* Final CTA */}
-      <section className="py-20 sm:py-28 bg-gradient-to-br from-primary via-[hsl(204,100%,30%)] to-[hsl(204,100%,18%)] text-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <section className="relative py-20 sm:py-28 bg-gradient-to-br from-primary via-[hsl(204,100%,30%)] to-[hsl(204,100%,18%)] text-white overflow-hidden">
+        <div aria-hidden className="absolute inset-0 bg-grid-white mask-fade-center" />
+        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}

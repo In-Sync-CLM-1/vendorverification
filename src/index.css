@@ -138,4 +138,36 @@
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);
   }
+
+  /* ── Landing page atmosphere ─────────────────────────────
+     Brand-tinted patterns; pair with an absolutely-positioned
+     aria-hidden overlay inside a `relative` section. */
+
+  /* Dot grid in brand blue, for light sections */
+  .bg-dots {
+    background-image: radial-gradient(hsl(204 100% 35% / 0.13) 1.5px, transparent 1.5px);
+    background-size: 22px 22px;
+  }
+
+  /* Fine line grid in white, for dark gradient sections */
+  .bg-grid-white {
+    background-image:
+      linear-gradient(to right, rgb(255 255 255 / 0.07) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(255 255 255 / 0.07) 1px, transparent 1px);
+    background-size: 44px 44px;
+  }
+
+  /* Radial fades to keep patterns atmospheric, not wallpaper */
+  .mask-fade-center {
+    -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 35%, black 25%, transparent 78%);
+    mask-image: radial-gradient(ellipse 90% 70% at 50% 35%, black 25%, transparent 78%);
+  }
+  .mask-fade-top {
+    -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 65%);
+    mask-image: linear-gradient(to bottom, black 0%, transparent 65%);
+  }
+  .mask-fade-edges-x {
+    -webkit-mask-image: linear-gradient(to right, black 0%, transparent 35%, transparent 65%, black 100%);
+    mask-image: linear-gradient(to right, black 0%, transparent 35%, transparent 65%, black 100%);
+  }
 }
