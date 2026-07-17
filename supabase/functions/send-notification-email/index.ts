@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
                 <p style="margin: 0; color: #333;">${message}</p>
               </div>
               <div style="text-align: center; margin: 30px 0;">
-                <a href="https://vendorverification.in-sync.co.in" style="background-color: ${accentColor}; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+                <a href="https://vendor.in-sync.co.in" style="background-color: ${accentColor}; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
                   Open Portal
                 </a>
               </div>

@@ -366,7 +366,7 @@ export default function VendorList() {
                         size="sm"
                         className="h-7 text-xs"
                         onClick={() => {
-                          navigator.clipboard.writeText(`https://vendorverification.in-sync.co.in/register/ref/${referralCode}`);
+                          navigator.clipboard.writeText(`https://vendor.in-sync.co.in/register/ref/${referralCode}`);
                           sonnerToast.success("Link copied!");
                         }}
                       >
@@ -523,14 +523,14 @@ export default function VendorList() {
                               <div className="flex items-center gap-1.5 mt-1.5 p-1.5 rounded bg-muted/50">
                                 <Link2 className="h-3 w-3 text-muted-foreground shrink-0" />
                                 <p className="text-[11px] text-muted-foreground truncate font-mono">
-                                  {`https://vendorverification.in-sync.co.in/register/ref/${referralCode}`}
+                                  {`https://vendor.in-sync.co.in/register/ref/${referralCode}`}
                                 </p>
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   className="h-5 px-1.5 text-[10px] shrink-0"
                                   onClick={() => {
-                                    navigator.clipboard.writeText(`https://vendorverification.in-sync.co.in/register/ref/${referralCode}`);
+                                    navigator.clipboard.writeText(`https://vendor.in-sync.co.in/register/ref/${referralCode}`);
                                     sonnerToast.success("Link copied!");
                                   }}
                                 >

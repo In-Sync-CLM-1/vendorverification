@@ -39,12 +39,12 @@ function resolveSlugFromHostname(): string {
     return "in-sync";
   }
 
-  // If it looks like a direct domain (e.g., vendorverification.in-sync.co.in), use the first segment
+  // If it looks like a direct domain (e.g., vendor.in-sync.co.in), use the first segment
   const parts = hostname.split(".");
 
   // Two-segment TLDs like .co.in need special handling
   // For subdomains like "abc.vendorportal.com" → slug = "abc"
-  // For direct domains like "vendorverification.in-sync.co.in" → fall back to default
+  // For direct domains like "vendor.in-sync.co.in" → no matching slug → fall back to default
   if (parts.length >= 3) {
     // Could be subdomain.base.tld or domain.co.in
     // Simple heuristic: if first part isn't "www", use it as slug

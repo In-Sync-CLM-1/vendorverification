@@ -1,1 +1,5 @@
+# Old domain → new domain (links in already-sent emails/WhatsApp keep working)
+https://vendorverification.in-sync.co.in/* https://vendor.in-sync.co.in/:splat 301
+
+# SPA fallback
 /*    /index.html   200

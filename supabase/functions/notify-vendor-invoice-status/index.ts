@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const PORTAL_URL = "https://vendorverification.in-sync.co.in/vendor/portal";
+const PORTAL_URL = "https://vendor.in-sync.co.in/vendor/portal";
 const WA_TEMPLATE_NAME = "vendor_invoice_update_v1";
 
 type NotifyEvent = "invoice_approved" | "invoice_rejected" | "payment_recorded";

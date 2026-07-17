@@ -17,7 +17,7 @@ export function ReferralLinkCard({ referralCode, isLoading }: ReferralLinkCardPr
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const referralUrl = referralCode
-    ? `https://vendorverification.in-sync.co.in/register/ref/${referralCode}`
+    ? `https://vendor.in-sync.co.in/register/ref/${referralCode}`
     : "";
 
   useEffect(() => {

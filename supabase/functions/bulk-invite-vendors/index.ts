@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
 
       const token = crypto.randomUUID();
       const registrationPath = refCode?.referral_code ? `/register/ref/${refCode.referral_code}` : `/register/ref/${token}`;
-      const registrationUrl = `https://vendorverification.in-sync.co.in${registrationPath}`;
+      const registrationUrl = `https://vendor.in-sync.co.in${registrationPath}`;
 
       // Insert invitation
       const { error: insErr } = await admin.from("vendor_invitations").insert({
