@@ -6,6 +6,7 @@
 // Safety: every scene is VIEW-ONLY against the In-Sync Demo tenant. No approve/reject
 // clicks (those now notify vendors), no OTP sends, no payment recording. The vendor
 // portal scene signs in via an admin-minted magic link — nothing is emailed.
+import { fileURLToPath } from 'url';
 import { loadEnv } from './lib/env.mjs';
 import { ACCT } from './lib/scene.mjs';
 import { BASE } from './lib/app.mjs';
@@ -47,6 +48,20 @@ async function vendorMagicLink() {
 }
 
 const BLUE = '#0066B3';
+const INVOICE_PDF = fileURLToPath(new URL('./assets/stm-invoice-027.pdf', import.meta.url));
+
+// Shared vendor sign-in for the portal scenes: admin-minted magic link (no sends),
+// landing on the live dashboard.
+async function vendorSession(page) {
+  const link = await vendorMagicLink();
+  await page.goto(link, { waitUntil: 'domcontentloaded', timeout: 25000 });
+  await page.waitForTimeout(3500); // let the SPA store the session from the URL hash
+  await page.goto('https://vendor.in-sync.co.in/vendor/portal/dashboard', { waitUntil: 'domcontentloaded', timeout: 25000 });
+  await page.getByText(/outstanding|settled|invoices submitted/i).first().waitFor({ timeout: 20000 });
+  // data, not just layout: wait for real invoice rows so the camera never sees ₹0 placeholders
+  await page.getByText(/STM\/25-26/).first().waitFor({ timeout: 20000 });
+  await page.waitForTimeout(400);
+}
 
 const brandCard = (title, subtitle, foot) => `(() => {
   const c = document.createElement('div'); c.id='__brandcard';
@@ -138,12 +153,7 @@ export const SCENES = [
     await waitUntil(at('one-time code', 4.5, -0.3));
     // Signed-in dashboard via an admin-minted magic link (nothing is sent anywhere).
     try {
-      const link = await vendorMagicLink();
-      await page.goto(link, { waitUntil: 'domcontentloaded', timeout: 25000 });
-      await sleep(page, 3500); // let the SPA store the session from the URL hash
-      await page.goto('https://vendor.in-sync.co.in/vendor/portal/dashboard', { waitUntil: 'domcontentloaded', timeout: 25000 });
-      await page.getByText(/outstanding|settled|invoices submitted/i).first().waitFor({ timeout: 20000 });
-      await sleep(page, 600);
+      await vendorSession(page);
       await page.evaluate(() => window.scrollBy({ top: 180, behavior: 'smooth' }));
     } catch (e) {
       console.log('[s3-portal] dashboard fallback:', e.message.split('\n')[0]);
@@ -152,10 +162,56 @@ export const SCENES = [
   },
 },
 
+// ── 4b. THE VENDOR UPLOADS — AI reads it on camera ───────────────
+{
+  name: 's3b-upload', account: ACCT.guest,
+  narration: "Uploading an invoice takes a minute. The AI reads the file — number, date, amount — and fills the form. The vendor just confirms.",
+  beats: async ({ page, at, D, ready }) => {
+    await vendorSession(page);
+    const waitUntil = await ready(200);
+    // front-load the actions so the AI-filled form holds the screen for the scene's back half
+    const uploadBtn = page.getByRole('button', { name: /upload invoice/i }).first();
+    await clickLocator(page, uploadBtn, { dur: 400 });
+    await page.locator('#inv-file').waitFor({ timeout: 15000 });
+    await page.locator('#inv-file').setInputFiles(INVOICE_PDF);
+    // the real Groq read happens here, on camera
+    await page.getByText(/Auto-filled by AI/i).waitFor({ timeout: 30000 });
+    const filled = page.getByText(/Auto-filled by AI/i).first();
+    await ring(page, filled, { label: 'Read by AI — vendor just confirms' }).catch(() => {});
+    await waitUntil(D);
+    // never submit — close so no invoice row is created
+    await page.keyboard.press('Escape');
+  },
+},
+
+// ── 4c. THE VENDOR SEES EVERYTHING — breakup + self-service ──────
+{
+  name: 's3c-selfserve', account: ACCT.guest,
+  narration: "Every payment shows its full breakup. And when a bank account changes, vendors request the update right here — nothing applies until your team approves.",
+  beats: async ({ page, at, D, ready }) => {
+    await vendorSession(page);
+    const waitUntil = await ready(300);
+    // expand a paid invoice to reveal the advance/GST/TDS/payout breakup
+    await page.evaluate(() => window.scrollBy({ top: 700, behavior: 'smooth' }));
+    await sleep(page, 700);
+    const paidRow = page.locator('tr', { hasText: 'Paid' }).first();
+    await paidRow.waitFor({ timeout: 15000 });
+    await clickLocator(page, paidRow, { dur: 700 });
+    await waitUntil(at('bank account changes', 6, -0.5));
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    await sleep(page, 500);
+    const updBtn = page.getByRole('button', { name: /update my details/i }).first();
+    await clickLocator(page, updBtn, { dur: 700 });
+    await page.getByText(/request a detail change/i).first().waitFor({ timeout: 15000 }).catch(() => {});
+    await waitUntil(D);
+    await page.keyboard.press('Escape'); // never submit
+  },
+},
+
 // ── 5. INVOICES — AI-read, one queue ─────────────────────────────
 {
   name: 's4-invoices', account: ACCT.staff,
-  narration: "Invoices come in from the portal. AI reads each file and fills in the details — your team approves from one queue.",
+  narration: "On your side, every submission lands in one review queue — approve, or reject with a reason.",
   beats: async ({ page, at, D, ready }) => {
     await page.goto(`${BASE}/staff/invoices`, { waitUntil: 'domcontentloaded' });
     await page.getByText(/Vendor Invoices/i).first().waitFor({ timeout: 25000 });
