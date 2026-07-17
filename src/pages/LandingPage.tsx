@@ -904,9 +904,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="relative py-20 sm:py-28 bg-[hsl(92,40%,93%)] border-y border-border/50 overflow-hidden">
-        <div aria-hidden className="absolute -top-20 right-[-8%] w-[30rem] h-[30rem] rounded-full bg-accent/15 blur-3xl" />
+      {/* Testimonials — the one warm band on the page */}
+      <section className="relative py-20 sm:py-28 bg-[hsl(38,42%,94%)] border-y border-[hsl(38,30%,86%)] overflow-hidden">
+        <div aria-hidden className="absolute -top-20 right-[-8%] w-[30rem] h-[30rem] rounded-full bg-[hsl(30,80%,72%)]/20 blur-3xl" />
+        <div aria-hidden className="absolute bottom-[-30%] left-[-6%] w-[24rem] h-[24rem] rounded-full bg-[hsl(45,85%,70%)]/15 blur-3xl" />
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
