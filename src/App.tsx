@@ -31,6 +31,7 @@ import BulkImportVendors from "./pages/staff/BulkImportVendors";
 import BulkInviteVendors from "./pages/staff/BulkInviteVendors";
 import FraudAlertsDashboard from "./pages/staff/FraudAlertsDashboard";
 import StaffInvoices from "./pages/staff/StaffInvoices";
+import StaffPaymentMatching from "./pages/staff/StaffPaymentMatching";
 const StaffInvoiceAnalytics = lazy(() => import("./pages/staff/StaffInvoiceAnalytics"));
 
 // Admin Pages
@@ -72,6 +73,7 @@ const App = () => (
             <Route path="/staff/vendors" element={<VendorList />} />
             <Route path="/staff/fraud-alerts" element={<FraudAlertsDashboard />} />
             <Route path="/staff/invoices" element={<StaffInvoices />} />
+            <Route path="/staff/payment-matching" element={<StaffPaymentMatching />} />
             <Route
               path="/staff/invoice-analytics"
               element={

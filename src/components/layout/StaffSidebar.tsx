@@ -20,6 +20,7 @@ import {
   Building2,
   ReceiptIndianRupee,
   ChartColumnBig,
+  Landmark,
 } from "lucide-react";
 import {
   Sidebar,
@@ -59,6 +60,7 @@ const navSections = [
     label: "Invoices & Payments",
     items: [
       { title: "Invoices", url: "/staff/invoices", icon: ReceiptIndianRupee },
+      { title: "Match Payments", url: "/staff/payment-matching", icon: Landmark },
       { title: "Invoice Analytics", url: "/staff/invoice-analytics", icon: ChartColumnBig },
     ],
   },
