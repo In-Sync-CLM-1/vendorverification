@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { extractText, getDocumentProxy } from "https://esm.sh/unpdf@0.12.1";
+import { extractText, extractImages, getDocumentProxy, getResolvedPDFJS } from "https://esm.sh/unpdf@0.12.1";
+import Anthropic from "https://esm.sh/@anthropic-ai/sdk@0.112.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,7 +9,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const VISION_MODEL = "meta-llama/llama-4-maverick-17b-128e-instruct";
+const CLAUDE_VISION_MODEL = "claude-opus-4-8";
 const TEXT_MODEL = "llama-3.3-70b-versatile";
 
 const SYSTEM_PROMPT = `You are reading a vendor invoice or purchase order for an Indian B2B accounts-payable system. Extract exactly the fields below from the document. If a field is not present or not legible, return null for its value and 0 for its confidence — never guess.
@@ -56,6 +57,12 @@ const EXTRACTION_TOOL = {
   },
 };
 
+const ANTHROPIC_EXTRACTION_TOOL = {
+  name: "invoice_extraction_result",
+  description: "Return the structured fields extracted from the invoice/PO",
+  input_schema: EXTRACTION_TOOL.function.parameters,
+};
+
 interface ExtractionResult {
   invoice_number: string | null;
   invoice_number_confidence: number;
@@ -76,6 +83,37 @@ function jsonResponse(body: unknown, status = 200): Response {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+function normalizeExtraction(raw: Record<string, unknown>): ExtractionResult {
+  const toInt = (v: unknown): number => {
+    const n = typeof v === "number" ? v : parseInt(String(v ?? "0"), 10);
+    return Number.isFinite(n) ? n : 0;
+  };
+  const toNum = (v: unknown): number | null => {
+    if (v === null || v === undefined || v === "") return null;
+    const n = typeof v === "number" ? v : parseFloat(String(v).replace(/[^0-9.]/g, ""));
+    return Number.isFinite(n) ? n : null;
+  };
+  const toStr = (v: unknown): string | null => {
+    if (v === null || v === undefined) return null;
+    const s = String(v).trim();
+    return s === "" ? null : s;
+  };
+  return {
+    invoice_number: toStr(raw.invoice_number),
+    invoice_number_confidence: toInt(raw.invoice_number_confidence),
+    invoice_date: toStr(raw.invoice_date),
+    invoice_date_confidence: toInt(raw.invoice_date_confidence),
+    invoice_amount: toNum(raw.invoice_amount),
+    invoice_amount_confidence: toInt(raw.invoice_amount_confidence),
+    gst_amount: toNum(raw.gst_amount),
+    gst_amount_confidence: toInt(raw.gst_amount_confidence),
+    po_number: toStr(raw.po_number),
+    po_number_confidence: toInt(raw.po_number_confidence),
+    description: toStr(raw.description),
+    overall_confidence: toInt(raw.overall_confidence),
+  };
 }
 
 async function callGroq(
@@ -113,38 +151,169 @@ async function callGroq(
 
   try {
     const raw = JSON.parse(toolCall.function.arguments);
-    const toInt = (v: unknown): number => {
-      const n = typeof v === "number" ? v : parseInt(String(v ?? "0"), 10);
-      return Number.isFinite(n) ? n : 0;
-    };
-    const toNum = (v: unknown): number | null => {
-      if (v === null || v === undefined || v === "") return null;
-      const n = typeof v === "number" ? v : parseFloat(String(v).replace(/[^0-9.]/g, ""));
-      return Number.isFinite(n) ? n : null;
-    };
-    const toStr = (v: unknown): string | null => {
-      if (v === null || v === undefined) return null;
-      const s = String(v).trim();
-      return s === "" ? null : s;
-    };
-    const result: ExtractionResult = {
-      invoice_number: toStr(raw.invoice_number),
-      invoice_number_confidence: toInt(raw.invoice_number_confidence),
-      invoice_date: toStr(raw.invoice_date),
-      invoice_date_confidence: toInt(raw.invoice_date_confidence),
-      invoice_amount: toNum(raw.invoice_amount),
-      invoice_amount_confidence: toInt(raw.invoice_amount_confidence),
-      gst_amount: toNum(raw.gst_amount),
-      gst_amount_confidence: toInt(raw.gst_amount_confidence),
-      po_number: toStr(raw.po_number),
-      po_number_confidence: toInt(raw.po_number_confidence),
-      description: toStr(raw.description),
-      overall_confidence: toInt(raw.overall_confidence),
-    };
-    return { ok: true, result };
+    return { ok: true, result: normalizeExtraction(raw) };
   } catch (e) {
     return { ok: false, status: 502, message: `Failed to parse tool arguments: ${(e as Error).message}` };
   }
+}
+
+async function callClaudeVision(
+  apiKey: string,
+  mediaType: "image/jpeg" | "image/png",
+  base64Data: string,
+): Promise<{ ok: true; result: ExtractionResult } | { ok: false; status: number; message: string }> {
+  const anthropic = new Anthropic({ apiKey });
+  try {
+    const response = await anthropic.messages.create({
+      model: CLAUDE_VISION_MODEL,
+      max_tokens: 1024,
+      system: SYSTEM_PROMPT,
+      tools: [ANTHROPIC_EXTRACTION_TOOL],
+      tool_choice: { type: "tool", name: "invoice_extraction_result" },
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Read this invoice/purchase order image and extract the fields." },
+            { type: "image", source: { type: "base64", media_type: mediaType, data: base64Data } },
+          ],
+        },
+      ],
+    });
+
+    const toolUse = response.content.find((b) => b.type === "tool_use") as
+      | { type: "tool_use"; input: Record<string, unknown> }
+      | undefined;
+    if (!toolUse) {
+      return { ok: false, status: 502, message: "Claude did not return tool call output" };
+    }
+    return { ok: true, result: normalizeExtraction(toolUse.input) };
+  } catch (e) {
+    if (e instanceof Anthropic.APIError) {
+      console.error("Claude vision error:", e.status, e.message);
+      return { ok: false, status: e.status ?? 500, message: `${e.status}: ${e.message}` };
+    }
+    console.error("Claude vision error:", e);
+    return { ok: false, status: 500, message: (e as Error).message };
+  }
+}
+
+const CRC_TABLE = (() => {
+  const table = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) {
+      c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    }
+    table[n] = c >>> 0;
+  }
+  return table;
+})();
+
+function crc32(buf: Uint8Array): number {
+  let c = 0xffffffff;
+  for (let i = 0; i < buf.length; i++) {
+    c = CRC_TABLE[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
+  }
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+function u32be(n: number): Uint8Array {
+  const b = new Uint8Array(4);
+  new DataView(b.buffer).setUint32(0, n, false);
+  return b;
+}
+
+function pngChunk(type: string, data: Uint8Array): Uint8Array {
+  const typeBytes = new TextEncoder().encode(type);
+  const body = new Uint8Array(typeBytes.length + data.length);
+  body.set(typeBytes, 0);
+  body.set(data, typeBytes.length);
+  const out = new Uint8Array(4 + body.length + 4);
+  out.set(u32be(data.length), 0);
+  out.set(body, 4);
+  out.set(u32be(crc32(body)), 4 + body.length);
+  return out;
+}
+
+async function deflateZlib(bytes: Uint8Array): Promise<Uint8Array> {
+  const cs = new CompressionStream("deflate");
+  const writer = cs.writable.getWriter();
+  writer.write(bytes);
+  writer.close();
+  const chunks: Uint8Array[] = [];
+  for await (const c of cs.readable as unknown as AsyncIterable<Uint8Array>) chunks.push(c);
+  const total = chunks.reduce((n, c) => n + c.length, 0);
+  const out = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) { out.set(c, off); off += c.length; }
+  return out;
+}
+
+/** Encodes raw (uncompressed, filter-free) pixel data as a PNG. `channels` is bytes per pixel: 1=gray, 2=gray+alpha, 3=RGB, 4=RGBA. */
+async function pixelsToPng(pixels: Uint8Array, width: number, height: number, channels: number): Promise<Uint8Array> {
+  const colorType = { 1: 0, 2: 4, 3: 2, 4: 6 }[channels as 1 | 2 | 3 | 4];
+  const stride = width * channels;
+  const raw = new Uint8Array(height * (1 + stride));
+  for (let y = 0; y < height; y++) {
+    raw[y * (1 + stride)] = 0;
+    raw.set(pixels.subarray(y * stride, y * stride + stride), y * (1 + stride) + 1);
+  }
+  const compressed = await deflateZlib(raw);
+
+  const ihdr = new Uint8Array(13);
+  const dv = new DataView(ihdr.buffer);
+  dv.setUint32(0, width, false);
+  dv.setUint32(4, height, false);
+  ihdr[8] = 8;
+  ihdr[9] = colorType;
+
+  const sig = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+  const parts = [sig, pngChunk("IHDR", ihdr), pngChunk("IDAT", compressed), pngChunk("IEND", new Uint8Array(0))];
+  const total = parts.reduce((n, p) => n + p.length, 0);
+  const png = new Uint8Array(total);
+  let off = 0;
+  for (const p of parts) { png.set(p, off); off += p.length; }
+  return png;
+}
+
+/**
+ * Some invoice PDFs (e.g. exported via jsPDF from a web app) have no real text layer —
+ * the whole page is one embedded raster image. extractText finds nothing even though the
+ * document isn't a scan. This scans pages for the largest embedded image and re-encodes it
+ * as a base64 PNG so it can be sent through the same vision-model path used for JPG/PNG uploads.
+ */
+async function extractLargestImageAsPngBase64(pdf: Awaited<ReturnType<typeof getDocumentProxy>>): Promise<string | null> {
+  const pdfjs = await getResolvedPDFJS();
+  const pageCount = Math.min(pdf.numPages, 5);
+  let best: { pageNum: number; width: number; height: number } | null = null;
+
+  for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
+    const page = await pdf.getPage(pageNum);
+    const opList = await page.getOperatorList();
+    for (let i = 0; i < opList.fnArray.length; i++) {
+      if (opList.fnArray[i] !== pdfjs.OPS.paintImageXObject) continue;
+      const [, width, height] = opList.argsArray[i] as [string, number, number];
+      if (!best || width * height > best.width * best.height) {
+        best = { pageNum, width, height };
+      }
+    }
+  }
+  if (!best) return null;
+
+  const images = await extractImages(pdf, best.pageNum);
+  if (!images.length) return null;
+  const pixels = images.reduce((a, b) => (a.length >= b.length ? a : b));
+  const channels = Math.round(pixels.length / (best.width * best.height));
+  if (![1, 2, 3, 4].includes(channels) || channels * best.width * best.height !== pixels.length) return null;
+
+  const png = await pixelsToPng(pixels, best.width, best.height, channels);
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < png.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, Array.from(png.subarray(i, i + chunkSize)));
+  }
+  return btoa(binary);
 }
 
 Deno.serve(async (req) => {
@@ -162,11 +331,12 @@ Deno.serve(async (req) => {
     const cfApiToken = Deno.env.get("CF_API_TOKEN");
     const bucket = Deno.env.get("R2_BUCKET") || "vendorverification-files";
     const groqApiKey = Deno.env.get("GROQ_API_KEY");
+    const anthropicApiKey = Deno.env.get("ANTHROPIC_API_KEY");
 
     if (!cfAccountId || !cfApiToken) {
       return jsonResponse({ success: false, error: "File storage not configured" }, 500);
     }
-    if (!groqApiKey) {
+    if (!groqApiKey || !anthropicApiKey) {
       return jsonResponse({ success: false, error: "AI reader not configured" }, 500);
     }
 
@@ -206,7 +376,8 @@ Deno.serve(async (req) => {
     const mimeType = (objResp.headers.get("content-type") || "application/octet-stream").split(";")[0].trim();
     const arrayBuffer = await objResp.arrayBuffer();
 
-    let aiCall: Awaited<ReturnType<typeof callGroq>>;
+    let aiCall: Awaited<ReturnType<typeof callGroq>> | Awaited<ReturnType<typeof callClaudeVision>>;
+    let usedModel: string = mimeType === "application/pdf" ? `groq:${TEXT_MODEL}` : `claude:${CLAUDE_VISION_MODEL}`;
 
     if (mimeType === "application/pdf") {
       const pdf = await getDocumentProxy(new Uint8Array(arrayBuffer));
@@ -214,15 +385,23 @@ Deno.serve(async (req) => {
       const trimmed = (text || "").trim().slice(0, 30000);
 
       if (!trimmed) {
-        return jsonResponse({
-          success: false,
-          error: "This PDF has no extractable text (looks like a scanned image). Please fill in the details manually.",
-        }, 422);
+        const imageBase64 = await extractLargestImageAsPngBase64(pdf).catch((e) => {
+          console.error("PDF image fallback extraction failed:", e);
+          return null;
+        });
+        if (!imageBase64) {
+          return jsonResponse({
+            success: false,
+            error: "This PDF has no extractable text or image content. Please fill in the details manually.",
+          }, 422);
+        }
+        usedModel = `claude:${CLAUDE_VISION_MODEL}`;
+        aiCall = await callClaudeVision(anthropicApiKey, "image/png", imageBase64);
+      } else {
+        aiCall = await callGroq(groqApiKey, TEXT_MODEL, [
+          { type: "text", text: `Document text:\n${trimmed}` },
+        ]);
       }
-
-      aiCall = await callGroq(groqApiKey, TEXT_MODEL, [
-        { type: "text", text: `Document text:\n${trimmed}` },
-      ]);
     } else {
       const bytes = new Uint8Array(arrayBuffer);
       let binary = "";
@@ -231,16 +410,10 @@ Deno.serve(async (req) => {
         binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunkSize)));
       }
       const base64 = btoa(binary);
-      const imageMime =
-        mimeType === "image/jpeg" || mimeType === "image/jpg" ? "image/jpeg"
-        : mimeType === "image/png" ? "image/png"
-        : "image/png";
-      const dataUrl = `data:${imageMime};base64,${base64}`;
+      const imageMime: "image/jpeg" | "image/png" =
+        mimeType === "image/jpeg" || mimeType === "image/jpg" ? "image/jpeg" : "image/png";
 
-      aiCall = await callGroq(groqApiKey, VISION_MODEL, [
-        { type: "text", text: "Read this invoice/purchase order image and extract the fields." },
-        { type: "image_url", image_url: { url: dataUrl } },
-      ]);
+      aiCall = await callClaudeVision(anthropicApiKey, imageMime, base64);
     }
 
     if (!aiCall.ok) {
@@ -256,7 +429,7 @@ Deno.serve(async (req) => {
       success: true,
       data: {
         ...aiCall.result,
-        ai_model_version: mimeType === "application/pdf" ? `groq:${TEXT_MODEL}` : `groq:${VISION_MODEL}`,
+        ai_model_version: usedModel,
       },
     });
   } catch (error) {
