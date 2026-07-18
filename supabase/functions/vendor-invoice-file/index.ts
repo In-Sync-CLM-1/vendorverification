@@ -83,10 +83,7 @@ Deno.serve(async (req) => {
 
       const MAX_FILE_SIZE = 10 * 1024 * 1024;
       if (file.size > MAX_FILE_SIZE) {
-        const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
-        return jsonResponse({
-          error: `This file is ${sizeMb}MB — the maximum is 10MB. Try compressing the PDF or re-exporting it at a smaller size, then upload again.`,
-        }, 400);
+        return jsonResponse({ error: "File too large. Max size 10 MB." }, 400);
       }
 
       const fileName = file.name || "";
