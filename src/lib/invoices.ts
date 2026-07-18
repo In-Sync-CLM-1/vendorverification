@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 
 export type InvoiceStatus = Database["public"]["Enums"]["invoice_status"];
 
@@ -31,7 +32,13 @@ export async function uploadInvoiceFile(file: File): Promise<string> {
   const { data, error } = await supabase.functions.invoke("vendor-invoice-file", {
     body: formData,
   });
-  if (error) throw new Error("Upload failed. Please try again.");
+  if (error) {
+    if (error instanceof FunctionsHttpError) {
+      const body = await error.context.json().catch(() => null);
+      if (body?.error) throw new Error(body.error);
+    }
+    throw new Error("Upload failed. Please try again.");
+  }
   if (data?.error) throw new Error(data.error);
   if (!data?.file_key) throw new Error("Upload failed. Please try again.");
   return data.file_key as string;
