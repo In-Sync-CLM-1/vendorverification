@@ -83,6 +83,7 @@ $function$;
 
 -- "aaa_" prefix so this fires before encrypt_vendor_pii_trigger (same BEFORE/ROW
 -- timing fires in trigger-name alphabetical order).
+DROP TRIGGER IF EXISTS aaa_detect_vendor_duplicates ON public.vendors;
 CREATE TRIGGER aaa_detect_vendor_duplicates
   BEFORE INSERT OR UPDATE OF gst_number, pan_number, bank_account_number, bank_ifsc
   ON public.vendors

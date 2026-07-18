@@ -138,7 +138,7 @@ export function InvoiceUploadDialog({ open, onOpenChange, vendorId, onUploaded }
 
     setSaving(true);
     try {
-      const { error } = await supabase.from("vendor_invoices").insert({
+      const { data: inserted, error } = await supabase.from("vendor_invoices").insert({
         vendor_id: vendorId,
         // tenant_id is derived server-side from the vendor
         tenant_id: "00000000-0000-0000-0000-000000000000",
@@ -153,13 +153,20 @@ export function InvoiceUploadDialog({ open, onOpenChange, vendorId, onUploaded }
         ai_extracted_data: (invoiceRead || poRead) ? { invoice: invoiceRead, po: poRead } : null,
         ai_confidence_score: invoiceRead?.overall_confidence ?? null,
         ai_model_version: invoiceRead?.ai_model_version ?? poRead?.ai_model_version ?? null,
-      });
+      }).select("id").single();
 
       if (error) {
         if (error.code === "23505") {
           throw new Error("An invoice with this number already exists");
         }
         throw new Error(error.message);
+      }
+
+      // Alert approvers (email + WhatsApp) that a new invoice needs review. Non-blocking.
+      if (inserted?.id) {
+        supabase.functions.invoke("notify-invoice-submitted", { body: { invoice_id: inserted.id } }).catch(() => {
+          // Notification failure shouldn't block the vendor's submission
+        });
       }
 
       toast.success("Invoice submitted for review");

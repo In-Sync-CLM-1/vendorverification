@@ -1,5 +1,8 @@
 project_id = "oygyrpjjwtwvrdvxjzbg"
 
+[functions.invoice-approval-action]
+verify_jwt = false
+
 [functions.submit-vendor-referral]
 verify_jwt = false
 
