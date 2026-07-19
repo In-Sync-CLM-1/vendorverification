@@ -1,11 +1,15 @@
-// Vendor-Sync teaser (~90s, 8 scenes) — the LIFECYCLE story, not a verification tour.
-// Arc: two-chases hook -> trust (verify + fraud) -> approval trail -> vendor portal ->
-// AI invoices -> settlement breakup + bank-statement matching -> analytics + auto
-// notifications ("the calls stop") -> brand close.
+// Vendor-Sync teaser — v2 "1 main + 3 subsets" (approved storytelling standard).
+//   MAIN    — Vendor-Sync ends both chases (documents + payments); your team keeps every decision
+//   SUBSET 1 — trust before money (live govt verification, duplicates/fraud flagged)
+//   SUBSET 2 — invoices file themselves (vendor uploads, AI reads, one review queue)
+//   SUBSET 3 — the chasing stops (vendors auto-notified on WhatsApp + email)
+// Hook card names pain + product first; three numbered chapters; close restates
+// main + subsets + real pricing (₹500/vendor/mo, 5 free) + demo-only CTA.
 //
 // Safety: every scene is VIEW-ONLY against the In-Sync Demo tenant. No approve/reject
 // clicks (those now notify vendors), no OTP sends, no payment recording. The vendor
-// portal scene signs in via an admin-minted magic link — nothing is emailed.
+// upload scene signs in via an admin-minted magic link — nothing is emailed, and the
+// invoice dialog is Escaped, never submitted.
 import { fileURLToPath } from 'url';
 import { loadEnv } from './lib/env.mjs';
 import { ACCT } from './lib/scene.mjs';
@@ -30,7 +34,7 @@ async function legacyServiceKey() {
 }
 
 // Magic link for the demo vendor (Saffron Textiles / anita@…example.com) so the
-// portal-dashboard scene can show a real signed-in view without sending anything.
+// upload scene can show a real signed-in view without sending anything.
 async function vendorMagicLink() {
   const key = await legacyServiceKey();
   const r = await fetch(`${env.SUPABASE_URL}/auth/v1/admin/generate_link`, {
@@ -50,7 +54,7 @@ async function vendorMagicLink() {
 const BLUE = '#0066B3';
 const INVOICE_PDF = fileURLToPath(new URL('./assets/stm-invoice-027.pdf', import.meta.url));
 
-// Shared vendor sign-in for the portal scenes: admin-minted magic link (no sends),
+// Shared vendor sign-in for the portal scene: admin-minted magic link (no sends),
 // landing on the live dashboard.
 async function vendorSession(page) {
   const link = await vendorMagicLink();
@@ -66,9 +70,32 @@ async function vendorSession(page) {
 const brandCard = (title, subtitle, foot) => `(() => {
   const c = document.createElement('div'); c.id='__brandcard';
   c.style.cssText='position:fixed;inset:0;z-index:2147483647;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,hsl(210,45%,13%),hsl(204,100%,28%) 60%,hsl(204,100%,20%));opacity:0;transition:opacity .8s';
-  c.innerHTML="<div style=\\"font:800 60px 'Segoe UI',sans-serif;color:#fff;letter-spacing:-1.5px\\">${title}</div>"+
-    "<div style=\\"font:500 26px 'Segoe UI',sans-serif;color:rgba(255,255,255,.92);margin-top:16px;max-width:940px;text-align:center\\">${subtitle}</div>"+
+  c.innerHTML="<div style=\\"font:700 18px 'Segoe UI',sans-serif;color:#9fd468;letter-spacing:3px;text-transform:uppercase\\">Vendor-Sync \\u00B7 Vendor Lifecycle Platform</div>"+
+    "<div style=\\"font:800 56px 'Segoe UI',sans-serif;color:#fff;letter-spacing:-1.5px;margin-top:20px;max-width:1040px;text-align:center;line-height:1.18\\">${title}</div>"+
+    "<div style=\\"font:500 26px 'Segoe UI',sans-serif;color:rgba(255,255,255,.92);margin-top:20px;max-width:940px;text-align:center\\">${subtitle}</div>"+
     "<div style=\\"font:600 17px 'Segoe UI',sans-serif;color:#9fd468;margin-top:30px\\">${foot}</div>";
+  document.documentElement.appendChild(c);
+  requestAnimationFrame(()=>{c.style.opacity='1';});
+})()`;
+
+// Closing card: main + the three subsets, then price + demo CTA.
+// Benchmarks stated conservatively (manual vendor onboarding runs days of chasing).
+const numbersCard = `(() => {
+  const c = document.createElement('div'); c.id='__numcard';
+  c.style.cssText='position:fixed;inset:0;z-index:2147483647;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,hsl(210,45%,13%),hsl(204,100%,28%) 60%,hsl(204,100%,20%));opacity:0;transition:opacity .8s';
+  const row = (before, after) =>
+    '<div style="font:400 21px \\'Segoe UI\\',sans-serif;color:rgba(255,255,255,.55);padding:14px 24px;display:flex;align-items:center;justify-content:flex-end;text-align:right">'+before+'</div>'+
+    '<div style="font:600 21px \\'Segoe UI\\',sans-serif;color:#9fd468;padding:14px 24px;border-left:1px solid rgba(255,255,255,.14);display:flex;align-items:center">'+after+'</div>';
+  c.innerHTML =
+    '<div style="font:700 18px \\'Segoe UI\\',sans-serif;color:#9fd468;letter-spacing:3px;text-transform:uppercase">Vendor-Sync</div>'+
+    '<div style="font:800 56px \\'Segoe UI\\',sans-serif;color:#fff;letter-spacing:-1.5px;margin-top:16px;text-align:center;line-height:1.15">Both chases end.<br>You keep the decisions.</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;margin-top:36px;background:rgba(255,255,255,.06);border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.12)">'+
+      row('Days of chasing documents','Verified same afternoon \\u2014 live govt sources')+
+      row('Invoices keyed by hand','AI reads them \\u2014 one queue, your team approves')+
+      row('"Payment status?" calls all month','Vendors auto-notified \\u2014 WhatsApp + email')+
+    '</div>'+
+    '<div style="font:600 23px \\'Segoe UI\\',sans-serif;color:rgba(255,255,255,.92);margin-top:32px">From \\u20B9500 per vendor / month \\u00B7 first 5 verifications free</div>'+
+    '<div style="font:600 19px \\'Segoe UI\\',sans-serif;color:#9fd468;margin-top:12px">vendor.in-sync.co.in \\u00B7 Book a demo \\u2014 see it on your own vendors</div>';
   document.documentElement.appendChild(c);
   requestAnimationFrame(()=>{c.style.opacity='1';});
 })()`;
@@ -85,26 +112,26 @@ const waBubble = `(() => {
 
 export const SCENES = [
 
-// ── 1. HOOK — the two chases ─────────────────────────────────────
+// ── 0. HOOK — pain + product named up front ──────────────────────
 {
-  name: 's0-hook', account: ACCT.guest,
-  narration: "Every growing business runs on vendors. And every month brings the same two chases — your team chasing documents, and your vendors chasing payments. Vendor-Sync ends both.",
-  beats: async ({ page, at, D, ready }) => {
-    await page.goto(BASE, { waitUntil: 'domcontentloaded' });
-    await page.getByText(/From first invite/i).first().waitFor({ timeout: 25000 });
-    const waitUntil = await ready(800);
-    await waitUntil(at('your team chasing', 5.5));
-    await page.evaluate(() => window.scrollBy({ top: 260, behavior: 'smooth' }));
-    await waitUntil(at('Vendor-Sync ends', 10, -0.2));
-    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
+  name: 'v0-hook', account: ACCT.guest,
+  narration: "Every month, two chases: your team chasing vendor documents, and vendors chasing payments. Vendor-Sync ends both — and your team keeps every decision.",
+  beats: async ({ page, D, ready }) => {
+    await page.goto('about:blank').catch(() => {});
+    await page.evaluate(brandCard(
+      'Two chases, every month.<br>Vendor-Sync ends both.',
+      'Documents chase themselves in. Payments explain themselves out. Your team keeps every decision.',
+      'vendor.in-sync.co.in',
+    ));
+    const waitUntil = await ready(300);
     await waitUntil(D);
   },
 },
 
-// ── 2. TRUST — verification + fraud ──────────────────────────────
+// ── 1. SUBSET 1 — trust before money ─────────────────────────────
 {
-  name: 's1-verify', account: ACCT.staff,
-  narration: "It starts with trust. Every new vendor's PAN, GST and bank account are verified against live government sources. Duplicates and tampered documents are flagged before you commit a single rupee.",
+  name: 'v1-verify', account: ACCT.staff,
+  narration: "One — trust before money. Every new vendor's PAN, GST and bank account are verified against live government sources — duplicates and tampered documents flagged before a single rupee moves.",
   beats: async ({ page, at, D, ready }) => {
     await page.goto(`${BASE}/staff/queue`, { waitUntil: 'domcontentloaded' });
     await page.getByText(/approval queue/i).first().waitFor({ timeout: 25000 });
@@ -117,55 +144,21 @@ export const SCENES = [
     await page.getByText(/Metro Trade|Konkan Agro/i).first().waitFor({ timeout: 15000 }).catch(() => {});
     await waitUntil(at('verified against', 5));
     await page.evaluate(() => window.scrollBy({ top: 160, behavior: 'smooth' }));
-    await waitUntil(at('Duplicates', 9, -0.4));
+    await waitUntil(at('duplicates', 9, -0.4));
     // SPA-navigate via the sidebar so the shell stays on screen (no boot spinner)
     await clickLocator(page, page.getByRole('link', { name: /fraud alerts/i }).first(), { dur: 600 });
     await page.getByText(/fraud/i).first().waitFor({ timeout: 15000 }).catch(() => {});
     await sleep(page, 700);
-    const cap = await caption(page, 'Duplicate GST, PAN & bank accounts — caught automatically');
+    const cap = await caption(page, 'One · Duplicate GST, PAN & bank accounts — caught automatically');
     await waitUntil(D - 0.4);
     await removeCaption(page, cap);
   },
 },
 
-// ── 3. GOVERNANCE — the approval trail ───────────────────────────
+// ── 2a. SUBSET 2 — invoices file themselves (AI reads on camera) ─
 {
-  name: 's2-trail', account: ACCT.staff,
-  narration: "Reviews flow maker to checker to approver — and the audit trail writes itself.",
-  beats: async ({ page, at, D, ready }) => {
-    await page.goto(`${BASE}/staff/vendors`, { waitUntil: 'domcontentloaded' });
-    await page.getByText(/vendor/i).first().waitFor({ timeout: 25000 }).catch(() => {});
-    const waitUntil = await ready(1100);
-    await waitUntil(at('audit trail', 3.5));
-    await page.evaluate(() => window.scrollBy({ top: 300, behavior: 'smooth' }));
-    await waitUntil(D);
-  },
-},
-
-// ── 4. THE PORTAL — vendor's own view ────────────────────────────
-{
-  name: 's3-portal', account: ACCT.guest,
-  narration: "Approved vendors get their own portal. No passwords — a one-time code, and they see every invoice and every payment, always current.",
-  beats: async ({ page, at, D, ready }) => {
-    await page.goto(`${BASE}/vendor/portal`, { waitUntil: 'domcontentloaded' });
-    await page.getByText(/vendor|login|code/i).first().waitFor({ timeout: 25000 }).catch(() => {});
-    const waitUntil = await ready(900);
-    await waitUntil(at('one-time code', 4.5, -0.3));
-    // Signed-in dashboard via an admin-minted magic link (nothing is sent anywhere).
-    try {
-      await vendorSession(page);
-      await page.evaluate(() => window.scrollBy({ top: 180, behavior: 'smooth' }));
-    } catch (e) {
-      console.log('[s3-portal] dashboard fallback:', e.message.split('\n')[0]);
-    }
-    await waitUntil(D);
-  },
-},
-
-// ── 4b. THE VENDOR UPLOADS — AI reads it on camera ───────────────
-{
-  name: 's3b-upload', account: ACCT.guest,
-  narration: "Uploading an invoice takes a minute. The AI reads the file — number, date, amount — and fills the form. The vendor just confirms.",
+  name: 'v2a-upload', account: ACCT.guest,
+  narration: "Two — invoices file themselves. The vendor uploads the file; the AI reads it — number, date, amount — and fills the form.",
   beats: async ({ page, at, D, ready }) => {
     await vendorSession(page);
     const waitUntil = await ready(200);
@@ -184,103 +177,47 @@ export const SCENES = [
   },
 },
 
-// ── 4c. THE VENDOR SEES EVERYTHING — breakup + self-service ──────
+// ── 2b. …one review queue, your team decides ─────────────────────
 {
-  name: 's3c-selfserve', account: ACCT.guest,
-  narration: "Every payment shows its full breakup. And when a bank account changes, vendors request the update right here — nothing applies until your team approves.",
-  beats: async ({ page, at, D, ready }) => {
-    await vendorSession(page);
-    const waitUntil = await ready(300);
-    // expand a paid invoice to reveal the advance/GST/TDS/payout breakup
-    await page.evaluate(() => window.scrollBy({ top: 700, behavior: 'smooth' }));
-    await sleep(page, 700);
-    const paidRow = page.locator('tr', { hasText: 'Paid' }).first();
-    await paidRow.waitFor({ timeout: 15000 });
-    await clickLocator(page, paidRow, { dur: 700 });
-    await waitUntil(at('bank account changes', 6, -0.5));
-    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
-    await sleep(page, 500);
-    const updBtn = page.getByRole('button', { name: /update my details/i }).first();
-    await clickLocator(page, updBtn, { dur: 700 });
-    await page.getByText(/request a detail change/i).first().waitFor({ timeout: 15000 }).catch(() => {});
-    await waitUntil(D);
-    await page.keyboard.press('Escape'); // never submit
-  },
-},
-
-// ── 5. INVOICES — AI-read, one queue ─────────────────────────────
-{
-  name: 's4-invoices', account: ACCT.staff,
-  narration: "On your side, every submission lands in one review queue — approve, or reject with a reason.",
+  name: 'v2b-queue', account: ACCT.staff,
+  narration: "It lands in one review queue — your team approves, or rejects with a reason. The judgment stays yours.",
   beats: async ({ page, at, D, ready }) => {
     await page.goto(`${BASE}/staff/invoices`, { waitUntil: 'domcontentloaded' });
     await page.getByText(/Vendor Invoices/i).first().waitFor({ timeout: 25000 });
     const waitUntil = await ready(1100);
-    await waitUntil(at('your team approves', 6, -0.4));
+    await waitUntil(at('your team approves', 3, -0.4));
     await page.evaluate(() => window.scrollBy({ top: 260, behavior: 'smooth' }));
     await waitUntil(D);
   },
 },
 
-// ── 6. SETTLEMENT — the breakup + bank-statement matching ────────
+// ── 3. SUBSET 3 — the chasing stops ──────────────────────────────
 {
-  name: 's5-settle', account: ACCT.staff,
-  narration: "Payments carry the full breakup — advance, GST, TDS, payout. Or match an entire bank statement to open invoices in one screen.",
-  beats: async ({ page, at, D, ready }) => {
-    await page.goto(`${BASE}/staff/invoices`, { waitUntil: 'domcontentloaded' });
-    await page.getByText(/Vendor Invoices/i).first().waitFor({ timeout: 25000 });
-    // open a PAID invoice's detail (view-only) to show the breakup table
-    const paidRow = page.locator('tr', { hasText: 'Paid' }).first();
-    await paidRow.waitFor({ timeout: 20000 });
-    const waitUntil = await ready(400);
-    await clickLocator(page, paidRow, { dur: 700 });
-    await sleep(page, 900);
-    await waitUntil(at('Or match', 6.5, -0.3));
-    await page.keyboard.press('Escape');
-    await sleep(page, 400);
-    // SPA-navigate via the sidebar so the shell stays on screen (no boot spinner)
-    await clickLocator(page, page.getByRole('link', { name: /match payments/i }).first(), { dur: 600 });
-    await page.getByText(/bank statement/i).first().waitFor({ timeout: 20000 }).catch(() => {});
-    await sleep(page, 500);
-    const box = page.locator('textarea').first();
-    await moveToLocator(page, box, 600).catch(() => {});
-    await box.click().catch(() => {});
-    await page.keyboard.type('12-07-2026  NEFT TO SAFFRON TEXTILES  18,500.00  UTR2607120001', { delay: 18 }).catch(() => {});
-    await waitUntil(D);
-  },
-},
-
-// ── 7. VISIBILITY — analytics + the calls stop ───────────────────
-{
-  name: 's6-analytics', account: ACCT.staff,
-  narration: "Analytics track invoiced versus settled across every vendor. And the moment anything changes, your vendor already knows — on WhatsApp and email. The follow-up calls stop.",
+  name: 'v3-notify', account: ACCT.staff,
+  narration: "Three — the chasing stops. The moment anything changes, your vendor already knows — WhatsApp and email, automatic. The payment-status calls end.",
   beats: async ({ page, at, D, ready }) => {
     await page.goto(`${BASE}/staff/invoice-analytics`, { waitUntil: 'domcontentloaded' });
     await page.getByText(/Invoice Analytics/i).first().waitFor({ timeout: 25000 });
     await sleep(page, 2500); // let ECharts draw
     const waitUntil = await ready(600);
-    await waitUntil(at('across every vendor', 4.5));
+    await waitUntil(at('anything changes', 3));
     await page.evaluate(() => window.scrollBy({ top: 300, behavior: 'smooth' }));
-    await waitUntil(at('already knows', 8, -0.5));
+    await waitUntil(at('already knows', 5, -0.5));
     await page.evaluate(waBubble);
     await waitUntil(D);
   },
 },
 
-// ── 8. CLOSE — the brand line ────────────────────────────────────
+// ── 4. CLOSE — restate main + subsets, price, demo CTA ───────────
+// CTA matches the website ("book a demo" — no self-serve signup) and the real
+// free tier (5, not 3).
 {
-  name: 's7-outro', account: ACCT.guest,
-  narration: "Vendor-Sync, by In-Sync. From first invite, to final settlement. Start free today — your first three verifications are on us.",
+  name: 'v4-close', account: ACCT.guest,
+  narration: "That's Vendor-Sync: vendors verified before money moves, invoices that file themselves, and follow-up calls that stop — you keep the decisions. From five hundred rupees per vendor a month, first five verifications free. Book a demo — see it on your own vendors.",
   beats: async ({ page, at, D, ready }) => {
-    await page.goto(BASE, { waitUntil: 'domcontentloaded' });
-    await page.getByText(/From first invite/i).first().waitFor({ timeout: 25000 });
-    const waitUntil = await ready(600);
-    await waitUntil(at('From first invite', 2.2, -0.4));
-    await page.evaluate(brandCard(
-      'Vendor-Sync',
-      'From first invite to final settlement.',
-      'vendor.in-sync.co.in  ·  3 free verifications — no card required',
-    ));
+    await page.goto('about:blank').catch(() => {});
+    await page.evaluate(numbersCard);
+    const waitUntil = await ready(300);
     await waitUntil(D);
   },
 },
