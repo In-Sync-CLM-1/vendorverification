@@ -28,7 +28,7 @@ import {
 } from "@/lib/invoices";
 import {
   FileText,
-  IndianRupee,
+  XCircle,
   Clock,
   Landmark,
   Upload,
@@ -154,15 +154,22 @@ export default function VendorPortalDashboard() {
   const totalInvoiced = invoices.reduce((s, i) => s + Number(i.invoice_amount), 0);
   const totalSettled = payments.reduce((s, p) => s + paymentSettled(p), 0);
   const totalTds = payments.reduce((s, p) => s + Number(p.tds_amount || 0), 0);
-  const outstanding = invoices
-    .filter((i) => !["rejected", "paid"].includes(i.status))
-    .reduce((s, i) => s + Number(i.invoice_amount) - (settledByInvoice.get(i.id) || 0), 0);
+
+  const outstandingInvoices = invoices.filter(
+    (i) => !["rejected", "paid"].includes(i.status) && Number(i.invoice_amount) - (settledByInvoice.get(i.id) || 0) > 0
+  );
+  const outstanding = outstandingInvoices.reduce((s, i) => s + Number(i.invoice_amount) - (settledByInvoice.get(i.id) || 0), 0);
+
+  const settledInvoices = invoices.filter((i) => (settledByInvoice.get(i.id) || 0) > 0);
+
+  const rejectedInvoices = invoices.filter((i) => i.status === "rejected");
+  const rejectedValue = rejectedInvoices.reduce((s, i) => s + Number(i.invoice_amount), 0);
 
   const tiles = [
-    { label: "Invoices Submitted", value: String(invoices.length), icon: FileText },
-    { label: "Total Invoiced", value: formatINR(totalInvoiced), icon: IndianRupee },
-    { label: "Outstanding", value: formatINR(Math.max(outstanding, 0)), icon: Clock },
-    { label: "Paid / Settled", value: formatINR(totalSettled), icon: Landmark, sub: totalTds > 0 ? `incl. TDS ${formatINR(totalTds)}` : undefined },
+    { label: "Invoiced", value: formatINR(totalInvoiced), count: invoices.length, icon: FileText },
+    { label: "Outstanding", value: formatINR(Math.max(outstanding, 0)), count: outstandingInvoices.length, icon: Clock },
+    { label: "Paid / Settled", value: formatINR(totalSettled), count: settledInvoices.length, icon: Landmark, sub: totalTds > 0 ? `incl. TDS ${formatINR(totalTds)}` : undefined },
+    { label: "Rejected", value: formatINR(rejectedValue), count: rejectedInvoices.length, icon: XCircle, accent: rejectedInvoices.length > 0 },
   ];
 
   return (
@@ -201,14 +208,17 @@ export default function VendorPortalDashboard() {
         {/* KPI tiles */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {tiles.map((t) => (
-            <Card key={t.label}>
+            <Card key={t.label} className={t.accent ? "border-red-200" : undefined}>
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                  <t.icon className="h-4 w-4" />
+                  <t.icon className={`h-4 w-4 ${t.accent ? "text-red-500" : ""}`} />
                   <p className="text-xs">{t.label}</p>
                 </div>
-                <p className="text-xl font-bold">{t.value}</p>
-                {t.sub && <p className="text-xs text-muted-foreground mt-0.5">{t.sub}</p>}
+                <p className={`text-xl font-bold ${t.accent ? "text-red-600" : ""}`}>{t.value}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {t.count} {t.count === 1 ? "invoice" : "invoices"}
+                  {t.sub ? ` · ${t.sub}` : ""}
+                </p>
               </CardContent>
             </Card>
           ))}
