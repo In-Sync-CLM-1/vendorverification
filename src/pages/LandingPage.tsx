@@ -440,7 +440,7 @@ export default function LandingPage() {
                 className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2 text-sm font-medium mb-8"
               >
                 <Sparkles className="h-4 w-4 text-accent" />
-                Vendor lifecycle management · 3 free verifications
+                Vendor due diligence · 3 free verifications
               </motion.div>
 
               <motion.h1
@@ -448,9 +448,9 @@ export default function LandingPage() {
                 custom={1}
                 className="text-4xl sm:text-5xl lg:text-[3.4rem] font-bold leading-[1.08] tracking-tight mb-6"
               >
-                From first invite
+                Know your vendor
                 <br />
-                <span className="text-accent">to final settlement.</span>
+                <span className="text-accent">before you commit.</span>
               </motion.h1>
 
               <motion.p
@@ -458,10 +458,11 @@ export default function LandingPage() {
                 custom={2}
                 className="text-lg sm:text-xl text-white/80 mb-8 max-w-2xl leading-relaxed"
               >
-                Vendor-Sync onboards your vendors with verified KYC, collects
-                their invoices, and keeps every payment transparent — so your
-                team stops chasing documents, and your vendors stop chasing
-                payments.
+                You verify every employee you hire — but you wire lakhs to
+                vendors you've never checked. Vendor-Sync verifies PAN, GST and
+                bank against government sources and flags fraud before you sign
+                the purchase order. Onboarding, invoices and payments then run
+                themselves.
               </motion.p>
 
               <motion.div
