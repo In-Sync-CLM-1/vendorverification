@@ -33,6 +33,7 @@ import FraudAlertsDashboard from "./pages/staff/FraudAlertsDashboard";
 import StaffInvoices from "./pages/staff/StaffInvoices";
 import StaffPaymentMatching from "./pages/staff/StaffPaymentMatching";
 import StaffDetailChangeRequests from "./pages/staff/StaffDetailChangeRequests";
+import VendorSensitiveInfo from "./pages/staff/VendorSensitiveInfo";
 const StaffInvoiceAnalytics = lazy(() => import("./pages/staff/StaffInvoiceAnalytics"));
 
 // Admin Pages
@@ -76,6 +77,7 @@ const App = () => (
             <Route path="/staff/invoices" element={<StaffInvoices />} />
             <Route path="/staff/payment-matching" element={<StaffPaymentMatching />} />
             <Route path="/staff/change-requests" element={<StaffDetailChangeRequests />} />
+            <Route path="/staff/sensitive-info" element={<VendorSensitiveInfo />} />
             <Route
               path="/staff/invoice-analytics"
               element={

@@ -22,6 +22,7 @@ import {
   ChartColumnBig,
   Landmark,
   UserCog,
+  Lock,
 } from "lucide-react";
 import {
   Sidebar,
@@ -56,6 +57,7 @@ const navSections = [
       { title: "Bulk Import", url: "/staff/bulk-import", icon: Upload },
       { title: "Bulk Invite", url: "/staff/bulk-invite", icon: Send },
       { title: "Detail Change Requests", url: "/staff/change-requests", icon: UserCog },
+      { title: "Sensitive Info", url: "/staff/sensitive-info", icon: Lock },
     ],
   },
   {
