@@ -128,7 +128,7 @@ export default function VendorPortalDashboard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("vendor_advance_requests")
-        .select("id, amount, activity_name, status, review_comments, created_at, internal_projects (name)")
+        .select("id, amount, activity_name, status, review_comments, project_name, created_at")
         .eq("vendor_id", vendor!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -138,8 +138,8 @@ export default function VendorPortalDashboard() {
         activity_name: string;
         status: "pending" | "approved" | "rejected";
         review_comments: string | null;
+        project_name: string | null;
         created_at: string;
-        internal_projects: { name: string } | null;
       }>;
     },
     enabled: !!vendor?.id,
@@ -442,7 +442,7 @@ export default function VendorPortalDashboard() {
                         <p className="font-medium truncate">{r.activity_name} · {formatINR(Number(r.amount))}</p>
                         <p className="text-muted-foreground text-xs">
                           Requested {new Date(r.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
-                          {r.internal_projects?.name ? ` · ${r.internal_projects.name}` : ""}
+                          {r.project_name ? ` · ${r.project_name}` : ""}
                         </p>
                         {r.status === "rejected" && r.review_comments && (
                           <p className="text-xs text-destructive mt-0.5">{r.review_comments}</p>

@@ -1,73 +1,45 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { supabase } from "@/integrations/supabase/client";
-import { useTenant } from "@/contexts/TenantContext";
-import { Check, ChevronsUpDown, Plus, Loader2 } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 
-interface InternalProject {
+interface RmplProject {
   id: string;
-  name: string;
+  project_name: string;
 }
 
 interface ProjectComboboxProps {
   value: string | null;
+  valueName?: string | null;
   onChange: (projectId: string, projectName: string) => void;
   disabled?: boolean;
 }
 
-// There's no project-management module in this app — internal_projects is
-// just a per-tenant lookup so staff can tag an advance request against the
-// right internal project. Staff can add a new one on the fly here rather
-// than needing a separate admin screen to manage the list.
-export function ProjectCombobox({ value, onChange, disabled }: ProjectComboboxProps) {
-  const { tenant } = useTenant();
-  const queryClient = useQueryClient();
+// Project list is read live from RMPL (the org's separate project-tracking
+// Supabase project) via the list-rmpl-projects edge function, filtered to
+// projects currently in execution — RMPL owns this data, this app never
+// creates or edits a project of its own.
+export function ProjectCombobox({ value, valueName, onChange, disabled }: ProjectComboboxProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [creating, setCreating] = useState(false);
 
-  const { data: projects = [], isLoading } = useQuery({
-    queryKey: ["internal-projects", tenant?.id],
+  const { data: projects = [], isLoading, isError } = useQuery({
+    queryKey: ["rmpl-projects"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("internal_projects")
-        .select("id, name")
-        .order("name");
-      if (error) throw error;
-      return (data || []) as InternalProject[];
+      const { data, error } = await supabase.functions.invoke("list-rmpl-projects");
+      if (error) throw new Error("Could not load projects from RMPL");
+      return (data?.projects || []) as RmplProject[];
     },
-    enabled: !!tenant?.id,
+    enabled: open,
+    staleTime: 60_000,
   });
 
-  const selected = projects.find((p) => p.id === value);
-  const trimmedSearch = search.trim();
-  const exactMatch = projects.some((p) => p.name.toLowerCase() === trimmedSearch.toLowerCase());
-
-  const handleCreate = async () => {
-    if (!trimmedSearch || !tenant?.id) return;
-    setCreating(true);
-    try {
-      const { data, error } = await supabase
-        .from("internal_projects")
-        .insert({ tenant_id: tenant.id, name: trimmedSearch })
-        .select("id, name")
-        .single();
-      if (error) throw new Error(error.message);
-      queryClient.invalidateQueries({ queryKey: ["internal-projects"] });
-      onChange(data.id, data.name);
-      setSearch("");
-      setOpen(false);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not create project");
-    } finally {
-      setCreating(false);
-    }
-  };
+  const filtered = projects.filter((p) => p.project_name.toLowerCase().includes(search.trim().toLowerCase()));
+  const selectedName = projects.find((p) => p.id === value)?.project_name || valueName;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -79,47 +51,39 @@ export function ProjectCombobox({ value, onChange, disabled }: ProjectComboboxPr
           disabled={disabled}
           className="w-full justify-between font-normal"
         >
-          {selected ? selected.name : "Assign to project…"}
+          <span className="truncate">{selectedName || "Assign to project…"}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
         <Command shouldFilter={false}>
-          <CommandInput placeholder="Search or add a project…" value={search} onValueChange={setSearch} />
+          <CommandInput placeholder="Search RMPL projects in execution…" value={search} onValueChange={setSearch} />
           <CommandList>
             {isLoading ? (
               <div className="py-6 flex justify-center">
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
               </div>
+            ) : isError ? (
+              <CommandEmpty>Could not load projects from RMPL.</CommandEmpty>
             ) : (
               <>
-                <CommandEmpty>No project found.</CommandEmpty>
+                <CommandEmpty>No matching project in execution.</CommandEmpty>
                 <CommandGroup>
-                  {projects
-                    .filter((p) => p.name.toLowerCase().includes(trimmedSearch.toLowerCase()))
-                    .map((p) => (
-                      <CommandItem
-                        key={p.id}
-                        value={p.id}
-                        onSelect={() => {
-                          onChange(p.id, p.name);
-                          setSearch("");
-                          setOpen(false);
-                        }}
-                      >
-                        <Check className={cn("mr-2 h-4 w-4", value === p.id ? "opacity-100" : "opacity-0")} />
-                        {p.name}
-                      </CommandItem>
-                    ))}
-                </CommandGroup>
-                {trimmedSearch && !exactMatch && (
-                  <CommandGroup>
-                    <CommandItem value={`__create__${trimmedSearch}`} onSelect={handleCreate} disabled={creating}>
-                      {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-                      Create "{trimmedSearch}"
+                  {filtered.map((p) => (
+                    <CommandItem
+                      key={p.id}
+                      value={p.id}
+                      onSelect={() => {
+                        onChange(p.id, p.project_name);
+                        setSearch("");
+                        setOpen(false);
+                      }}
+                    >
+                      <Check className={cn("mr-2 h-4 w-4", value === p.id ? "opacity-100" : "opacity-0")} />
+                      {p.project_name}
                     </CommandItem>
-                  </CommandGroup>
-                )}
+                  ))}
+                </CommandGroup>
               </>
             )}
           </CommandList>

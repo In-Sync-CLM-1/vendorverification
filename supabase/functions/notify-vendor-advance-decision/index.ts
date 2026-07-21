@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
 
     const { data: request } = await admin
       .from("vendor_advance_requests")
-      .select("id, vendor_id, tenant_id, amount, activity_name, status, review_comments, internal_projects (name)")
+      .select("id, vendor_id, tenant_id, amount, activity_name, status, review_comments, project_name")
       .eq("id", advance_request_id)
       .maybeSingle();
     if (!request) {
@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
       ? `Advance request approved: ${amountText}`
       : `Advance request not approved: ${amountText}`;
     const message = approved
-      ? `Your advance request of ${amountText} for "${request.activity_name}" has been approved${(request as any).internal_projects?.name ? ` (project: ${(request as any).internal_projects.name})` : ""}. It will be adjusted against a future invoice.`
+      ? `Your advance request of ${amountText} for "${request.activity_name}" has been approved${request.project_name ? ` (project: ${request.project_name})` : ""}. It will be adjusted against a future invoice.`
       : `Your advance request of ${amountText} for "${request.activity_name}" was not approved. ${request.review_comments ? `Reason: ${request.review_comments}` : ""}`;
     const accentColor = approved ? "#16a34a" : "#dc2626";
 

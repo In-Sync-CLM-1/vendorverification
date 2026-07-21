@@ -29,10 +29,10 @@ interface AdvanceRequest {
   vendor_remarks: string | null;
   status: "pending" | "approved" | "rejected";
   project_id: string | null;
+  project_name: string | null;
   review_comments: string | null;
   created_at: string;
   vendors: { company_name: string; vendor_code: string | null } | null;
-  internal_projects: { name: string } | null;
 }
 
 export default function StaffAdvanceRequests() {
@@ -47,7 +47,7 @@ export default function StaffAdvanceRequests() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("vendor_advance_requests")
-        .select("*, vendors(company_name, vendor_code), internal_projects(name)")
+        .select("*, vendors(company_name, vendor_code)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []) as AdvanceRequest[];
@@ -71,6 +71,7 @@ export default function StaffAdvanceRequests() {
         .update({
           status: approve ? "approved" : "rejected",
           project_id: approve ? project!.id : null,
+          project_name: approve ? project!.name : null,
           reviewed_by: user?.id || null,
           reviewed_at: new Date().toISOString(),
           review_comments: comments[req.id]?.trim() || null,
@@ -98,8 +99,9 @@ export default function StaffAdvanceRequests() {
           <h1 className="text-xl font-semibold">Vendor Advance Requests</h1>
           <p className="text-sm text-muted-foreground">
             Advances are judged case by case — there's no fixed policy. Assign an approved
-            request to the correct internal project; it will be adjusted against invoices
-            for that vendor later, the same way any other advance is netted off at settlement.
+            request to the correct RMPL project (only projects currently in execution are
+            shown); it will be adjusted against invoices for that vendor later, the same way
+            any other advance is netted off at settlement.
           </p>
         </div>
 
@@ -149,6 +151,7 @@ export default function StaffAdvanceRequests() {
                         <Label className="text-xs text-muted-foreground">Assign to project (required to approve)</Label>
                         <ProjectCombobox
                           value={projectChoice[req.id]?.id || null}
+                          valueName={projectChoice[req.id]?.name}
                           onChange={(id, name) => setProjectChoice((prev) => ({ ...prev, [req.id]: { id, name } }))}
                           disabled={actioningId === req.id}
                         />
@@ -218,7 +221,7 @@ export default function StaffAdvanceRequests() {
                           </TableCell>
                           <TableCell className="text-sm">{req.activity_name}</TableCell>
                           <TableCell className="text-right">{formatINR(Number(req.amount))}</TableCell>
-                          <TableCell className="text-sm text-muted-foreground">{req.internal_projects?.name || "—"}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{req.project_name || "—"}</TableCell>
                           <TableCell>
                             <Badge
                               variant="outline"
