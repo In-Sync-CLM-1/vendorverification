@@ -12,6 +12,17 @@ import { useAuth } from "@/hooks/useAuth";
 
 type Channel = "phone" | "email";
 
+const DEEPLINK_STORAGE_KEY = "vendor_portal_deeplink";
+
+// If the vendor arrived here via a "please re-upload" link that got bounced
+// through login (see VendorPortalDashboard), pick up the stashed query
+// string so the dashboard can still auto-open the right document.
+function dashboardTarget(): string {
+  const stashed = sessionStorage.getItem(DEEPLINK_STORAGE_KEY);
+  if (stashed) sessionStorage.removeItem(DEEPLINK_STORAGE_KEY);
+  return `/vendor/portal/dashboard${stashed || ""}`;
+}
+
 export default function VendorPortalLogin() {
   const navigate = useNavigate();
   const { user, userType, refreshAuth } = useAuth();
@@ -28,7 +39,7 @@ export default function VendorPortalLogin() {
 
   useEffect(() => {
     if (user && userType === "vendor") {
-      navigate("/vendor/portal/dashboard", { replace: true });
+      navigate(dashboardTarget(), { replace: true });
     }
   }, [user, userType, navigate]);
 
@@ -100,7 +111,7 @@ export default function VendorPortalLogin() {
 
       await refreshAuth();
       toast.success("Welcome to your vendor portal!");
-      navigate("/vendor/portal/dashboard");
+      navigate(dashboardTarget());
     } catch (error: any) {
       toast.error(error.message || "Invalid OTP");
     } finally {

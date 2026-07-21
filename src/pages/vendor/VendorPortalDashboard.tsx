@@ -1,5 +1,5 @@
-import { Fragment, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Fragment, useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +18,7 @@ import { InvoiceCharts } from "@/components/invoices/InvoiceCharts";
 import { PaymentBreakupTable } from "@/components/invoices/PaymentBreakupTable";
 import { InvoiceUploadDialog } from "@/components/invoices/InvoiceUploadDialog";
 import { DetailChangeRequestDialog } from "@/components/vendor/DetailChangeRequestDialog";
+import { DocumentReuploadDialog, ReuploadTargetDocument } from "@/components/documents/DocumentReuploadDialog";
 import {
   formatINR,
   INVOICE_STATUS_META,
@@ -37,15 +38,25 @@ import {
   ChevronDown,
   Paperclip,
   UserCog,
+  AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 
+// The deep link from a "please re-upload" email/WhatsApp points at
+// /vendor/portal/dashboard?reupload=<document_id>. If the vendor isn't
+// logged in yet, the OTP login round trip would otherwise drop that query
+// param — stash it so it survives, and consume it once landed here.
+const DEEPLINK_STORAGE_KEY = "vendor_portal_deeplink";
+
 export default function VendorPortalDashboard() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, userType, loading: authLoading, signOut } = useAuth();
   const [uploadOpen, setUploadOpen] = useState(false);
   const [changeRequestOpen, setChangeRequestOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [reuploadTarget, setReuploadTarget] = useState<ReuploadTargetDocument | null>(null);
 
   const { data: vendor, isLoading: vendorLoading } = useQuery({
     queryKey: ["portal-vendor", user?.id],
@@ -109,7 +120,53 @@ export default function VendorPortalDashboard() {
     enabled: !!vendor?.id,
   });
 
+  const { data: flaggedDocuments = [], refetch: refetchFlaggedDocuments, isFetched: flaggedDocumentsFetched } = useQuery({
+    queryKey: ["portal-flagged-documents", vendor?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vendor_documents")
+        .select("id, vendor_id, document_type_id, version_number, review_comments, document_types (name)")
+        .eq("vendor_id", vendor!.id)
+        .eq("status", "reupload_requested")
+        .order("reviewed_at", { ascending: false });
+      if (error) throw error;
+      return (data || []) as Array<{
+        id: string;
+        vendor_id: string;
+        document_type_id: string;
+        version_number: number;
+        review_comments: string | null;
+        document_types: { name: string } | null;
+      }>;
+    },
+    enabled: !!vendor?.id,
+  });
+
+  // Auto-open the re-upload dialog if we arrived via a "please re-upload"
+  // deep link, once the flagged-document list has loaded.
+  useEffect(() => {
+    const targetId = searchParams.get("reupload");
+    if (!targetId || !flaggedDocumentsFetched) return;
+    const match = flaggedDocuments.find((d) => d.id === targetId);
+    if (match) {
+      setReuploadTarget({
+        id: match.id,
+        vendor_id: match.vendor_id,
+        document_type_id: match.document_type_id,
+        document_type_name: match.document_types?.name || "Document",
+        version_number: match.version_number,
+        review_comments: match.review_comments,
+      });
+    }
+    searchParams.delete("reupload");
+    setSearchParams(searchParams, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flaggedDocumentsFetched]);
+
   if (!authLoading && !user) {
+    if (searchParams.get("reupload")) {
+      sessionStorage.setItem(DEEPLINK_STORAGE_KEY, `?${searchParams.toString()}`);
+    }
     navigate("/vendor/portal", { replace: true });
     return null;
   }
@@ -223,6 +280,46 @@ export default function VendorPortalDashboard() {
             </Card>
           ))}
         </div>
+
+        {/* Documents staff have flagged for re-upload */}
+        {flaggedDocuments.length > 0 && (
+          <Card className="border-orange-200">
+            <CardContent className="p-4">
+              <h2 className="font-semibold mb-3 flex items-center gap-2 text-orange-700">
+                <AlertTriangle className="h-4 w-4" /> Documents Needing Your Attention
+              </h2>
+              <div className="space-y-2">
+                {flaggedDocuments.map((d) => (
+                  <div key={d.id} className="flex items-center justify-between gap-3 text-sm border border-orange-200 bg-orange-50 rounded-md px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{d.document_types?.name || "Document"}</p>
+                      {d.review_comments && (
+                        <p className="text-xs text-orange-700 mt-0.5">{d.review_comments}</p>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="shrink-0 border-orange-400 text-orange-700"
+                      onClick={() =>
+                        setReuploadTarget({
+                          id: d.id,
+                          vendor_id: d.vendor_id,
+                          document_type_id: d.document_type_id,
+                          document_type_name: d.document_types?.name || "Document",
+                          version_number: d.version_number,
+                          review_comments: d.review_comments,
+                        })
+                      }
+                    >
+                      <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Re-upload
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Pending/recent detail-change requests */}
         {changeRequests.length > 0 && (
@@ -409,6 +506,12 @@ export default function VendorPortalDashboard() {
         onOpenChange={setChangeRequestOpen}
         vendorId={vendor.id}
         onSubmitted={refetchChangeRequests}
+      />
+
+      <DocumentReuploadDialog
+        document={reuploadTarget}
+        onOpenChange={(open) => { if (!open) setReuploadTarget(null); }}
+        onUploaded={refetchFlaggedDocuments}
       />
     </div>
   );

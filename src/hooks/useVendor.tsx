@@ -41,7 +41,7 @@ export interface VendorDocument {
   file_size_bytes: number | null;
   version_number: number;
   expiry_date: string | null;
-  status: "uploaded" | "under_review" | "approved" | "rejected" | "expired";
+  status: "uploaded" | "under_review" | "approved" | "rejected" | "expired" | "reupload_requested";
   reviewed_by: string | null;
   reviewed_at: string | null;
   review_comments: string | null;

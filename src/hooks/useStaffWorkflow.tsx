@@ -292,3 +292,45 @@ export function useUpdateDocumentStatus() {
     },
   });
 }
+
+// Flags a single document as needing a re-upload without touching the
+// vendor's overall status or any other document — a lighter-weight action
+// than rejecting the whole application. Notifies the vendor by email +
+// WhatsApp (WhatsApp only once the template is Meta-approved).
+export function useRequestDocumentReupload() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ documentId, reason }: { documentId: string; reason: string }) => {
+      const { error } = await supabase
+        .from("vendor_documents")
+        .update({
+          status: "reupload_requested",
+          reviewed_by: user!.id,
+          reviewed_at: new Date().toISOString(),
+          review_comments: reason,
+        })
+        .eq("id", documentId);
+
+      if (error) throw error;
+
+      const { error: notifyError } = await supabase.functions.invoke("notify-document-reupload", {
+        body: { document_id: documentId },
+      });
+      if (notifyError) {
+        // The flag was saved — surface the notification failure separately
+        // rather than rolling back, since the vendor can still be reached
+        // via the portal even if email/WhatsApp failed to send.
+        throw new Error("Flagged for re-upload, but notifying the vendor failed. Please follow up manually.");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vendor-documents-review"] });
+      toast.success("Vendor notified to re-upload this document");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to request re-upload");
+    },
+  });
+}

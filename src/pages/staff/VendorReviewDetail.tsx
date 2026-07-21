@@ -2,11 +2,12 @@ import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { StaffLayout } from "@/components/layout/StaffLayout";
 import { useUserRoles } from "@/hooks/useUserRoles";
-import { 
-  useVendorDetails, 
-  useVendorDocumentsForReview, 
+import {
+  useVendorDetails,
+  useVendorDocumentsForReview,
   useUpdateVendorStatus,
-  useUpdateDocumentStatus 
+  useUpdateDocumentStatus,
+  useRequestDocumentReupload
 } from "@/hooks/useStaffWorkflow";
 import { supabase } from "@/integrations/supabase/client";
 import { useDocumentAnalysesBatch, type ExtractedField } from "@/hooks/useDocumentAnalysis";
@@ -30,7 +31,8 @@ import {
   Phone,
   Mail,
   MapPin,
-  Sparkles
+  Sparkles,
+  RefreshCw
 } from "lucide-react";
 
 const PII_FIELDS = ["pan", "pan_number", "bank_account", "bank_account_number", "account_number", "mobile", "phone", "mobile_number"];
@@ -71,6 +73,7 @@ const DOC_STATUS_COLORS = {
   approved: "bg-success/20 text-success",
   rejected: "bg-destructive/20 text-destructive",
   expired: "bg-destructive/20 text-destructive",
+  reupload_requested: "bg-orange-100 text-orange-700",
 };
 
 export default function VendorReviewDetail() {
@@ -84,11 +87,14 @@ export default function VendorReviewDetail() {
 
   const updateVendorStatus = useUpdateVendorStatus();
   const updateDocumentStatus = useUpdateDocumentStatus();
+  const requestDocumentReupload = useRequestDocumentReupload();
 
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [showSendBackDialog, setShowSendBackDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [sendBackReason, setSendBackReason] = useState("");
+  const [reuploadDocId, setReuploadDocId] = useState<string | null>(null);
+  const [reuploadReason, setReuploadReason] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const documentIds = useMemo(() => (documents || []).map(d => d.id), [documents]);
@@ -123,6 +129,12 @@ export default function VendorReviewDetail() {
     isAdmin;
 
   const canReject = canForward || canApprove;
+
+  // Requesting a re-upload of one document is a lighter-weight action than
+  // approve/reject — it doesn't move the vendor's overall status, so any
+  // staff who can see this vendor may use it, at any stage (including after
+  // the vendor is already approved).
+  const canManageDocuments = isReviewer || isApprover || isAdmin;
 
   // Send Back is only used by the approver to return to the maker. There is
   // no longer a "send back to vendor" path — vendors get approved/rejected
@@ -173,6 +185,18 @@ export default function VendorReviewDetail() {
     setActionLoading(docId);
     try {
       await updateDocumentStatus.mutateAsync({ documentId: docId, status });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRequestReupload = async () => {
+    if (!reuploadDocId || !reuploadReason.trim()) return;
+    setActionLoading(reuploadDocId);
+    try {
+      await requestDocumentReupload.mutateAsync({ documentId: reuploadDocId, reason: reuploadReason.trim() });
+      setReuploadDocId(null);
+      setReuploadReason("");
     } finally {
       setActionLoading(null);
     }
@@ -403,6 +427,12 @@ export default function VendorReviewDetail() {
                     </div>
                   )}
 
+                  {doc.status === "reupload_requested" && doc.review_comments && (
+                    <div className="mt-1.5 mb-2 text-xs text-orange-700">
+                      <span className="font-medium">Re-upload requested:</span> {doc.review_comments}
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" className="flex-1" onClick={async () => {
                       if (doc.file_url.startsWith("http")) {
@@ -424,6 +454,18 @@ export default function VendorReviewDetail() {
                     {doc.status !== "rejected" && canForward && (
                       <Button variant="outline" size="sm" className="text-destructive border-destructive" onClick={() => handleDocumentAction(doc.id, "rejected")} disabled={actionLoading === doc.id}>
                         {actionLoading === doc.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <XCircle className="h-3 w-3" />}
+                      </Button>
+                    )}
+                    {doc.status !== "reupload_requested" && canManageDocuments && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-orange-600 border-orange-400"
+                        onClick={() => { setReuploadDocId(doc.id); setReuploadReason(""); }}
+                        disabled={actionLoading === doc.id}
+                        title="Request re-upload"
+                      >
+                        {actionLoading === doc.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
                       </Button>
                     )}
                   </div>
@@ -516,6 +558,34 @@ export default function VendorReviewDetail() {
               disabled={!sendBackReason.trim() || actionLoading === "sendback"}
             >
               {actionLoading === "sendback" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Request Document Re-upload Dialog */}
+      <Dialog open={!!reuploadDocId} onOpenChange={(open) => { if (!open) { setReuploadDocId(null); setReuploadReason(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-orange-600">
+              <RefreshCw className="h-5 w-5" /> Request Re-upload
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              The vendor will be notified by email and WhatsApp with this reason and a link to re-upload
+              this one document. Nothing else on their account changes.
+            </p>
+            <Textarea placeholder="What's wrong with this document?" value={reuploadReason} onChange={(e) => setReuploadReason(e.target.value)} rows={4} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setReuploadDocId(null); setReuploadReason(""); }}>Cancel</Button>
+            <Button
+              className="bg-orange-600 hover:bg-orange-700 text-white"
+              onClick={handleRequestReupload}
+              disabled={!reuploadReason.trim() || actionLoading === reuploadDocId}
+            >
+              {actionLoading === reuploadDocId ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send Request"}
             </Button>
           </DialogFooter>
         </DialogContent>
