@@ -23,6 +23,7 @@ import {
   Landmark,
   UserCog,
   Lock,
+  HandCoins,
 } from "lucide-react";
 import {
   Sidebar,
@@ -66,6 +67,7 @@ const navSections = [
       { title: "Invoices", url: "/staff/invoices", icon: ReceiptIndianRupee },
       { title: "Match Payments", url: "/staff/payment-matching", icon: Landmark },
       { title: "Invoice Analytics", url: "/staff/invoice-analytics", icon: ChartColumnBig },
+      { title: "Advance Requests", url: "/staff/advance-requests", icon: HandCoins },
     ],
   },
 ];

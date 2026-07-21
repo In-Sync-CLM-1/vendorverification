@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -54,6 +55,22 @@ export function RecordPaymentDialog({
 
   const totalSettled = nums.advance + nums.tds + nums.payout;
   const remaining = Number(invoice.invoice_amount) - alreadySettled;
+
+  // How much approved advance this vendor still has available to net off,
+  // across all their invoices — purely informational, doesn't gate entry.
+  const { data: advanceAvailable } = useQuery({
+    queryKey: ["vendor-advance-available", invoice.vendor_id],
+    queryFn: async () => {
+      const [{ data: approved }, { data: adjustedRows }] = await Promise.all([
+        supabase.from("vendor_advance_requests").select("amount").eq("vendor_id", invoice.vendor_id).eq("status", "approved"),
+        supabase.from("vendor_invoice_payments").select("advance_adjusted").eq("vendor_id", invoice.vendor_id),
+      ]);
+      const totalApproved = (approved || []).reduce((s, r) => s + Number(r.amount), 0);
+      const totalAdjusted = (adjustedRows || []).reduce((s, r) => s + Number(r.advance_adjusted || 0), 0);
+      return Math.max(totalApproved - totalAdjusted, 0);
+    },
+    enabled: open,
+  });
 
   const suggestPayout = () => {
     const suggested = Math.max(remaining - nums.advance - nums.tds, 0);
@@ -140,6 +157,9 @@ export function RecordPaymentDialog({
               <div className="space-y-1.5">
                 <Label htmlFor="pay-advance">Advance Adjusted (₹)</Label>
                 <Input id="pay-advance" type="number" min="0" step="0.01" value={advance} onChange={(e) => setAdvance(e.target.value)} placeholder="0.00" />
+                {!!advanceAvailable && (
+                  <p className="text-xs text-muted-foreground">{formatINR(advanceAvailable)} approved advance available</p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="pay-gst">GST (₹)</Label>

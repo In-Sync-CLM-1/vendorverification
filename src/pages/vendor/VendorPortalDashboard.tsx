@@ -18,6 +18,7 @@ import { InvoiceCharts } from "@/components/invoices/InvoiceCharts";
 import { PaymentBreakupTable } from "@/components/invoices/PaymentBreakupTable";
 import { InvoiceUploadDialog } from "@/components/invoices/InvoiceUploadDialog";
 import { DetailChangeRequestDialog } from "@/components/vendor/DetailChangeRequestDialog";
+import { AdvanceRequestDialog } from "@/components/vendor/AdvanceRequestDialog";
 import { DocumentReuploadDialog, ReuploadTargetDocument } from "@/components/documents/DocumentReuploadDialog";
 import {
   formatINR,
@@ -40,6 +41,7 @@ import {
   UserCog,
   AlertTriangle,
   RefreshCw,
+  HandCoins,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -55,6 +57,7 @@ export default function VendorPortalDashboard() {
   const { user, userType, loading: authLoading, signOut } = useAuth();
   const [uploadOpen, setUploadOpen] = useState(false);
   const [changeRequestOpen, setChangeRequestOpen] = useState(false);
+  const [advanceRequestOpen, setAdvanceRequestOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [reuploadTarget, setReuploadTarget] = useState<ReuploadTargetDocument | null>(null);
 
@@ -116,6 +119,28 @@ export default function VendorPortalDashboard() {
         .limit(5);
       if (error) throw error;
       return data || [];
+    },
+    enabled: !!vendor?.id,
+  });
+
+  const { data: advanceRequests = [], refetch: refetchAdvanceRequests } = useQuery({
+    queryKey: ["portal-advance-requests", vendor?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vendor_advance_requests")
+        .select("id, amount, activity_name, status, review_comments, created_at, internal_projects (name)")
+        .eq("vendor_id", vendor!.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data || []) as Array<{
+        id: string;
+        amount: number;
+        activity_name: string;
+        status: "pending" | "approved" | "rejected";
+        review_comments: string | null;
+        created_at: string;
+        internal_projects: { name: string } | null;
+      }>;
     },
     enabled: !!vendor?.id,
   });
@@ -222,6 +247,41 @@ export default function VendorPortalDashboard() {
   const rejectedInvoices = invoices.filter((i) => i.status === "rejected");
   const rejectedValue = rejectedInvoices.reduce((s, i) => s + Number(i.invoice_amount), 0);
 
+  // Advance available = approved advances minus whatever has since been
+  // adjusted off against invoice payments (the existing "Advance Adjusted"
+  // field staff already fill in when recording a payment).
+  const totalApprovedAdvance = advanceRequests
+    .filter((r) => r.status === "approved")
+    .reduce((s, r) => s + Number(r.amount), 0);
+  const totalAdvanceAdjusted = payments.reduce((s, p) => s + Number(p.advance_adjusted || 0), 0);
+  const advanceAvailable = Math.max(totalApprovedAdvance - totalAdvanceAdjusted, 0);
+
+  // Payment Information: one row per invoice, aggregating every payment
+  // recorded against it — Advance Payment / TDS Amount / Balance Payment are
+  // rollups of the same advance_adjusted / tds_amount / payout_amount fields
+  // staff already enter in Record Payment.
+  const paymentInfoRows = invoices.map((inv) => {
+    const invPayments = payments.filter((p) => p.invoice_id === inv.id);
+    return {
+      id: inv.id,
+      invoice_number: inv.invoice_number,
+      invoice_date: inv.invoice_date,
+      invoice_amount: Number(inv.invoice_amount),
+      advance_payment: invPayments.reduce((s, p) => s + Number(p.advance_adjusted || 0), 0),
+      tds_amount: invPayments.reduce((s, p) => s + Number(p.tds_amount || 0), 0),
+      balance_payment: invPayments.reduce((s, p) => s + Number(p.payout_amount || 0), 0),
+    };
+  });
+  const paymentInfoTotals = paymentInfoRows.reduce(
+    (acc, r) => ({
+      invoice_amount: acc.invoice_amount + r.invoice_amount,
+      advance_payment: acc.advance_payment + r.advance_payment,
+      tds_amount: acc.tds_amount + r.tds_amount,
+      balance_payment: acc.balance_payment + r.balance_payment,
+    }),
+    { invoice_amount: 0, advance_payment: 0, tds_amount: 0, balance_payment: 0 }
+  );
+
   const tiles = [
     { label: "Invoiced", value: formatINR(totalInvoiced), count: invoices.length, icon: FileText },
     { label: "Outstanding", value: formatINR(Math.max(outstanding, 0)), count: outstandingInvoices.length, icon: Clock },
@@ -243,6 +303,9 @@ export default function VendorPortalDashboard() {
           <div className="flex items-center gap-2">
             <Button onClick={() => setChangeRequestOpen(true)} size="sm" variant="outline">
               <UserCog className="h-4 w-4 mr-2" /> Update My Details
+            </Button>
+            <Button onClick={() => setAdvanceRequestOpen(true)} size="sm" variant="outline">
+              <HandCoins className="h-4 w-4 mr-2" /> Request Advance
             </Button>
             <Button onClick={() => setUploadOpen(true)} size="sm">
               <Upload className="h-4 w-4 mr-2" /> Upload Invoice
@@ -353,6 +416,47 @@ export default function VendorPortalDashboard() {
           </Card>
         )}
 
+        {/* Advance requests */}
+        {advanceRequests.length > 0 && (
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold">Your Advance Requests</h2>
+                {advanceAvailable > 0 && (
+                  <span className="text-sm text-muted-foreground">
+                    Available to adjust: <span className="font-semibold text-foreground">{formatINR(advanceAvailable)}</span>
+                  </span>
+                )}
+              </div>
+              <div className="space-y-2">
+                {advanceRequests.map((r) => {
+                  const statusMeta =
+                    r.status === "approved"
+                      ? { label: "Approved", className: "bg-emerald-100 text-emerald-800 border-emerald-200" }
+                      : r.status === "rejected"
+                        ? { label: "Not Approved", className: "bg-red-100 text-red-800 border-red-200" }
+                        : { label: "Pending Review", className: "bg-amber-100 text-amber-800 border-amber-200" };
+                  return (
+                    <div key={r.id} className="flex items-center justify-between gap-3 text-sm border rounded-md px-3 py-2">
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{r.activity_name} · {formatINR(Number(r.amount))}</p>
+                        <p className="text-muted-foreground text-xs">
+                          Requested {new Date(r.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                          {r.internal_projects?.name ? ` · ${r.internal_projects.name}` : ""}
+                        </p>
+                        {r.status === "rejected" && r.review_comments && (
+                          <p className="text-xs text-destructive mt-0.5">{r.review_comments}</p>
+                        )}
+                      </div>
+                      <Badge variant="outline" className={`shrink-0 ${statusMeta.className}`}>{statusMeta.label}</Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Analytics */}
         <InvoiceCharts
           invoices={invoices.map((i) => ({
@@ -367,6 +471,52 @@ export default function VendorPortalDashboard() {
             payout_amount: Number(p.payout_amount),
           }))}
         />
+
+        {/* Payment Information */}
+        {paymentInfoRows.length > 0 && (
+          <Card>
+            <CardContent className="p-0">
+              <div className="p-4 border-b">
+                <h2 className="font-semibold">Payment Information</h2>
+              </div>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Invoice No.</TableHead>
+                      <TableHead>Invoice Date</TableHead>
+                      <TableHead className="text-right">Invoice Amount</TableHead>
+                      <TableHead className="text-right">Advance Payment</TableHead>
+                      <TableHead className="text-right">TDS Amount</TableHead>
+                      <TableHead className="text-right">Balance Payment</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paymentInfoRows.map((r) => (
+                      <TableRow key={r.id}>
+                        <TableCell className="font-medium">{r.invoice_number}</TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {new Date(r.invoice_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                        </TableCell>
+                        <TableCell className="text-right">{formatINR(r.invoice_amount)}</TableCell>
+                        <TableCell className="text-right">{r.advance_payment > 0 ? formatINR(r.advance_payment) : "—"}</TableCell>
+                        <TableCell className="text-right">{r.tds_amount > 0 ? formatINR(r.tds_amount) : "—"}</TableCell>
+                        <TableCell className="text-right">{r.balance_payment > 0 ? formatINR(r.balance_payment) : "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow className="font-semibold bg-muted/40 hover:bg-muted/40">
+                      <TableCell colSpan={2}>Total</TableCell>
+                      <TableCell className="text-right">{formatINR(paymentInfoTotals.invoice_amount)}</TableCell>
+                      <TableCell className="text-right">{formatINR(paymentInfoTotals.advance_payment)}</TableCell>
+                      <TableCell className="text-right">{formatINR(paymentInfoTotals.tds_amount)}</TableCell>
+                      <TableCell className="text-right">{formatINR(paymentInfoTotals.balance_payment)}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Invoice list */}
         <Card>
@@ -506,6 +656,13 @@ export default function VendorPortalDashboard() {
         onOpenChange={setChangeRequestOpen}
         vendorId={vendor.id}
         onSubmitted={refetchChangeRequests}
+      />
+
+      <AdvanceRequestDialog
+        open={advanceRequestOpen}
+        onOpenChange={setAdvanceRequestOpen}
+        vendorId={vendor.id}
+        onSubmitted={refetchAdvanceRequests}
       />
 
       <DocumentReuploadDialog
