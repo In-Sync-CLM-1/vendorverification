@@ -236,8 +236,8 @@ const LIFECYCLE = [
     step: "04",
     icon: Landmark,
     title: "Payments everyone can see",
-    desc: "Full advance / GST / TDS / payout breakup on every settlement — vendors notified the moment it lands.",
-    points: ["Match a bank statement in one screen", "Part-payments to full & final", "Automatic vendor notifications"],
+    desc: "Vendors request advances from their own portal against a real project; staff approve and it nets off automatically at settlement — full advance / GST / TDS / payout breakup on every payment, vendors notified the moment it lands.",
+    points: ["Self-service advance requests", "Match a bank statement in one screen", "Automatic vendor notifications"],
     vignette: VignettePayment,
   },
   {
@@ -461,8 +461,10 @@ export default function LandingPage() {
                 You verify every employee you hire — but you wire lakhs to
                 vendors you've never checked. Vendor-Sync verifies PAN, GST and
                 bank against government sources and flags fraud before you sign
-                the purchase order. Onboarding, invoices and payments then run
-                themselves.
+                the purchase order — then keeps that same verified identity
+                attached through onboarding, every invoice, every advance
+                request and every settlement. Not a one-time check you file
+                away.
               </motion.p>
 
               <motion.div
