@@ -131,6 +131,13 @@ Deno.serve(async (req) => {
           .maybeSingle());
       }
       if (!invoice) {
+        ({ data: invoice } = await admin
+          .from("vendor_advance_requests")
+          .select("id, tenant_id, vendor_id")
+          .eq("proforma_invoice_file_key", key)
+          .maybeSingle());
+      }
+      if (!invoice) {
         return jsonResponse({ error: "File not found" }, 404);
       }
 

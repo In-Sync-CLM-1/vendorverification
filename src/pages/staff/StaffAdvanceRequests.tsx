@@ -17,9 +17,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ProjectCombobox } from "@/components/staff/ProjectCombobox";
-import { Loader2, HandCoins, Check, X } from "lucide-react";
+import { Loader2, HandCoins, Check, X, FileText } from "lucide-react";
 import { toast } from "sonner";
-import { formatINR } from "@/lib/invoices";
+import { formatINR, openInvoiceFile } from "@/lib/invoices";
 
 interface AdvanceRequest {
   id: string;
@@ -32,6 +32,7 @@ interface AdvanceRequest {
   project_name: string | null;
   review_comments: string | null;
   created_at: string;
+  proforma_invoice_file_key: string | null;
   vendors: { company_name: string; vendor_code: string | null } | null;
 }
 
@@ -56,6 +57,14 @@ export default function StaffAdvanceRequests() {
 
   const pending = requests.filter((r) => r.status === "pending");
   const decided = requests.filter((r) => r.status !== "pending");
+
+  const handleViewPi = async (fileKey: string) => {
+    try {
+      await openInvoiceFile(fileKey);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not open the file");
+    }
+  };
 
   const handleDecide = async (req: AdvanceRequest, approve: boolean) => {
     const project = projectChoice[req.id];
@@ -145,6 +154,18 @@ export default function StaffAdvanceRequests() {
 
                       {req.vendor_remarks && (
                         <p className="text-sm text-muted-foreground italic">"{req.vendor_remarks}"</p>
+                      )}
+
+                      {req.proforma_invoice_file_key && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => handleViewPi(req.proforma_invoice_file_key!)}
+                        >
+                          <FileText className="h-3.5 w-3.5 mr-1.5" /> View Proforma Invoice
+                        </Button>
                       )}
 
                       <div className="space-y-1.5">
