@@ -100,6 +100,7 @@ export default function VendorReferralRegistration() {
             setPhoneVerified(parsed.phoneVerified || false);
             setEmailVerified(parsed.emailVerified || false);
             setUploadedDocs(new Set(parsed.uploadedDocs || []));
+            setUploadedDocFiles(parsed.uploadedDocFiles || {});
             if (parsed.formData.category_id) {
               loadCategoryDocs(parsed.formData.category_id);
             }
@@ -145,9 +146,10 @@ export default function VendorReferralRegistration() {
       phoneVerified,
       emailVerified,
       uploadedDocs: Array.from(uploadedDocs),
+      uploadedDocFiles,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-  }, [formData, currentStep, consented, phoneVerified, emailVerified, uploadedDocs, pageState, token]);
+  }, [formData, currentStep, consented, phoneVerified, emailVerified, uploadedDocs, uploadedDocFiles, pageState, token]);
 
   const handleFieldChange = useCallback((field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
