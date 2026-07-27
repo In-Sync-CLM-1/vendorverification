@@ -59,20 +59,21 @@ Deno.serve(async (req) => {
       ? `+91${identifier.replace(/\D/g, "")}`
       : identifier.toLowerCase().trim();
 
-    // Vendor portal logins are only for approved vendors registered with this
-    // exact email / WhatsApp number
+    // Vendor portal logins are for any vendor registered with this exact
+    // email / WhatsApp number, at any stage up to approval — a rejected
+    // registration is the only dead end, since there's nothing left to act on.
     if (purpose === "vendor_portal") {
       const { data: match, error: matchError } = await supabase.rpc("find_vendor_by_contact", {
         p_identifier: normalizedIdentifier,
       });
       const vendor = Array.isArray(match) ? match[0] : match;
       if (matchError) console.error("find_vendor_by_contact error:", matchError);
-      if (!vendor || vendor.current_status !== "approved") {
+      if (!vendor || vendor.current_status === "rejected") {
         return new Response(
           JSON.stringify({
             error: identifierType === "phone"
-              ? "No approved vendor is registered with this WhatsApp number."
-              : "No approved vendor is registered with this email address.",
+              ? "No active vendor registration is linked to this WhatsApp number."
+              : "No active vendor registration is linked to this email address.",
           }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );

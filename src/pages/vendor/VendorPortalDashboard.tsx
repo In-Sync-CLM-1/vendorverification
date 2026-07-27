@@ -19,7 +19,7 @@ import { PaymentBreakupTable } from "@/components/invoices/PaymentBreakupTable";
 import { InvoiceUploadDialog } from "@/components/invoices/InvoiceUploadDialog";
 import { DetailChangeRequestDialog } from "@/components/vendor/DetailChangeRequestDialog";
 import { AdvanceRequestDialog } from "@/components/vendor/AdvanceRequestDialog";
-import { DocumentReuploadDialog, ReuploadTargetDocument } from "@/components/documents/DocumentReuploadDialog";
+import { DocumentUploadDialog, DocumentActionTarget } from "@/components/documents/DocumentUploadDialog";
 import {
   formatINR,
   INVOICE_STATUS_META,
@@ -59,7 +59,7 @@ export default function VendorPortalDashboard() {
   const [changeRequestOpen, setChangeRequestOpen] = useState(false);
   const [advanceRequestOpen, setAdvanceRequestOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [reuploadTarget, setReuploadTarget] = useState<ReuploadTargetDocument | null>(null);
+  const [documentTarget, setDocumentTarget] = useState<DocumentActionTarget | null>(null);
 
   const { data: vendor, isLoading: vendorLoading } = useQuery({
     queryKey: ["portal-vendor", user?.id],
@@ -72,7 +72,7 @@ export default function VendorPortalDashboard() {
       if (!link) return null;
       const { data } = await supabase
         .from("vendors")
-        .select("id, company_name, vendor_code, current_status")
+        .select("id, company_name, vendor_code, current_status, category_id, tenant_id")
         .eq("id", link.vendor_id)
         .maybeSingle();
       return data;
@@ -145,40 +145,78 @@ export default function VendorPortalDashboard() {
     enabled: !!vendor?.id,
   });
 
-  const { data: flaggedDocuments = [], refetch: refetchFlaggedDocuments, isFetched: flaggedDocumentsFetched } = useQuery({
-    queryKey: ["portal-flagged-documents", vendor?.id],
+  const { data: requiredDocTypes = [] } = useQuery({
+    queryKey: ["portal-category-documents", vendor?.category_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("category_documents")
+        .select("document_type_id, is_mandatory, display_order, document_types (id, name)")
+        .eq("category_id", vendor!.category_id)
+        .order("display_order");
+      if (error) throw error;
+      return (data || []) as Array<{
+        document_type_id: string;
+        is_mandatory: boolean;
+        display_order: number;
+        document_types: { id: string; name: string } | null;
+      }>;
+    },
+    enabled: !!vendor?.category_id,
+  });
+
+  const { data: vendorDocuments = [], refetch: refetchVendorDocuments, isFetched: vendorDocumentsFetched } = useQuery({
+    queryKey: ["portal-vendor-documents", vendor?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("vendor_documents")
-        .select("id, vendor_id, document_type_id, version_number, review_comments, document_types (name)")
+        .select("id, vendor_id, document_type_id, version_number, status, review_comments, created_at")
         .eq("vendor_id", vendor!.id)
-        .eq("status", "reupload_requested")
-        .order("reviewed_at", { ascending: false });
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []) as Array<{
         id: string;
         vendor_id: string;
         document_type_id: string;
         version_number: number;
+        status: string;
         review_comments: string | null;
-        document_types: { name: string } | null;
+        created_at: string;
       }>;
     },
     enabled: !!vendor?.id,
   });
 
-  // Auto-open the re-upload dialog if we arrived via a "please re-upload"
-  // deep link, once the flagged-document list has loaded.
+  // One row per required document type: the vendor's most recent upload for
+  // that type (created_at desc, so the first match wins), or none at all if
+  // it's never been uploaded.
+  const documentRows = requiredDocTypes.map((rt) => {
+    const uploaded = vendorDocuments.find((d) => d.document_type_id === rt.document_type_id);
+    return {
+      document_type_id: rt.document_type_id,
+      document_type_name: rt.document_types?.name || "Document",
+      is_mandatory: rt.is_mandatory,
+      document: uploaded || null,
+    };
+  });
+
+  const attentionNeeded = documentRows.filter(
+    (r) => r.document && (r.document.status === "reupload_requested" || r.document.status === "rejected")
+  );
+
+  // Auto-open the upload dialog if we arrived via a "please re-upload" deep
+  // link, once the vendor's documents have loaded.
   useEffect(() => {
     const targetId = searchParams.get("reupload");
-    if (!targetId || !flaggedDocumentsFetched) return;
-    const match = flaggedDocuments.find((d) => d.id === targetId);
+    if (!targetId || !vendorDocumentsFetched || !vendor) return;
+    const match = vendorDocuments.find((d) => d.id === targetId);
     if (match) {
-      setReuploadTarget({
-        id: match.id,
+      const rt = requiredDocTypes.find((r) => r.document_type_id === match.document_type_id);
+      setDocumentTarget({
+        document_id: match.id,
         vendor_id: match.vendor_id,
+        tenant_id: vendor.tenant_id,
         document_type_id: match.document_type_id,
-        document_type_name: match.document_types?.name || "Document",
+        document_type_name: rt?.document_types?.name || "Document",
         version_number: match.version_number,
         review_comments: match.review_comments,
       });
@@ -186,7 +224,7 @@ export default function VendorPortalDashboard() {
     searchParams.delete("reupload");
     setSearchParams(searchParams, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [flaggedDocumentsFetched]);
+  }, [vendorDocumentsFetched]);
 
   if (!authLoading && !user) {
     if (searchParams.get("reupload")) {
@@ -344,41 +382,88 @@ export default function VendorPortalDashboard() {
           ))}
         </div>
 
-        {/* Documents staff have flagged for re-upload */}
-        {flaggedDocuments.length > 0 && (
-          <Card className="border-orange-200">
+        {/* Every required document for this vendor's category — upload
+            whatever's missing, re-upload anything flagged or rejected. */}
+        {documentRows.length > 0 && (
+          <Card className={attentionNeeded.length > 0 ? "border-orange-200" : undefined}>
             <CardContent className="p-4">
-              <h2 className="font-semibold mb-3 flex items-center gap-2 text-orange-700">
-                <AlertTriangle className="h-4 w-4" /> Documents Needing Your Attention
+              <h2 className="font-semibold mb-3 flex items-center gap-2">
+                {attentionNeeded.length > 0 && <AlertTriangle className="h-4 w-4 text-orange-600" />}
+                My Documents
               </h2>
               <div className="space-y-2">
-                {flaggedDocuments.map((d) => (
-                  <div key={d.id} className="flex items-center justify-between gap-3 text-sm border border-orange-200 bg-orange-50 rounded-md px-3 py-2">
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">{d.document_types?.name || "Document"}</p>
-                      {d.review_comments && (
-                        <p className="text-xs text-orange-700 mt-0.5">{d.review_comments}</p>
+                {documentRows.map((r) => {
+                  const status = r.document?.status;
+                  const needsAttention = status === "reupload_requested" || status === "rejected";
+                  const isMissing = !r.document;
+                  const rowClass = needsAttention
+                    ? "border-orange-200 bg-orange-50"
+                    : isMissing
+                      ? r.is_mandatory
+                        ? "border-amber-200 bg-amber-50"
+                        : "border-border"
+                      : "border-border";
+                  const statusLabel = isMissing
+                    ? r.is_mandatory
+                      ? "Not uploaded (required)"
+                      : "Not uploaded"
+                    : status === "reupload_requested"
+                      ? "Re-upload requested"
+                      : status === "rejected"
+                        ? "Rejected"
+                        : status === "approved"
+                          ? "Approved"
+                          : status === "under_review"
+                            ? "Under review"
+                            : "Uploaded";
+                  const statusClass = needsAttention
+                    ? "text-orange-700"
+                    : isMissing
+                      ? r.is_mandatory
+                        ? "text-amber-700"
+                        : "text-muted-foreground"
+                      : status === "approved"
+                        ? "text-emerald-700"
+                        : "text-muted-foreground";
+                  return (
+                    <div
+                      key={r.document_type_id}
+                      className={`flex items-center justify-between gap-3 text-sm border rounded-md px-3 py-2 ${rowClass}`}
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{r.document_type_name}</p>
+                        <p className={`text-xs mt-0.5 ${statusClass}`}>{statusLabel}</p>
+                        {r.document?.review_comments && needsAttention && (
+                          <p className="text-xs text-orange-700 mt-0.5">{r.document.review_comments}</p>
+                        )}
+                      </div>
+                      {(isMissing || needsAttention) && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className={needsAttention ? "shrink-0 border-orange-400 text-orange-700" : "shrink-0"}
+                          onClick={() =>
+                            setDocumentTarget({
+                              document_id: r.document?.id || null,
+                              vendor_id: vendor!.id,
+                              tenant_id: vendor!.tenant_id,
+                              document_type_id: r.document_type_id,
+                              document_type_name: r.document_type_name,
+                              version_number: r.document?.version_number || 0,
+                              review_comments: r.document?.review_comments || null,
+                            })
+                          }
+                        >
+                          {isMissing ? (
+                            <><Upload className="h-3.5 w-3.5 mr-1.5" /> Upload</>
+                          ) : (
+                            <><RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Re-upload</>
+                          )}
+                        </Button>
                       )}
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="shrink-0 border-orange-400 text-orange-700"
-                      onClick={() =>
-                        setReuploadTarget({
-                          id: d.id,
-                          vendor_id: d.vendor_id,
-                          document_type_id: d.document_type_id,
-                          document_type_name: d.document_types?.name || "Document",
-                          version_number: d.version_number,
-                          review_comments: d.review_comments,
-                        })
-                      }
-                    >
-                      <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Re-upload
-                    </Button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -665,10 +750,10 @@ export default function VendorPortalDashboard() {
         onSubmitted={refetchAdvanceRequests}
       />
 
-      <DocumentReuploadDialog
-        document={reuploadTarget}
-        onOpenChange={(open) => { if (!open) setReuploadTarget(null); }}
-        onUploaded={refetchFlaggedDocuments}
+      <DocumentUploadDialog
+        document={documentTarget}
+        onOpenChange={(open) => { if (!open) setDocumentTarget(null); }}
+        onUploaded={refetchVendorDocuments}
       />
     </div>
   );

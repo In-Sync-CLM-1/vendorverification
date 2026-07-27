@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { CheckCircle2, ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const BRAND_COLORS = [
   "#0066B3", // In-Sync Blue
@@ -42,6 +44,7 @@ function createParticles(canvas: HTMLCanvasElement, count: number): Particle[] {
 
 export function RegistrationSuccess() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -145,10 +148,24 @@ export function RegistrationSuccess() {
           application and get in touch shortly.
         </p>
 
+        {/* Portal access */}
+        <div
+          className="flex flex-col items-center gap-2"
+          style={{ animation: "celebFadeIn 0.6s ease-out 1.0s both" }}
+        >
+          <p className="text-sm text-muted-foreground max-w-sm">
+            Need to add another document, or check your application status? Sign in to the
+            Vendor Portal anytime with the mobile number or email you registered.
+          </p>
+          <Button variant="outline" onClick={() => navigate("/vendor/portal")}>
+            Go to Vendor Portal
+          </Button>
+        </div>
+
         {/* Security badge */}
         <div
-          className="flex items-center gap-2 text-base text-muted-foreground mt-4"
-          style={{ animation: "celebFadeIn 0.6s ease-out 1.1s both" }}
+          className="flex items-center gap-2 text-base text-muted-foreground mt-2"
+          style={{ animation: "celebFadeIn 0.6s ease-out 1.2s both" }}
         >
           <ShieldCheck className="h-5 w-5" />
           <span>256-bit Encrypted | DPDP Act Compliant</span>
