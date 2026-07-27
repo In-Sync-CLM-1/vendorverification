@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -382,6 +383,20 @@ export default function VendorPortalDashboard() {
           ))}
         </div>
 
+        <Tabs defaultValue="overview">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="documents">
+              Documents
+              {attentionNeeded.length > 0 && (
+                <Badge variant="outline" className="ml-2 border-orange-400 text-orange-700 bg-orange-50">
+                  {attentionNeeded.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+        <TabsContent value="documents" className="mt-6">
         {/* Every required document for this vendor's category — upload
             whatever's missing, re-upload anything flagged or rejected. */}
         {documentRows.length > 0 && (
@@ -468,7 +483,9 @@ export default function VendorPortalDashboard() {
             </CardContent>
           </Card>
         )}
+        </TabsContent>
 
+        <TabsContent value="overview" className="space-y-6 mt-6">
         {/* Pending/recent detail-change requests */}
         {changeRequests.length > 0 && (
           <Card>
@@ -724,6 +741,8 @@ export default function VendorPortalDashboard() {
             )}
           </CardContent>
         </Card>
+        </TabsContent>
+        </Tabs>
       </main>
 
       <InvoiceUploadDialog
