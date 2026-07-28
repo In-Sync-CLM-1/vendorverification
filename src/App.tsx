@@ -3,9 +3,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { TenantProvider } from "@/contexts/TenantContext";
-import { AuthProvider } from "@/hooks/useAuth";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
 
 // Pages
 import LandingPage from "./pages/LandingPage";
@@ -48,6 +48,19 @@ import PlatformDashboard from "./pages/platform/PlatformDashboard";
 
 const queryClient = new QueryClient();
 
+// The landing page is a public marketing page with no auth check of its own,
+// so a visitor arriving with an already-valid session (e.g. the RMPL OPM
+// SSO handoff, or just a returning user with a live session) saw the
+// marketing page instead of their dashboard. Redirect once session state
+// (and account type) has resolved.
+function RootRoute() {
+  const { session, userType, loading } = useAuth();
+  if (loading) return null;
+  if (session && userType === "staff") return <Navigate to="/staff/dashboard" replace />;
+  if (session && userType === "vendor") return <Navigate to="/vendor/portal/dashboard" replace />;
+  return <LandingPage />;
+}
+
 const App = () => (
   <TenantProvider>
     <QueryClientProvider client={queryClient}>
@@ -58,7 +71,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             {/* Public Routes */}
-            <Route path="/" element={<LandingPage />} />
+            <Route path="/" element={<RootRoute />} />
             <Route path="/register" element={<OrgRegistration />} />
             <Route path="/register/ref/:token" element={<VendorReferralRegistration />} />
             <Route path="/vendor/portal" element={<VendorPortalLogin />} />
