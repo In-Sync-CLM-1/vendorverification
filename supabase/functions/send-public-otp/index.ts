@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getWhatsappSettings } from "../_shared/whatsappSettings.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -136,13 +137,8 @@ Deno.serve(async (req) => {
 
     // ===== PHONE PATH: WhatsApp via Exotel =====
     if (identifierType === "phone") {
-      // Read WhatsApp config from database
-      const { data: wsConfig } = await supabase
-        .from("whatsapp_settings")
-        .select("*")
-        .eq("is_active", true)
-        .limit(1)
-        .single();
+      // Read WhatsApp config from database (tenant-specific, else the shared default)
+      const wsConfig = await getWhatsappSettings(supabase, resolvedTenantId);
 
       if (!wsConfig?.exotel_sid || !wsConfig?.exotel_api_key || !wsConfig?.exotel_api_token || !wsConfig?.whatsapp_source_number) {
         // Test mode - WhatsApp not configured

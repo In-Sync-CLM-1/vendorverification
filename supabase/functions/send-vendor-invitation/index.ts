@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getWhatsappSettings } from "../_shared/whatsappSettings.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -187,12 +188,7 @@ Deno.serve(async (req) => {
     // Send WhatsApp via Exotel using the `vendor_invitation` template and log
     // every attempt to whatsapp_messages so deliveries are auditable.
     try {
-      const { data: wsConfig } = await supabaseAdmin
-        .from("whatsapp_settings")
-        .select("exotel_sid, exotel_api_key, exotel_api_token, exotel_subdomain, whatsapp_source_number")
-        .eq("is_active", true)
-        .limit(1)
-        .maybeSingle();
+      const wsConfig = await getWhatsappSettings(supabaseAdmin, tenantId);
 
       if (wsConfig?.exotel_sid && wsConfig?.exotel_api_key && wsConfig?.exotel_api_token && wsConfig?.whatsapp_source_number) {
         const phoneDigits = contact_phone.replace(/\D/g, "");

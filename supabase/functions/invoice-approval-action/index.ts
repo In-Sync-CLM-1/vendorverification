@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getWhatsappSettings } from "../_shared/whatsappSettings.ts";
 
 const PORTAL_URL = "https://vendor.in-sync.co.in/vendor/portal";
 const VENDOR_WA_TEMPLATE_NAME = "vendor_invoice_update_v1";
@@ -127,12 +128,7 @@ async function notifyVendorOfOutcome(
       .maybeSingle();
     if (template?.status !== "approved") return;
 
-    const { data: wsConfig } = await admin
-      .from("whatsapp_settings")
-      .select("exotel_sid, exotel_api_key, exotel_api_token, exotel_subdomain, whatsapp_source_number")
-      .eq("is_active", true)
-      .limit(1)
-      .maybeSingle();
+    const wsConfig = await getWhatsappSettings(admin, tenantId);
     if (!wsConfig?.exotel_sid || !wsConfig?.exotel_api_key || !wsConfig?.exotel_api_token || !wsConfig?.whatsapp_source_number) return;
 
     const phoneDigits = contact.mobile.replace(/\D/g, "");
