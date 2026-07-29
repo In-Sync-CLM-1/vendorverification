@@ -48,6 +48,9 @@ verify_jwt = false
 [functions.set-encryption-key]
 verify_jwt = false
 
+[functions.upload-org-logo]
+verify_jwt = false
+
 [functions.seed-stress-test]
 verify_jwt = false
 

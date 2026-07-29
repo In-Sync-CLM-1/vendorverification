@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { StaffLayout } from "@/components/layout/StaffLayout";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/contexts/TenantContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -30,6 +31,8 @@ import {
   Shield,
   Globe,
   Key,
+  Image,
+  Upload,
 } from "lucide-react";
 import { DataRequestsPanel } from "@/components/admin/DataRequestsPanel";
 import { BreachNotificationPanel } from "@/components/admin/BreachNotificationPanel";
@@ -39,7 +42,10 @@ import { ApiKeysPanel } from "@/components/admin/ApiKeysPanel";
 export default function AdminSettings() {
   const { isAdmin } = useUserRoles();
   const { user } = useAuth();
+  const { tenant } = useTenant();
   const queryClient = useQueryClient();
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   // Resolve the admin's tenant_id once — required for vendor_categories / document_types inserts
   const { data: adminTenantId } = useQuery({
@@ -106,6 +112,34 @@ export default function AdminSettings() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const uploadLogo = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const { data, error } = await supabase.functions.invoke("upload-org-logo", { body: formData });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data as { logo_url: string };
+    },
+    onSuccess: () => {
+      toast.success("Logo updated");
+      setLogoPreview(null);
+      window.location.reload();
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Upload failed");
+      setLogoPreview(null);
+    },
+  });
+
+  const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoPreview(URL.createObjectURL(file));
+    uploadLogo.mutate(file);
+    e.target.value = "";
+  };
+
   const saveCategory = useMutation({
     mutationFn: async () => {
       if (editingCategory) { const { error } = await supabase.from("vendor_categories").update(categoryForm).eq("id", editingCategory.id); if (error) throw error; }
@@ -156,6 +190,7 @@ export default function AdminSettings() {
       <div className="flex-1 flex flex-col">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
           <TabsList className="w-full justify-start px-4 h-auto py-2 bg-card border-b rounded-none flex-wrap">
+            <TabsTrigger value="branding" className="flex items-center gap-2"><Image className="h-4 w-4" />Branding</TabsTrigger>
             <TabsTrigger value="categories" className="flex items-center gap-2"><Building2 className="h-4 w-4" />Categories</TabsTrigger>
             <TabsTrigger value="documents" className="flex items-center gap-2"><FileText className="h-4 w-4" />Doc Types</TabsTrigger>
             <TabsTrigger value="encryption" className="flex items-center gap-2"><KeyRound className="h-4 w-4" />Encryption</TabsTrigger>
@@ -165,6 +200,65 @@ export default function AdminSettings() {
             <TabsTrigger value="webhooks" className="flex items-center gap-2"><Globe className="h-4 w-4" />Webhooks</TabsTrigger>
             <TabsTrigger value="api-keys" className="flex items-center gap-2"><Key className="h-4 w-4" />API Keys</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="branding" className="flex-1 flex flex-col mt-0">
+            <div className="flex-1 overflow-auto p-4 max-w-2xl">
+              <Card>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-3">
+                    <Image className="h-6 w-6 text-primary" />
+                    <div>
+                      <CardTitle className="text-lg">Organization Logo</CardTitle>
+                      <CardDescription>
+                        Shown on your staff dashboard and on every page your vendors see — login, registration, and the vendor portal.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-4">
+                    <div className="h-20 w-20 rounded-lg border bg-muted/30 flex items-center justify-center overflow-hidden shrink-0">
+                      {uploadLogo.isPending ? (
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                      ) : (
+                        <img
+                          src={logoPreview || tenant?.logo_url || undefined}
+                          alt="Organization logo"
+                          className="h-full w-full object-contain"
+                          style={{ display: (logoPreview || tenant?.logo_url) ? "block" : "none" }}
+                        />
+                      )}
+                      {!logoPreview && !tenant?.logo_url && !uploadLogo.isPending && (
+                        <Image className="h-6 w-6 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <input
+                        ref={logoInputRef}
+                        type="file"
+                        accept=".png,.jpg,.jpeg,.svg,.webp"
+                        className="hidden"
+                        onChange={handleLogoSelect}
+                      />
+                      <Button
+                        variant="outline"
+                        onClick={() => logoInputRef.current?.click()}
+                        disabled={uploadLogo.isPending}
+                      >
+                        {uploadLogo.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <Upload className="h-4 w-4 mr-2" />
+                        )}
+                        {tenant?.logo_url ? "Replace Logo" : "Upload Logo"}
+                      </Button>
+                      <p className="text-xs text-muted-foreground">PNG, JPG, SVG or WEBP. Max 2 MB.</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
 
           <TabsContent value="categories" className="flex-1 flex flex-col mt-0">
             <div className="p-4 border-b">
