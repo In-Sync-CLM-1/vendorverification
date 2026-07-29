@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getWhatsappSettings } from "../_shared/whatsappSettings.ts";
+import { getEmailSender } from "../_shared/emailSender.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,7 +28,6 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const resendApiKey = Deno.env.get("RESEND_API_KEY")!;
     const admin = createClient(supabaseUrl, serviceRoleKey);
 
     const authHeader = req.headers.get("Authorization") || "";
@@ -100,6 +100,7 @@ Deno.serve(async (req) => {
       .eq("template_name", WA_TEMPLATE_NAME)
       .maybeSingle();
     const wsConfig = await getWhatsappSettings(admin, request.tenant_id);
+    const { apiKey: resendApiKey, from: emailFrom } = getEmailSender(request.tenant_id);
 
     let emailCount = 0;
     let whatsappCount = 0;
@@ -124,7 +125,7 @@ Deno.serve(async (req) => {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${resendApiKey}` },
           body: JSON.stringify({
-            from: "Vendor-Sync <noreply@in-sync.co.in>",
+            from: emailFrom,
             to: [recipientEmail],
             subject: `Advance request from ${vendorName} - Vendor-Sync`,
             html: `
