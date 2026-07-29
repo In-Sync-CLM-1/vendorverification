@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getWhatsappSettings } from "../_shared/whatsappSettings.ts";
+import { getEmailSender } from "../_shared/emailSender.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -216,7 +217,7 @@ Deno.serve(async (req) => {
     }
 
     // ===== EMAIL PATH: Resend API =====
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    const { apiKey: resendApiKey, from: emailFrom } = getEmailSender(resolvedTenantId);
     if (!resendApiKey) {
       console.error("RESEND_API_KEY not configured");
       return new Response(
@@ -246,7 +247,7 @@ Deno.serve(async (req) => {
         Authorization: `Bearer ${resendApiKey}`,
       },
       body: JSON.stringify({
-        from: "Vendor-Sync <noreply@in-sync.co.in>",
+        from: emailFrom,
         to: [normalizedIdentifier],
         subject: purpose === "org_registration" ? "Your verification code for Vendor-Sync" : purpose === "vendor_portal" ? "Your login code for Vendor-Sync" : "Your OTP for Vendor Registration",
         html: emailHtml,

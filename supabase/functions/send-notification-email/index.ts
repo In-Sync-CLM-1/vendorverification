@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getEmailSender } from "../_shared/emailSender.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,7 +15,6 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const resendApiKey = Deno.env.get("RESEND_API_KEY")!;
 
     // Authenticate caller
     const authHeader = req.headers.get("Authorization");
@@ -132,6 +132,7 @@ Deno.serve(async (req) => {
     }
 
     // Send email via Resend
+    const { apiKey: resendApiKey, from: emailFrom } = getEmailSender(callerTenantId);
     const emailRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -139,7 +140,7 @@ Deno.serve(async (req) => {
         Authorization: `Bearer ${resendApiKey}`,
       },
       body: JSON.stringify({
-        from: "Vendor-Sync <noreply@in-sync.co.in>",
+        from: emailFrom,
         to: [recipientEmail],
         subject: `${subjectPrefix}: ${title} - In-Sync`,
         html: `
