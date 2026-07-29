@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getWhatsappSettings } from "../_shared/whatsappSettings.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -70,12 +71,7 @@ Deno.serve(async (req) => {
       .eq("is_active", true)
       .maybeSingle();
 
-    const { data: wsConfig } = await admin
-      .from("whatsapp_settings")
-      .select("exotel_sid, exotel_api_key, exotel_api_token, exotel_subdomain, whatsapp_source_number")
-      .eq("is_active", true)
-      .limit(1)
-      .maybeSingle();
+    const wsConfig = await getWhatsappSettings(admin, tenantId);
 
     let success_count = 0;
     const failed_rows: { row_number: number; company_name: string; errors: string[] }[] = [];
