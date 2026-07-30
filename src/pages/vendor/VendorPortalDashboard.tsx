@@ -299,52 +299,56 @@ export default function VendorPortalDashboard() {
   const totalAdvanceAdjusted = payments.reduce((s, p) => s + Number(p.advance_adjusted || 0), 0);
   const advanceAvailable = Math.max(totalApprovedAdvance - totalAdvanceAdjusted, 0);
 
-  // Payment Information: one row per invoice, aggregating every payment
-  // recorded against it — Advance Payment / TDS Amount / Balance Payment are
-  // rollups of the same advance_adjusted / tds_amount / payout_amount fields
-  // staff already enter in Record Payment. Advance REQUESTS are appended as
-  // their own rows below so this is one composite table instead of a
-  // separate disconnected list — they're excluded from the totals row since
-  // a request's amount and an invoice's adjusted advance aren't the same
-  // money (a request becomes an adjustment only once staff record it against
-  // an invoice; there's no link back from one to the other to net them off
-  // without double-counting).
-  const paymentInfoRows = invoices.map((inv) => {
-    const invPayments = payments.filter((p) => p.invoice_id === inv.id);
-    return {
-      kind: "invoice" as const,
-      id: inv.id,
-      label: inv.invoice_number,
-      date: inv.invoice_date,
-      invoice_amount: Number(inv.invoice_amount),
-      advance_payment: invPayments.reduce((s, p) => s + Number(p.advance_adjusted || 0), 0),
-      tds_amount: invPayments.reduce((s, p) => s + Number(p.tds_amount || 0), 0),
-      balance_payment: invPayments.reduce((s, p) => s + Number(p.payout_amount || 0), 0),
-      status: inv.status,
-    };
-  });
-  const advanceInfoRows = advanceRequests.map((r) => ({
-    kind: "advance" as const,
-    id: r.id,
-    label: r.activity_name,
-    date: r.created_at,
-    invoice_amount: 0,
-    advance_payment: Number(r.amount),
-    tds_amount: 0,
-    balance_payment: 0,
-    status: r.status,
-    project_name: r.project_name,
-    review_comments: r.review_comments,
-  }));
-  const paymentInfoTotals = paymentInfoRows.reduce(
-    (acc, r) => ({
-      invoice_amount: acc.invoice_amount + r.invoice_amount,
-      advance_payment: acc.advance_payment + r.advance_payment,
-      tds_amount: acc.tds_amount + r.tds_amount,
-      balance_payment: acc.balance_payment + r.balance_payment,
+  // One combined, date-sequenced table: invoices and advance requests are
+  // both financial events for this vendor, so they live in a single list
+  // sorted by when each one actually happened (upload/request date) instead
+  // of two separate tables. Advance amounts still aren't summed into the
+  // invoice totals (see summary line below) since a request's amount and an
+  // invoice's adjusted advance are different money — there's no link back
+  // from one to the other to net them off without double-counting.
+  const combinedRows = [
+    ...invoices.map((inv) => {
+      const invPayments = payments.filter((p) => p.invoice_id === inv.id);
+      return {
+        kind: "invoice" as const,
+        id: inv.id,
+        label: inv.invoice_number,
+        uploadDate: inv.created_at,
+        invoiceDate: inv.invoice_date as string | null,
+        po: inv.po_number,
+        invoiceFileKey: inv.invoice_file_key,
+        poFileKey: inv.po_file_key,
+        amount: Number(inv.invoice_amount),
+        advance_payment: invPayments.reduce((s, p) => s + Number(p.advance_adjusted || 0), 0),
+        tds_amount: invPayments.reduce((s, p) => s + Number(p.tds_amount || 0), 0),
+        balance_payment: invPayments.reduce((s, p) => s + Number(p.payout_amount || 0), 0),
+        settled: settledByInvoice.get(inv.id) || 0,
+        status: inv.status,
+        description: inv.description,
+        rejection_reason: inv.rejection_reason,
+        payments: invPayments,
+      };
     }),
-    { invoice_amount: 0, advance_payment: 0, tds_amount: 0, balance_payment: 0 }
-  );
+    ...advanceRequests.map((r) => ({
+      kind: "advance" as const,
+      id: r.id,
+      label: r.activity_name,
+      uploadDate: r.created_at,
+      invoiceDate: null as string | null,
+      po: null,
+      invoiceFileKey: null,
+      poFileKey: null,
+      amount: null as number | null,
+      advance_payment: Number(r.amount),
+      tds_amount: null as number | null,
+      balance_payment: null as number | null,
+      settled: null as number | null,
+      status: r.status,
+      project_name: r.project_name,
+      review_comments: r.review_comments,
+      payments: [] as InvoicePayment[],
+    })),
+  ].sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
 
   const tiles = [
     { label: "Invoiced", value: formatINR(totalInvoiced), count: invoices.length, icon: FileText },
@@ -566,115 +570,30 @@ export default function VendorPortalDashboard() {
           }))}
         />
 
-        {/* Payment Information — invoices and advance requests together */}
-        {(paymentInfoRows.length > 0 || advanceInfoRows.length > 0) && (
-          <Card>
-            <CardContent className="p-0">
-              <div className="p-4 border-b flex items-center justify-between">
-                <h2 className="font-semibold">Payment Information</h2>
-                {advanceAvailable > 0 && (
-                  <span className="text-sm text-muted-foreground">
-                    Advance available to adjust: <span className="font-semibold text-foreground">{formatINR(advanceAvailable)}</span>
-                  </span>
-                )}
-              </div>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead className="text-right">Invoice Amount</TableHead>
-                      <TableHead className="text-right">Advance Payment</TableHead>
-                      <TableHead className="text-right">TDS Amount</TableHead>
-                      <TableHead className="text-right">Balance Payment</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paymentInfoRows.map((r) => (
-                      <TableRow key={`inv-${r.id}`}>
-                        <TableCell className="font-medium">{r.label}</TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          {new Date(r.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
-                        </TableCell>
-                        <TableCell className="text-right">{formatINR(r.invoice_amount)}</TableCell>
-                        <TableCell className="text-right">{r.advance_payment > 0 ? formatINR(r.advance_payment) : "—"}</TableCell>
-                        <TableCell className="text-right">{r.tds_amount > 0 ? formatINR(r.tds_amount) : "—"}</TableCell>
-                        <TableCell className="text-right">{r.balance_payment > 0 ? formatINR(r.balance_payment) : "—"}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={INVOICE_STATUS_META[r.status].className}>
-                            {INVOICE_STATUS_META[r.status].label}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    <TableRow className="font-semibold bg-muted/40 hover:bg-muted/40">
-                      <TableCell colSpan={2}>Invoice Total</TableCell>
-                      <TableCell className="text-right">{formatINR(paymentInfoTotals.invoice_amount)}</TableCell>
-                      <TableCell className="text-right">{formatINR(paymentInfoTotals.advance_payment)}</TableCell>
-                      <TableCell className="text-right">{formatINR(paymentInfoTotals.tds_amount)}</TableCell>
-                      <TableCell className="text-right">{formatINR(paymentInfoTotals.balance_payment)}</TableCell>
-                      <TableCell />
-                    </TableRow>
-                    {advanceInfoRows.map((r) => {
-                      const statusMeta =
-                        r.status === "approved"
-                          ? { label: "Approved", className: "bg-emerald-100 text-emerald-800 border-emerald-200" }
-                          : r.status === "rejected"
-                            ? { label: "Not Approved", className: "bg-red-100 text-red-800 border-red-200" }
-                            : { label: "Pending Review", className: "bg-amber-100 text-amber-800 border-amber-200" };
-                      return (
-                        <TableRow key={`adv-${r.id}`}>
-                          <TableCell className="font-medium">
-                            Advance: {r.label}
-                            {r.project_name ? ` · ${r.project_name}` : ""}
-                            {r.status === "rejected" && r.review_comments && (
-                              <p className="text-xs text-destructive font-normal mt-0.5">{r.review_comments}</p>
-                            )}
-                          </TableCell>
-                          <TableCell className="whitespace-nowrap">
-                            {new Date(r.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
-                          </TableCell>
-                          <TableCell className="text-right">—</TableCell>
-                          <TableCell className="text-right">{formatINR(r.advance_payment)}</TableCell>
-                          <TableCell className="text-right">—</TableCell>
-                          <TableCell className="text-right">—</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={statusMeta.className}>{statusMeta.label}</Badge>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-              <p className="px-4 pb-3 text-xs text-muted-foreground">
-                Advance requests are shown for reference — they only reduce what you're owed once staff record the
-                adjustment against an invoice above (Advance Payment column), so the Invoice Total above doesn't
-                double-count them.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Invoice list */}
+        {/* Invoices and advance requests, one table, newest first */}
         <Card>
           <CardContent className="p-0">
-            <div className="p-4 border-b flex items-center justify-between">
+            <div className="p-4 border-b flex items-center justify-between flex-wrap gap-2">
               <div>
-                <h2 className="font-semibold">Your Invoices</h2>
+                <h2 className="font-semibold">Your Invoices &amp; Advances</h2>
                 <p className="text-sm text-muted-foreground">
                   Tap an invoice to see its payment breakup
                 </p>
               </div>
+              <span className="text-sm text-muted-foreground">
+                Invoiced: <span className="font-semibold text-foreground">{formatINR(totalInvoiced)}</span>
+                {" · "}Settled: <span className="font-semibold text-foreground">{formatINR(totalSettled)}</span>
+                {advanceAvailable > 0 && (
+                  <>{" · "}Advance available: <span className="font-semibold text-foreground">{formatINR(advanceAvailable)}</span></>
+                )}
+              </span>
             </div>
 
             {invLoading ? (
               <div className="p-8 text-center">
                 <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
               </div>
-            ) : invoices.length === 0 ? (
+            ) : combinedRows.length === 0 ? (
               <div className="p-10 text-center space-y-3">
                 <FileText className="h-10 w-10 text-muted-foreground mx-auto" />
                 <p className="font-medium">No invoices yet</p>
@@ -690,10 +609,13 @@ export default function VendorPortalDashboard() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Invoice</TableHead>
-                      <TableHead>Date</TableHead>
+                      <TableHead>Reference</TableHead>
+                      <TableHead>Upload Date</TableHead>
+                      <TableHead>Invoice Date</TableHead>
                       <TableHead>PO</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="text-right">Advance</TableHead>
+                      <TableHead className="text-right">TDS</TableHead>
                       <TableHead className="text-right">Settled</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Files</TableHead>
@@ -701,72 +623,96 @@ export default function VendorPortalDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {invoices.map((inv) => {
-                      const meta = INVOICE_STATUS_META[inv.status];
-                      const settled = settledByInvoice.get(inv.id) || 0;
-                      const invPayments = payments.filter((p) => p.invoice_id === inv.id);
-                      const isOpen = expandedId === inv.id;
+                    {combinedRows.map((r) => {
+                      const isOpen = expandedId === r.id;
+                      const advanceStatusMeta =
+                        r.status === "approved"
+                          ? { label: "Approved", className: "bg-emerald-100 text-emerald-800 border-emerald-200" }
+                          : r.status === "rejected"
+                            ? { label: "Not Approved", className: "bg-red-100 text-red-800 border-red-200" }
+                            : { label: "Pending Review", className: "bg-amber-100 text-amber-800 border-amber-200" };
                       return (
-                        <Fragment key={inv.id}>
+                        <Fragment key={`${r.kind}-${r.id}`}>
                           <TableRow
-                            className="cursor-pointer"
-                            onClick={() => setExpandedId(isOpen ? null : inv.id)}
+                            className={r.kind === "invoice" ? "cursor-pointer" : undefined}
+                            onClick={() => r.kind === "invoice" && setExpandedId(isOpen ? null : r.id)}
                           >
-                                <TableCell className="font-medium">{inv.invoice_number}</TableCell>
-                                <TableCell className="whitespace-nowrap">
-                                  {new Date(inv.invoice_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
-                                </TableCell>
-                                <TableCell>{inv.po_number || "—"}</TableCell>
-                                <TableCell className="text-right font-medium">{formatINR(Number(inv.invoice_amount))}</TableCell>
-                                <TableCell className="text-right">{settled > 0 ? formatINR(settled) : "—"}</TableCell>
-                                <TableCell>
-                                  <Badge variant="outline" className={meta.className}>{meta.label}</Badge>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex gap-1">
+                            <TableCell className="font-medium">
+                              {r.kind === "invoice" ? r.label : `Advance: ${r.label}`}
+                              {r.kind === "advance" && r.project_name ? ` · ${r.project_name}` : ""}
+                              {r.kind === "advance" && r.status === "rejected" && r.review_comments && (
+                                <p className="text-xs text-destructive font-normal mt-0.5">{r.review_comments}</p>
+                              )}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap">
+                              {new Date(r.uploadDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap">
+                              {r.invoiceDate ? new Date(r.invoiceDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                            </TableCell>
+                            <TableCell>{r.po || "—"}</TableCell>
+                            <TableCell className="text-right font-medium">{r.amount != null ? formatINR(r.amount) : "—"}</TableCell>
+                            <TableCell className="text-right">{r.advance_payment > 0 ? formatINR(r.advance_payment) : "—"}</TableCell>
+                            <TableCell className="text-right">{r.tds_amount ? formatINR(r.tds_amount) : "—"}</TableCell>
+                            <TableCell className="text-right">{r.settled ? formatINR(r.settled) : "—"}</TableCell>
+                            <TableCell>
+                              {r.kind === "invoice" ? (
+                                <Badge variant="outline" className={INVOICE_STATUS_META[r.status].className}>
+                                  {INVOICE_STATUS_META[r.status].label}
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className={advanceStatusMeta.className}>{advanceStatusMeta.label}</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {r.kind === "invoice" && (
+                                <div className="flex gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openInvoiceFile(r.invoiceFileKey).catch((err) => toast.error(err.message));
+                                    }}
+                                  >
+                                    <Paperclip className="h-3.5 w-3.5 mr-1" /> Invoice
+                                  </Button>
+                                  {r.poFileKey && (
                                     <Button
                                       variant="ghost"
                                       size="sm"
                                       className="h-7 px-2"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        openInvoiceFile(inv.invoice_file_key).catch((err) => toast.error(err.message));
+                                        openInvoiceFile(r.poFileKey!).catch((err) => toast.error(err.message));
                                       }}
                                     >
-                                      <Paperclip className="h-3.5 w-3.5 mr-1" /> Invoice
+                                      <Paperclip className="h-3.5 w-3.5 mr-1" /> PO
                                     </Button>
-                                    {inv.po_file_key && (
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-7 px-2"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          openInvoiceFile(inv.po_file_key!).catch((err) => toast.error(err.message));
-                                        }}
-                                      >
-                                        <Paperclip className="h-3.5 w-3.5 mr-1" /> PO
-                                      </Button>
-                                    )}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
-                                </TableCell>
+                                  )}
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {r.kind === "invoice" && (
+                                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                              )}
+                            </TableCell>
                           </TableRow>
-                          {isOpen && (
+                          {r.kind === "invoice" && isOpen && (
                             <TableRow className="bg-muted/30 hover:bg-muted/30">
-                              <TableCell colSpan={8} className="p-4">
-                                {inv.status === "rejected" && inv.rejection_reason && (
+                              <TableCell colSpan={11} className="p-4">
+                                {r.status === "rejected" && r.rejection_reason && (
                                   <p className="text-sm text-destructive mb-3">
-                                    Rejection reason: {inv.rejection_reason}
+                                    Rejection reason: {r.rejection_reason}
                                   </p>
                                 )}
-                                {inv.description && (
-                                  <p className="text-sm text-muted-foreground mb-3">{inv.description}</p>
+                                {r.description && (
+                                  <p className="text-sm text-muted-foreground mb-3">{r.description}</p>
                                 )}
                                 <p className="text-sm font-medium mb-2">Payment details</p>
-                                <PaymentBreakupTable payments={invPayments} />
+                                <PaymentBreakupTable payments={r.payments} />
                               </TableCell>
                             </TableRow>
                           )}
