@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ProjectCombobox } from "@/components/staff/ProjectCombobox";
+import { AdvanceRequestCharts } from "@/components/advance/AdvanceRequestCharts";
 import { Loader2, HandCoins, Check, X, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { formatINR, openInvoiceFile } from "@/lib/invoices";
@@ -115,6 +116,8 @@ export default function StaffAdvanceRequests() {
         </div>
 
         <div className="p-4 space-y-4">
+          {!isLoading && <AdvanceRequestCharts requests={requests} />}
+
           <Card>
             <CardContent className="p-0">
               {isLoading ? (

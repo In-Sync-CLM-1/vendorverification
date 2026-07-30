@@ -13,15 +13,27 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { uploadInvoiceFile, analyzeInvoiceFile, InvoiceExtraction, LOW_CONFIDENCE } from "@/lib/invoices";
+import { uploadInvoiceFile, analyzeInvoiceFile, InvoiceExtraction, LOW_CONFIDENCE, formatINR } from "@/lib/invoices";
 import { Loader2, Sparkles, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+interface PendingAdvanceRequest {
+  id: string;
+  amount: number;
+  activity_name: string;
+  created_at: string;
+}
 
 interface AdvanceRequestDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   vendorId: string;
   onSubmitted: () => void;
+  // Requests still awaiting a decision — shown so the vendor doesn't submit
+  // a duplicate for something they already asked for (this is exactly how
+  // a real double-submission happened: no visibility into a still-pending
+  // request led to resubmitting the next day).
+  pendingRequests?: PendingAdvanceRequest[];
 }
 
 function FieldLabel({ text, confidence }: { text: string; confidence?: number }) {
@@ -38,7 +50,7 @@ function FieldLabel({ text, confidence }: { text: string; confidence?: number })
   );
 }
 
-export function AdvanceRequestDialog({ open, onOpenChange, vendorId, onSubmitted }: AdvanceRequestDialogProps) {
+export function AdvanceRequestDialog({ open, onOpenChange, vendorId, onSubmitted, pendingRequests = [] }: AdvanceRequestDialogProps) {
   const [amount, setAmount] = useState("");
   const [activityName, setActivityName] = useState("");
   const [remarks, setRemarks] = useState("");
@@ -137,6 +149,24 @@ export function AdvanceRequestDialog({ open, onOpenChange, vendorId, onSubmitted
             it's for in your own words; the team will match it to the right project on their end.
           </DialogDescription>
         </DialogHeader>
+
+        {pendingRequests.length > 0 && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-3 space-y-1.5">
+            <p className="text-sm font-medium text-amber-800 dark:text-amber-400 flex items-center gap-1.5">
+              <TriangleAlert className="h-3.5 w-3.5" /> You already have {pendingRequests.length === 1 ? "a request" : `${pendingRequests.length} requests`} awaiting review
+            </p>
+            <div className="space-y-1">
+              {pendingRequests.map((r) => (
+                <p key={r.id} className="text-xs text-amber-700 dark:text-amber-500">
+                  {r.activity_name} · {formatINR(Number(r.amount))} · {new Date(r.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+                </p>
+              ))}
+            </div>
+            <p className="text-xs text-amber-700 dark:text-amber-500">
+              Only submit again if this is for something different — no need to resend the same request.
+            </p>
+          </div>
+        )}
 
         <div className="grid gap-4 py-2">
           <div className="space-y-1.5">

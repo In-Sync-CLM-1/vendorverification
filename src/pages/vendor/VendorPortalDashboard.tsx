@@ -775,6 +775,7 @@ export default function VendorPortalDashboard() {
         open={advanceRequestOpen}
         onOpenChange={setAdvanceRequestOpen}
         vendorId={vendor.id}
+        pendingRequests={advanceRequests.filter((r) => r.status === "pending")}
         onSubmitted={refetchAdvanceRequests}
       />
 
