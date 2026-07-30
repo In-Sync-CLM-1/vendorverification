@@ -133,7 +133,7 @@ export default function VendorPortalDashboard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("vendor_advance_requests")
-        .select("id, amount, activity_name, status, review_comments, project_name, created_at")
+        .select("id, amount, activity_name, status, review_comments, project_name, created_at, ai_extracted_data")
         .eq("vendor_id", vendor!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -145,6 +145,7 @@ export default function VendorPortalDashboard() {
         review_comments: string | null;
         project_name: string | null;
         created_at: string;
+        ai_extracted_data: { proforma_invoice?: { invoice_number?: string | null } } | null;
       }>;
     },
     enabled: !!vendor?.id,
@@ -331,7 +332,11 @@ export default function VendorPortalDashboard() {
     ...advanceRequests.map((r) => ({
       kind: "advance" as const,
       id: r.id,
-      label: r.activity_name,
+      // Prefer the proforma invoice's own PI number as the reference — it's
+      // what staff actually look up against; fall back to the free-text
+      // activity name for requests submitted without a PI attached.
+      label: r.ai_extracted_data?.proforma_invoice?.invoice_number || r.activity_name,
+      activityName: r.activity_name,
       uploadDate: r.created_at,
       invoiceDate: null as string | null,
       po: null,
@@ -642,7 +647,11 @@ export default function VendorPortalDashboard() {
                           >
                             <TableCell className="font-medium">
                               {r.kind === "invoice" ? r.label : `Advance: ${r.label}`}
-                              {r.kind === "advance" && r.project_name ? ` · ${r.project_name}` : ""}
+                              {r.kind === "advance" && (
+                                <p className="text-xs text-muted-foreground font-normal mt-0.5">
+                                  {r.activityName}{r.project_name ? ` · ${r.project_name}` : ""}
+                                </p>
+                              )}
                               {r.kind === "advance" && r.status === "rejected" && r.review_comments && (
                                 <p className="text-xs text-destructive font-normal mt-0.5">{r.review_comments}</p>
                               )}

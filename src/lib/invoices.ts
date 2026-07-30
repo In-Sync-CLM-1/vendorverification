@@ -23,7 +23,8 @@ export const formatINR = (value: number | null | undefined) =>
   new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
-    maximumFractionDigits: value && Math.abs(value) >= 100000 ? 0 : 2,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
   }).format(value || 0);
 
 export async function uploadInvoiceFile(file: File): Promise<string> {
