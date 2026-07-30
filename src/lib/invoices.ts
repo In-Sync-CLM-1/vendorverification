@@ -50,6 +50,8 @@ export interface InvoiceExtraction {
   invoice_number_confidence: number;
   invoice_date: string | null;
   invoice_date_confidence: number;
+  due_date: string | null;
+  due_date_confidence: number;
   invoice_amount: number | null;
   invoice_amount_confidence: number;
   gst_amount: number | null;

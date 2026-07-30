@@ -17,6 +17,7 @@ const SYSTEM_PROMPT = `You are reading a vendor invoice or purchase order for an
 Fields:
 - invoice_number: the invoice / bill number printed on the document
 - invoice_date: the invoice date, converted to ISO format YYYY-MM-DD
+- due_date: the payment due date if the document states one (e.g. "Due Date", "Payment Due By", or derivable from stated payment terms like "Net 30" applied to the invoice date), converted to ISO format YYYY-MM-DD. Null if no due date is stated or derivable.
 - invoice_amount: the TOTAL amount payable, including GST/tax (numeric, no currency symbol or commas)
 - gst_amount: the GST/tax portion only (numeric). If the document shows tax as multiple lines (CGST+SGST or IGST), sum them.
 - po_number: the purchase order number referenced on the document, if any
@@ -36,6 +37,8 @@ const EXTRACTION_TOOL = {
         invoice_number_confidence: { type: ["integer", "string"] },
         invoice_date: { type: ["string", "null"], description: "ISO format YYYY-MM-DD" },
         invoice_date_confidence: { type: ["integer", "string"] },
+        due_date: { type: ["string", "null"], description: "ISO format YYYY-MM-DD, null if not stated" },
+        due_date_confidence: { type: ["integer", "string"] },
         invoice_amount: { type: ["number", "string", "null"] },
         invoice_amount_confidence: { type: ["integer", "string"] },
         gst_amount: { type: ["number", "string", "null"] },
@@ -48,6 +51,7 @@ const EXTRACTION_TOOL = {
       required: [
         "invoice_number", "invoice_number_confidence",
         "invoice_date", "invoice_date_confidence",
+        "due_date", "due_date_confidence",
         "invoice_amount", "invoice_amount_confidence",
         "gst_amount", "gst_amount_confidence",
         "po_number", "po_number_confidence",
@@ -68,6 +72,8 @@ interface ExtractionResult {
   invoice_number_confidence: number;
   invoice_date: string | null;
   invoice_date_confidence: number;
+  due_date: string | null;
+  due_date_confidence: number;
   invoice_amount: number | null;
   invoice_amount_confidence: number;
   gst_amount: number | null;
@@ -105,6 +111,8 @@ function normalizeExtraction(raw: Record<string, unknown>): ExtractionResult {
     invoice_number_confidence: toInt(raw.invoice_number_confidence),
     invoice_date: toStr(raw.invoice_date),
     invoice_date_confidence: toInt(raw.invoice_date_confidence),
+    due_date: toStr(raw.due_date),
+    due_date_confidence: toInt(raw.due_date_confidence),
     invoice_amount: toNum(raw.invoice_amount),
     invoice_amount_confidence: toInt(raw.invoice_amount_confidence),
     gst_amount: toNum(raw.gst_amount),

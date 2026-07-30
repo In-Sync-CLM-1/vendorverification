@@ -59,6 +59,7 @@ function FieldLabel({ text, confidence }: { text: string; confidence?: number })
 export function InvoiceUploadDialog({ open, onOpenChange, vendorId, onUploaded, advanceRequests = [], advanceAvailable = 0 }: InvoiceUploadDialogProps) {
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [invoiceDate, setInvoiceDate] = useState("");
+  const [dueDate, setDueDate] = useState("");
   const [amount, setAmount] = useState("");
   const [gstAmount, setGstAmount] = useState("");
   const [description, setDescription] = useState("");
@@ -79,6 +80,7 @@ export function InvoiceUploadDialog({ open, onOpenChange, vendorId, onUploaded, 
   const reset = () => {
     setInvoiceNumber("");
     setInvoiceDate("");
+    setDueDate("");
     setAmount("");
     setGstAmount("");
     setDescription("");
@@ -106,6 +108,7 @@ export function InvoiceUploadDialog({ open, onOpenChange, vendorId, onUploaded, 
         setInvoiceRead(result);
         if (result.invoice_number) setInvoiceNumber(result.invoice_number);
         if (result.invoice_date) setInvoiceDate(result.invoice_date);
+        if (result.due_date) setDueDate(result.due_date);
         if (result.invoice_amount != null) setAmount(String(result.invoice_amount));
         if (result.gst_amount != null) setGstAmount(String(result.gst_amount));
         if (result.po_number) setPoNumber((prev) => prev || result.po_number!);
@@ -162,6 +165,7 @@ export function InvoiceUploadDialog({ open, onOpenChange, vendorId, onUploaded, 
         tenant_id: "00000000-0000-0000-0000-000000000000",
         invoice_number: invoiceNumber.trim(),
         invoice_date: invoiceDate,
+        due_date: dueDate || null,
         invoice_amount: amt,
         gst_amount: gst,
         description: description.trim() || null,
@@ -275,6 +279,11 @@ export function InvoiceUploadDialog({ open, onOpenChange, vendorId, onUploaded, 
               <FieldLabel text="Invoice Date *" confidence={invoiceRead?.invoice_date_confidence} />
               <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} max={new Date().toISOString().slice(0, 10)} disabled={parsingInvoice} />
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <FieldLabel text="Due Date" confidence={invoiceRead?.due_date_confidence} />
+            <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} disabled={parsingInvoice} />
           </div>
 
           <div className="grid grid-cols-2 gap-3">

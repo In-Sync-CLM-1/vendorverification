@@ -149,6 +149,7 @@ export default function VendorPortalDashboard() {
           proforma_invoice?: {
             invoice_number?: string | null;
             invoice_date?: string | null;
+            due_date?: string | null;
             po_number?: string | null;
           };
         } | null;
@@ -323,6 +324,7 @@ export default function VendorPortalDashboard() {
         label: inv.invoice_number,
         uploadDate: inv.created_at,
         invoiceDate: inv.invoice_date as string | null,
+        dueDate: inv.due_date as string | null,
         po: inv.po_number,
         invoiceFileKey: inv.invoice_file_key,
         poFileKey: inv.po_file_key,
@@ -345,6 +347,7 @@ export default function VendorPortalDashboard() {
       activityName: r.activity_name,
       uploadDate: r.created_at,
       invoiceDate: r.ai_extracted_data?.proforma_invoice?.invoice_date || null,
+      dueDate: r.ai_extracted_data?.proforma_invoice?.due_date || null,
       po: r.ai_extracted_data?.proforma_invoice?.po_number || null,
       invoiceFileKey: r.proforma_invoice_file_key,
       poFileKey: null,
@@ -623,8 +626,8 @@ export default function VendorPortalDashboard() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Reference</TableHead>
-                      <TableHead>Upload Date</TableHead>
-                      <TableHead>Invoice Date</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Due Date</TableHead>
                       <TableHead>PO</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                       <TableHead className="text-right">Paid</TableHead>
@@ -661,10 +664,10 @@ export default function VendorPortalDashboard() {
                               )}
                             </TableCell>
                             <TableCell className="whitespace-nowrap">
-                              {new Date(r.uploadDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                              {new Date(r.invoiceDate || r.uploadDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
                             </TableCell>
                             <TableCell className="whitespace-nowrap">
-                              {r.invoiceDate ? new Date(r.invoiceDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                              {r.dueDate ? new Date(r.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
                             </TableCell>
                             <TableCell>{r.po || "—"}</TableCell>
                             <TableCell className="text-right font-medium">{r.amount != null ? formatINR(r.amount) : "—"}</TableCell>
