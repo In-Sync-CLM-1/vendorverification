@@ -302,19 +302,40 @@ export default function VendorPortalDashboard() {
   // Payment Information: one row per invoice, aggregating every payment
   // recorded against it — Advance Payment / TDS Amount / Balance Payment are
   // rollups of the same advance_adjusted / tds_amount / payout_amount fields
-  // staff already enter in Record Payment.
+  // staff already enter in Record Payment. Advance REQUESTS are appended as
+  // their own rows below so this is one composite table instead of a
+  // separate disconnected list — they're excluded from the totals row since
+  // a request's amount and an invoice's adjusted advance aren't the same
+  // money (a request becomes an adjustment only once staff record it against
+  // an invoice; there's no link back from one to the other to net them off
+  // without double-counting).
   const paymentInfoRows = invoices.map((inv) => {
     const invPayments = payments.filter((p) => p.invoice_id === inv.id);
     return {
+      kind: "invoice" as const,
       id: inv.id,
-      invoice_number: inv.invoice_number,
-      invoice_date: inv.invoice_date,
+      label: inv.invoice_number,
+      date: inv.invoice_date,
       invoice_amount: Number(inv.invoice_amount),
       advance_payment: invPayments.reduce((s, p) => s + Number(p.advance_adjusted || 0), 0),
       tds_amount: invPayments.reduce((s, p) => s + Number(p.tds_amount || 0), 0),
       balance_payment: invPayments.reduce((s, p) => s + Number(p.payout_amount || 0), 0),
+      status: null as string | null,
     };
   });
+  const advanceInfoRows = advanceRequests.map((r) => ({
+    kind: "advance" as const,
+    id: r.id,
+    label: r.activity_name,
+    date: r.created_at,
+    invoice_amount: 0,
+    advance_payment: Number(r.amount),
+    tds_amount: 0,
+    balance_payment: 0,
+    status: r.status,
+    project_name: r.project_name,
+    review_comments: r.review_comments,
+  }));
   const paymentInfoTotals = paymentInfoRows.reduce(
     (acc, r) => ({
       invoice_amount: acc.invoice_amount + r.invoice_amount,
@@ -525,47 +546,6 @@ export default function VendorPortalDashboard() {
           </Card>
         )}
 
-        {/* Advance requests */}
-        {advanceRequests.length > 0 && (
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold">Your Advance Requests</h2>
-                {advanceAvailable > 0 && (
-                  <span className="text-sm text-muted-foreground">
-                    Available to adjust: <span className="font-semibold text-foreground">{formatINR(advanceAvailable)}</span>
-                  </span>
-                )}
-              </div>
-              <div className="space-y-2">
-                {advanceRequests.map((r) => {
-                  const statusMeta =
-                    r.status === "approved"
-                      ? { label: "Approved", className: "bg-emerald-100 text-emerald-800 border-emerald-200" }
-                      : r.status === "rejected"
-                        ? { label: "Not Approved", className: "bg-red-100 text-red-800 border-red-200" }
-                        : { label: "Pending Review", className: "bg-amber-100 text-amber-800 border-amber-200" };
-                  return (
-                    <div key={r.id} className="flex items-center justify-between gap-3 text-sm border rounded-md px-3 py-2">
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">{r.activity_name} · {formatINR(Number(r.amount))}</p>
-                        <p className="text-muted-foreground text-xs">
-                          Requested {new Date(r.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
-                          {r.project_name ? ` · ${r.project_name}` : ""}
-                        </p>
-                        {r.status === "rejected" && r.review_comments && (
-                          <p className="text-xs text-destructive mt-0.5">{r.review_comments}</p>
-                        )}
-                      </div>
-                      <Badge variant="outline" className={`shrink-0 ${statusMeta.className}`}>{statusMeta.label}</Badge>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Analytics */}
         <InvoiceCharts
           invoices={invoices.map((i) => ({
@@ -579,50 +559,97 @@ export default function VendorPortalDashboard() {
             tds_amount: Number(p.tds_amount),
             payout_amount: Number(p.payout_amount),
           }))}
+          advanceRequests={advanceRequests.map((r) => ({
+            amount: Number(r.amount),
+            status: r.status,
+            created_at: r.created_at,
+          }))}
         />
 
-        {/* Payment Information */}
-        {paymentInfoRows.length > 0 && (
+        {/* Payment Information — invoices and advance requests together */}
+        {(paymentInfoRows.length > 0 || advanceInfoRows.length > 0) && (
           <Card>
             <CardContent className="p-0">
-              <div className="p-4 border-b">
+              <div className="p-4 border-b flex items-center justify-between">
                 <h2 className="font-semibold">Payment Information</h2>
+                {advanceAvailable > 0 && (
+                  <span className="text-sm text-muted-foreground">
+                    Advance available to adjust: <span className="font-semibold text-foreground">{formatINR(advanceAvailable)}</span>
+                  </span>
+                )}
               </div>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Invoice No.</TableHead>
-                      <TableHead>Invoice Date</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Date</TableHead>
                       <TableHead className="text-right">Invoice Amount</TableHead>
                       <TableHead className="text-right">Advance Payment</TableHead>
                       <TableHead className="text-right">TDS Amount</TableHead>
                       <TableHead className="text-right">Balance Payment</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {paymentInfoRows.map((r) => (
-                      <TableRow key={r.id}>
-                        <TableCell className="font-medium">{r.invoice_number}</TableCell>
+                      <TableRow key={`inv-${r.id}`}>
+                        <TableCell className="font-medium">{r.label}</TableCell>
                         <TableCell className="whitespace-nowrap">
-                          {new Date(r.invoice_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                          {new Date(r.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
                         </TableCell>
                         <TableCell className="text-right">{formatINR(r.invoice_amount)}</TableCell>
                         <TableCell className="text-right">{r.advance_payment > 0 ? formatINR(r.advance_payment) : "—"}</TableCell>
                         <TableCell className="text-right">{r.tds_amount > 0 ? formatINR(r.tds_amount) : "—"}</TableCell>
                         <TableCell className="text-right">{r.balance_payment > 0 ? formatINR(r.balance_payment) : "—"}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm">—</TableCell>
                       </TableRow>
                     ))}
                     <TableRow className="font-semibold bg-muted/40 hover:bg-muted/40">
-                      <TableCell colSpan={2}>Total</TableCell>
+                      <TableCell colSpan={2}>Invoice Total</TableCell>
                       <TableCell className="text-right">{formatINR(paymentInfoTotals.invoice_amount)}</TableCell>
                       <TableCell className="text-right">{formatINR(paymentInfoTotals.advance_payment)}</TableCell>
                       <TableCell className="text-right">{formatINR(paymentInfoTotals.tds_amount)}</TableCell>
                       <TableCell className="text-right">{formatINR(paymentInfoTotals.balance_payment)}</TableCell>
+                      <TableCell />
                     </TableRow>
+                    {advanceInfoRows.map((r) => {
+                      const statusMeta =
+                        r.status === "approved"
+                          ? { label: "Approved", className: "bg-emerald-100 text-emerald-800 border-emerald-200" }
+                          : r.status === "rejected"
+                            ? { label: "Not Approved", className: "bg-red-100 text-red-800 border-red-200" }
+                            : { label: "Pending Review", className: "bg-amber-100 text-amber-800 border-amber-200" };
+                      return (
+                        <TableRow key={`adv-${r.id}`}>
+                          <TableCell className="font-medium">
+                            Advance: {r.label}
+                            {r.project_name ? ` · ${r.project_name}` : ""}
+                            {r.status === "rejected" && r.review_comments && (
+                              <p className="text-xs text-destructive font-normal mt-0.5">{r.review_comments}</p>
+                            )}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {new Date(r.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                          </TableCell>
+                          <TableCell className="text-right">—</TableCell>
+                          <TableCell className="text-right">{formatINR(r.advance_payment)}</TableCell>
+                          <TableCell className="text-right">—</TableCell>
+                          <TableCell className="text-right">—</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={statusMeta.className}>{statusMeta.label}</Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
+              <p className="px-4 pb-3 text-xs text-muted-foreground">
+                Advance requests are shown for reference — they only reduce what you're owed once staff record the
+                adjustment against an invoice above (Advance Payment column), so the Invoice Total above doesn't
+                double-count them.
+              </p>
             </CardContent>
           </Card>
         )}

@@ -7,7 +7,6 @@ import { User, Phone, Mail, CheckCircle2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
-import { useTenant } from "@/contexts/TenantContext";
 
 interface ContactDetailsStepProps {
   formData: {
@@ -21,10 +20,15 @@ interface ContactDetailsStepProps {
   onChange: (field: string, value: string) => void;
   onPhoneVerified: () => void;
   onEmailVerified: () => void;
+  // The referring tenant, resolved by the caller from the referral code —
+  // this page is unauthenticated, so the global tenant context can't tell
+  // us who's actually being registered for (it only knows the platform
+  // default). Passing it explicitly is what lets the OTP go out from the
+  // referring org's own WhatsApp number instead of the shared one.
+  tenantId?: string | null;
 }
 
-export function ContactDetailsStep({ formData, phoneVerified, emailVerified, onChange, onPhoneVerified, onEmailVerified }: ContactDetailsStepProps) {
-  const { tenant } = useTenant();
+export function ContactDetailsStep({ formData, phoneVerified, emailVerified, onChange, onPhoneVerified, onEmailVerified, tenantId }: ContactDetailsStepProps) {
   // Phone OTP state
   const [phoneOtpSent, setPhoneOtpSent] = useState(false);
   const [phoneOtpValue, setPhoneOtpValue] = useState("");
@@ -65,7 +69,7 @@ export function ContactDetailsStep({ formData, phoneVerified, emailVerified, onC
     setPhoneSending(true);
     try {
       const { data, error } = await supabase.functions.invoke("send-public-otp", {
-        body: { identifier: phone, identifierType: "phone", tenant_id: tenant?.id },
+        body: { identifier: phone, identifierType: "phone", tenant_id: tenantId },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -117,7 +121,7 @@ export function ContactDetailsStep({ formData, phoneVerified, emailVerified, onC
     setEmailSending(true);
     try {
       const { data, error } = await supabase.functions.invoke("send-public-otp", {
-        body: { identifier: email, identifierType: "email", tenant_id: tenant?.id },
+        body: { identifier: email, identifierType: "email", tenant_id: tenantId },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);

@@ -64,6 +64,11 @@ Deno.serve(async (req) => {
     // Vendor portal logins are for any vendor registered with this exact
     // email / WhatsApp number, at any stage up to approval — a rejected
     // registration is the only dead end, since there's nothing left to act on.
+    // The login page has no way to know which tenant this vendor belongs to
+    // before matching the contact, so it never sends tenant_id — resolve it
+    // here from the matched vendor's own record instead, or every vendor
+    // portal OTP silently falls back to the shared default sender.
+    let vendorPortalTenantId: string | null = null;
     if (purpose === "vendor_portal") {
       const { data: match, error: matchError } = await supabase.rpc("find_vendor_by_contact", {
         p_identifier: normalizedIdentifier,
@@ -80,6 +85,7 @@ Deno.serve(async (req) => {
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+      vendorPortalTenantId = vendor.tenant_id;
     }
 
     // Rate limit: max 5 OTPs per identifier per hour
@@ -113,7 +119,9 @@ Deno.serve(async (req) => {
     // tenant_id is optional (NULL for org-registration OTPs — no tenant exists yet).
     // Removed the "fall back to first tenant in DB" default which silently mis-attributed
     // OTPs from new tenants to whichever tenant happened to be first.
-    const resolvedTenantId = tenant_id || null;
+    // For vendor_portal logins, trust the tenant resolved from the matched vendor
+    // above over whatever (if anything) the client passed.
+    const resolvedTenantId = vendorPortalTenantId || tenant_id || null;
 
     const { data: otpRecord, error: insertError } = await supabase
       .from("public_otp_verifications")

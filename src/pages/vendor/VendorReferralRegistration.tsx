@@ -298,6 +298,7 @@ export default function VendorReferralRegistration() {
             onChange={handleFieldChange}
             onPhoneVerified={() => setPhoneVerified(true)}
             onEmailVerified={() => setEmailVerified(true)}
+            tenantId={referralTenantId}
           />
         )}
         {currentStep === 3 && (
