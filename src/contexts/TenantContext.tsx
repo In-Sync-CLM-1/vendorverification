@@ -57,10 +57,45 @@ function resolveSlugFromHostname(): string {
   return "in-sync";
 }
 
+const TENANT_COLUMNS = "id, slug, name, short_name, logo_url, primary_color, accent_color, vendor_code_prefix, dpo_email, privacy_policy_url, support_email, support_phone";
+
 export function TenantProvider({ children }: { children: ReactNode }) {
   const [tenant, setTenant] = useState<TenantConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // The app runs every tenant off ONE shared domain (vendor.in-sync.co.in),
+  // so the hostname-based slug lookup below never resolves a real client
+  // tenant — it only ever matches the platform default. Once someone is
+  // actually signed in (staff or vendor), override the hostname guess with
+  // their own tenant, resolved server-side via get_user_tenant_id (which
+  // checks both profiles and vendor_users). Pre-auth pages tied to a
+  // specific tenant (e.g. a referral link) resolve their own tenant
+  // separately and don't rely on this context for branding.
+  useEffect(() => {
+    const resolveAuthTenant = async (userId: string) => {
+      const { data: tenantId } = await supabase.rpc("get_user_tenant_id", { _user_id: userId });
+      if (!tenantId) return;
+      const { data } = await supabase
+        .from("tenants")
+        .select(TENANT_COLUMNS)
+        .eq("id", tenantId)
+        .maybeSingle();
+      if (data) {
+        setTenant(data as TenantConfig);
+        applyBranding(data as TenantConfig);
+      }
+    };
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) resolveAuthTenant(session.user.id);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) resolveAuthTenant(session.user.id);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     const loadTenant = async () => {

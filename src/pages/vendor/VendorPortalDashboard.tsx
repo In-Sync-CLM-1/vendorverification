@@ -2,6 +2,8 @@ import { Fragment, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/contexts/TenantContext";
+import { useTenantLogo } from "@/hooks/useTenantLogo";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +58,8 @@ export default function VendorPortalDashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, userType, loading: authLoading, signOut } = useAuth();
+  const { tenant } = useTenant();
+  const tenantLogo = useTenantLogo();
   const [uploadOpen, setUploadOpen] = useState(false);
   const [changeRequestOpen, setChangeRequestOpen] = useState(false);
   const [advanceRequestOpen, setAdvanceRequestOpen] = useState(false);
@@ -333,11 +337,14 @@ export default function VendorPortalDashboard() {
       {/* Header */}
       <header className="bg-card border-b sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="min-w-0">
-            <p className="font-semibold truncate">{vendor.company_name}</p>
-            <p className="text-xs text-muted-foreground">
-              Vendor Portal · {vendor.vendor_code}
-            </p>
+          <div className="flex items-center gap-3 min-w-0">
+            <img src={tenantLogo} alt={tenant?.short_name || "Organization"} className="h-8 w-8 object-contain shrink-0 rounded" />
+            <div className="min-w-0">
+              <p className="font-semibold truncate">{vendor.company_name}</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {tenant?.short_name ? `${tenant.short_name} · ` : ""}Vendor Portal · {vendor.vendor_code}
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Button onClick={() => setChangeRequestOpen(true)} size="sm" variant="outline">

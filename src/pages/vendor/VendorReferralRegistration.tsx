@@ -229,7 +229,7 @@ export default function VendorReferralRegistration() {
   if (pageState === "loading") {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        <ReferralHeader currentStep={0} />
+        <ReferralHeader currentStep={0} tenantId={referralTenantId} />
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -240,7 +240,7 @@ export default function VendorReferralRegistration() {
   if (pageState === "invalid") {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        <ReferralHeader currentStep={0} />
+        <ReferralHeader currentStep={0} tenantId={referralTenantId} />
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
           <AlertTriangle className="h-16 w-16 text-warning mb-4" />
           <h2 className="text-xl font-semibold text-foreground mb-2">Link Unavailable</h2>
@@ -253,7 +253,7 @@ export default function VendorReferralRegistration() {
   if (pageState === "submitting") {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        <ReferralHeader currentStep={0} />
+        <ReferralHeader currentStep={0} tenantId={referralTenantId} />
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
           <p className="text-muted-foreground">Submitting your registration...</p>
@@ -265,7 +265,7 @@ export default function VendorReferralRegistration() {
   if (pageState === "success") {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        <ReferralHeader currentStep={0} />
+        <ReferralHeader currentStep={0} tenantId={referralTenantId} />
         <RegistrationSuccess />
       </div>
     );
@@ -276,7 +276,7 @@ export default function VendorReferralRegistration() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <ReferralHeader currentStep={currentStep} />
+      <ReferralHeader currentStep={currentStep} tenantId={referralTenantId} />
 
       <div className="flex-1 overflow-y-auto pb-24">
         {currentStep === 0 && (
