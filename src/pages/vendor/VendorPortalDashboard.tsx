@@ -322,7 +322,6 @@ export default function VendorPortalDashboard() {
         advance_payment: invPayments.reduce((s, p) => s + Number(p.advance_adjusted || 0), 0),
         tds_amount: invPayments.reduce((s, p) => s + Number(p.tds_amount || 0), 0),
         balance_payment: invPayments.reduce((s, p) => s + Number(p.payout_amount || 0), 0),
-        settled: settledByInvoice.get(inv.id) || 0,
         status: inv.status,
         description: inv.description,
         rejection_reason: inv.rejection_reason,
@@ -338,11 +337,15 @@ export default function VendorPortalDashboard() {
       po: null,
       invoiceFileKey: null,
       poFileKey: null,
-      amount: null as number | null,
-      advance_payment: Number(r.amount),
+      // The requested amount is this row's headline "Amount" — the Advance
+      // Adjusted / TDS / Paid columns are about money actually MOVED against
+      // an invoice, which hasn't happened yet for a request still pending or
+      // just approved (that only shows up once staff net it against an
+      // invoice, on that invoice's own row).
+      amount: Number(r.amount),
+      advance_payment: null as number | null,
       tds_amount: null as number | null,
       balance_payment: null as number | null,
-      settled: null as number | null,
       status: r.status,
       project_name: r.project_name,
       review_comments: r.review_comments,
@@ -614,9 +617,9 @@ export default function VendorPortalDashboard() {
                       <TableHead>Invoice Date</TableHead>
                       <TableHead>PO</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
-                      <TableHead className="text-right">Advance</TableHead>
+                      <TableHead className="text-right">Advance Adjusted</TableHead>
                       <TableHead className="text-right">TDS</TableHead>
-                      <TableHead className="text-right">Settled</TableHead>
+                      <TableHead className="text-right">Paid</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Files</TableHead>
                       <TableHead className="w-8" />
@@ -652,9 +655,9 @@ export default function VendorPortalDashboard() {
                             </TableCell>
                             <TableCell>{r.po || "—"}</TableCell>
                             <TableCell className="text-right font-medium">{r.amount != null ? formatINR(r.amount) : "—"}</TableCell>
-                            <TableCell className="text-right">{r.advance_payment > 0 ? formatINR(r.advance_payment) : "—"}</TableCell>
+                            <TableCell className="text-right">{r.advance_payment ? formatINR(r.advance_payment) : "—"}</TableCell>
                             <TableCell className="text-right">{r.tds_amount ? formatINR(r.tds_amount) : "—"}</TableCell>
-                            <TableCell className="text-right">{r.settled ? formatINR(r.settled) : "—"}</TableCell>
+                            <TableCell className="text-right">{r.balance_payment ? formatINR(r.balance_payment) : "—"}</TableCell>
                             <TableCell>
                               {r.kind === "invoice" ? (
                                 <Badge variant="outline" className={INVOICE_STATUS_META[r.status].className}>
