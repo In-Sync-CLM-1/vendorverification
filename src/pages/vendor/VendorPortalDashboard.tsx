@@ -133,7 +133,7 @@ export default function VendorPortalDashboard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("vendor_advance_requests")
-        .select("id, amount, activity_name, status, review_comments, project_name, created_at, ai_extracted_data")
+        .select("id, amount, activity_name, status, review_comments, project_name, created_at, ai_extracted_data, proforma_invoice_file_key")
         .eq("vendor_id", vendor!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -146,6 +146,7 @@ export default function VendorPortalDashboard() {
         project_name: string | null;
         created_at: string;
         ai_extracted_data: { proforma_invoice?: { invoice_number?: string | null } } | null;
+        proforma_invoice_file_key: string | null;
       }>;
     },
     enabled: !!vendor?.id,
@@ -322,7 +323,6 @@ export default function VendorPortalDashboard() {
         amount: Number(inv.invoice_amount),
         advance_payment: invPayments.reduce((s, p) => s + Number(p.advance_adjusted || 0), 0),
         tds_amount: invPayments.reduce((s, p) => s + Number(p.tds_amount || 0), 0),
-        balance_payment: invPayments.reduce((s, p) => s + Number(p.payout_amount || 0), 0),
         status: inv.status,
         description: inv.description,
         rejection_reason: inv.rejection_reason,
@@ -340,7 +340,7 @@ export default function VendorPortalDashboard() {
       uploadDate: r.created_at,
       invoiceDate: null as string | null,
       po: null,
-      invoiceFileKey: null,
+      invoiceFileKey: r.proforma_invoice_file_key,
       poFileKey: null,
       // The requested amount is this row's headline "Amount" — the Advance
       // Adjusted / TDS / Paid columns are about money actually MOVED against
@@ -350,7 +350,6 @@ export default function VendorPortalDashboard() {
       amount: Number(r.amount),
       advance_payment: null as number | null,
       tds_amount: null as number | null,
-      balance_payment: null as number | null,
       status: r.status,
       project_name: r.project_name,
       review_comments: r.review_comments,
@@ -622,9 +621,8 @@ export default function VendorPortalDashboard() {
                       <TableHead>Invoice Date</TableHead>
                       <TableHead>PO</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
-                      <TableHead className="text-right">Advance Adjusted</TableHead>
-                      <TableHead className="text-right">TDS</TableHead>
                       <TableHead className="text-right">Paid</TableHead>
+                      <TableHead className="text-right">TDS</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Files</TableHead>
                       <TableHead className="w-8" />
@@ -666,7 +664,6 @@ export default function VendorPortalDashboard() {
                             <TableCell className="text-right font-medium">{r.amount != null ? formatINR(r.amount) : "—"}</TableCell>
                             <TableCell className="text-right">{r.advance_payment ? formatINR(r.advance_payment) : "—"}</TableCell>
                             <TableCell className="text-right">{r.tds_amount ? formatINR(r.tds_amount) : "—"}</TableCell>
-                            <TableCell className="text-right">{r.balance_payment ? formatINR(r.balance_payment) : "—"}</TableCell>
                             <TableCell>
                               {r.kind === "invoice" ? (
                                 <Badge variant="outline" className={INVOICE_STATUS_META[r.status].className}>
@@ -677,8 +674,8 @@ export default function VendorPortalDashboard() {
                               )}
                             </TableCell>
                             <TableCell>
-                              {r.kind === "invoice" && (
-                                <div className="flex gap-1">
+                              <div className="flex gap-1">
+                                {r.kind === "invoice" && (
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -690,21 +687,34 @@ export default function VendorPortalDashboard() {
                                   >
                                     <Paperclip className="h-3.5 w-3.5 mr-1" /> Invoice
                                   </Button>
-                                  {r.poFileKey && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-7 px-2"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        openInvoiceFile(r.poFileKey!).catch((err) => toast.error(err.message));
-                                      }}
-                                    >
-                                      <Paperclip className="h-3.5 w-3.5 mr-1" /> PO
-                                    </Button>
-                                  )}
-                                </div>
-                              )}
+                                )}
+                                {r.kind === "invoice" && r.poFileKey && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openInvoiceFile(r.poFileKey!).catch((err) => toast.error(err.message));
+                                    }}
+                                  >
+                                    <Paperclip className="h-3.5 w-3.5 mr-1" /> PO
+                                  </Button>
+                                )}
+                                {r.kind === "advance" && r.invoiceFileKey && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openInvoiceFile(r.invoiceFileKey!).catch((err) => toast.error(err.message));
+                                    }}
+                                  >
+                                    <Paperclip className="h-3.5 w-3.5 mr-1" /> PI
+                                  </Button>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell>
                               {r.kind === "invoice" && (
@@ -714,7 +724,7 @@ export default function VendorPortalDashboard() {
                           </TableRow>
                           {r.kind === "invoice" && isOpen && (
                             <TableRow className="bg-muted/30 hover:bg-muted/30">
-                              <TableCell colSpan={11} className="p-4">
+                              <TableCell colSpan={10} className="p-4">
                                 {r.status === "rejected" && r.rejection_reason && (
                                   <p className="text-sm text-destructive mb-3">
                                     Rejection reason: {r.rejection_reason}
