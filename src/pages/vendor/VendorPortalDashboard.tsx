@@ -361,7 +361,7 @@ export default function VendorPortalDashboard() {
               size="sm"
               onClick={async () => {
                 await signOut();
-                navigate("/vendor/portal");
+                navigate("/");
               }}
             >
               <LogOut className="h-4 w-4" />
