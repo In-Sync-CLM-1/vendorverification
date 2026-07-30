@@ -145,7 +145,13 @@ export default function VendorPortalDashboard() {
         review_comments: string | null;
         project_name: string | null;
         created_at: string;
-        ai_extracted_data: { proforma_invoice?: { invoice_number?: string | null } } | null;
+        ai_extracted_data: {
+          proforma_invoice?: {
+            invoice_number?: string | null;
+            invoice_date?: string | null;
+            po_number?: string | null;
+          };
+        } | null;
         proforma_invoice_file_key: string | null;
       }>;
     },
@@ -338,8 +344,8 @@ export default function VendorPortalDashboard() {
       label: r.ai_extracted_data?.proforma_invoice?.invoice_number || r.activity_name,
       activityName: r.activity_name,
       uploadDate: r.created_at,
-      invoiceDate: null as string | null,
-      po: null,
+      invoiceDate: r.ai_extracted_data?.proforma_invoice?.invoice_date || null,
+      po: r.ai_extracted_data?.proforma_invoice?.po_number || null,
       invoiceFileKey: r.proforma_invoice_file_key,
       poFileKey: null,
       // The requested amount is this row's headline "Amount" — the Advance
