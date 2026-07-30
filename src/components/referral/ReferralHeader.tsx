@@ -42,7 +42,7 @@ export function ReferralHeader({ currentStep = 0, tenantId }: ReferralHeaderProp
           <img
             src={logo}
             alt={name}
-            className="h-8 object-contain shrink-0"
+            className="h-10 max-w-[160px] object-contain shrink-0"
           />
         </a>
         <h1 className="text-sm font-semibold text-primary whitespace-nowrap">

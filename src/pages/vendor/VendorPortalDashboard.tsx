@@ -359,7 +359,7 @@ export default function VendorPortalDashboard() {
       <header className="bg-card border-b sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            <img src={tenantLogo} alt={tenant?.short_name || "Organization"} className="h-8 w-8 object-contain shrink-0 rounded" />
+            <img src={tenantLogo} alt={tenant?.short_name || "Organization"} className="h-12 w-auto max-w-[160px] object-contain shrink-0 rounded" />
             <div className="min-w-0">
               <p className="font-semibold truncate">{vendor.company_name}</p>
               <p className="text-xs text-muted-foreground truncate">
