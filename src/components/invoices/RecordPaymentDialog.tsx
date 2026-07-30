@@ -106,7 +106,7 @@ export function RecordPaymentDialog({
           body: {
             event: "payment_recorded",
             invoice_id: invoice.id,
-            extra: { amount: totalSettled, utr: utr.trim() || undefined },
+            extra: { amount: totalSettled, utr: utr.trim() || undefined, advance_adjusted: nums.advance || undefined },
           },
         })
         .catch((e) => console.error("Vendor notification failed:", e));

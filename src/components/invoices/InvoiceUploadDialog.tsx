@@ -11,18 +11,36 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { uploadInvoiceFile, analyzeInvoiceFile, InvoiceExtraction, LOW_CONFIDENCE } from "@/lib/invoices";
-import { Loader2, Upload, Sparkles, TriangleAlert } from "lucide-react";
+import { uploadInvoiceFile, analyzeInvoiceFile, InvoiceExtraction, LOW_CONFIDENCE, formatINR } from "@/lib/invoices";
+import { Loader2, Upload, Sparkles, TriangleAlert, HandCoins } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+interface VendorAdvanceRequest {
+  id: string;
+  amount: number;
+  activity_name: string;
+  status: "pending" | "approved" | "rejected";
+  project_name: string | null;
+  created_at: string;
+}
 
 interface InvoiceUploadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   vendorId: string;
   onUploaded: () => void;
+  advanceRequests?: VendorAdvanceRequest[];
+  advanceAvailable?: number;
 }
+
+const ADVANCE_STATUS_META = {
+  pending: { label: "Pending Review", className: "bg-amber-100 text-amber-800 border-amber-200" },
+  approved: { label: "Approved", className: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+  rejected: { label: "Not Approved", className: "bg-red-100 text-red-800 border-red-200" },
+} as const;
 
 function FieldLabel({ text, confidence }: { text: string; confidence?: number }) {
   const low = confidence !== undefined && confidence < LOW_CONFIDENCE;
@@ -38,7 +56,7 @@ function FieldLabel({ text, confidence }: { text: string; confidence?: number })
   );
 }
 
-export function InvoiceUploadDialog({ open, onOpenChange, vendorId, onUploaded }: InvoiceUploadDialogProps) {
+export function InvoiceUploadDialog({ open, onOpenChange, vendorId, onUploaded, advanceRequests = [], advanceAvailable = 0 }: InvoiceUploadDialogProps) {
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [invoiceDate, setInvoiceDate] = useState("");
   const [amount, setAmount] = useState("");
@@ -193,6 +211,38 @@ export function InvoiceUploadDialog({ open, onOpenChange, vendorId, onUploaded }
             cannot be changed.
           </DialogDescription>
         </DialogHeader>
+
+        {advanceRequests.length > 0 && (
+          <div className="rounded-lg border bg-muted/40 p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium flex items-center gap-1.5">
+                <HandCoins className="h-3.5 w-3.5" /> Your Advance Requests
+              </p>
+              {advanceAvailable > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  Available to adjust: <span className="font-semibold text-foreground">{formatINR(advanceAvailable)}</span>
+                </span>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              {advanceRequests.map((r) => (
+                <div key={r.id} className="flex items-center justify-between gap-3 text-xs">
+                  <span className="truncate text-muted-foreground">
+                    {r.activity_name} · {formatINR(Number(r.amount))}
+                  </span>
+                  <Badge variant="outline" className={cn("shrink-0", ADVANCE_STATUS_META[r.status].className)}>
+                    {ADVANCE_STATUS_META[r.status].label}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+            {advanceAvailable > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Mention in the description below if this invoice should be adjusted against the approved advance.
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="grid gap-4 py-2">
           <div className="space-y-1.5">

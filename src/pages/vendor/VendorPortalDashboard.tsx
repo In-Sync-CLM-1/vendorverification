@@ -749,6 +749,8 @@ export default function VendorPortalDashboard() {
         open={uploadOpen}
         onOpenChange={setUploadOpen}
         vendorId={vendor.id}
+        advanceRequests={advanceRequests}
+        advanceAvailable={advanceAvailable}
         onUploaded={() => {
           refetchInvoices();
           refetchPayments();

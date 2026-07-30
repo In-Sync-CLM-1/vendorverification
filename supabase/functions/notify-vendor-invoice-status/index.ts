@@ -31,9 +31,13 @@ function statusText(event: NotifyEvent, invoiceNumber: string, extra?: Record<st
   const amount = typeof extra?.amount === "number" ? extra.amount : null;
   const utr = typeof extra?.utr === "string" && extra.utr ? ` (UTR: ${extra.utr})` : "";
   const amountText = amount !== null ? `₹${amount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "a payment";
+  const advanceAdjusted = typeof extra?.advance_adjusted === "number" ? extra.advance_adjusted : null;
+  const advanceText = advanceAdjusted
+    ? ` Of this, ₹${advanceAdjusted.toLocaleString("en-IN", { maximumFractionDigits: 2 })} was adjusted against your approved advance.`
+    : "";
   return {
     title: `Payment recorded for invoice ${invoiceNumber}`,
-    message: `${amountText} has been paid against your invoice ${invoiceNumber}${utr}. Log in to the vendor portal to view the full breakup.`,
+    message: `${amountText} has been paid against your invoice ${invoiceNumber}${utr}.${advanceText} Log in to the vendor portal to view the full breakup.`,
     accentColor: "#0066B3",
   };
 }
