@@ -320,7 +320,7 @@ export default function VendorPortalDashboard() {
       advance_payment: invPayments.reduce((s, p) => s + Number(p.advance_adjusted || 0), 0),
       tds_amount: invPayments.reduce((s, p) => s + Number(p.tds_amount || 0), 0),
       balance_payment: invPayments.reduce((s, p) => s + Number(p.payout_amount || 0), 0),
-      status: null as string | null,
+      status: inv.status,
     };
   });
   const advanceInfoRows = advanceRequests.map((r) => ({
@@ -602,7 +602,11 @@ export default function VendorPortalDashboard() {
                         <TableCell className="text-right">{r.advance_payment > 0 ? formatINR(r.advance_payment) : "—"}</TableCell>
                         <TableCell className="text-right">{r.tds_amount > 0 ? formatINR(r.tds_amount) : "—"}</TableCell>
                         <TableCell className="text-right">{r.balance_payment > 0 ? formatINR(r.balance_payment) : "—"}</TableCell>
-                        <TableCell className="text-muted-foreground text-sm">—</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={INVOICE_STATUS_META[r.status].className}>
+                            {INVOICE_STATUS_META[r.status].label}
+                          </Badge>
+                        </TableCell>
                       </TableRow>
                     ))}
                     <TableRow className="font-semibold bg-muted/40 hover:bg-muted/40">
