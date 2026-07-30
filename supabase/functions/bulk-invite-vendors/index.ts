@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getWhatsappSettings } from "../_shared/whatsappSettings.ts";
+import { getEmailFrom } from "../_shared/emailSender.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -72,6 +73,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     const wsConfig = await getWhatsappSettings(admin, tenantId);
+    const emailFrom = await getEmailFrom(admin, tenantId);
 
     let success_count = 0;
     const failed_rows: { row_number: number; company_name: string; errors: string[] }[] = [];
@@ -118,7 +120,7 @@ Deno.serve(async (req) => {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${resendApiKey}` },
           body: JSON.stringify({
-            from: "Vendor-Sync <noreply@in-sync.co.in>",
+            from: emailFrom,
             to: [email],
             subject: "Vendor Registration Invitation",
             html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">

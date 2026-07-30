@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getWhatsappSettings } from "../_shared/whatsappSettings.ts";
+import { getEmailFrom } from "../_shared/emailSender.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -239,6 +240,7 @@ Deno.serve(async (req) => {
       </div>
     `;
 
+    const emailFrom = await getEmailFrom(supabase, resolvedTenantId);
     const resendResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -246,7 +248,7 @@ Deno.serve(async (req) => {
         Authorization: `Bearer ${resendApiKey}`,
       },
       body: JSON.stringify({
-        from: "Vendor-Sync <noreply@in-sync.co.in>",
+        from: emailFrom,
         to: [normalizedIdentifier],
         subject: purpose === "org_registration" ? "Your verification code for Vendor-Sync" : purpose === "vendor_portal" ? "Your login code for Vendor-Sync" : "Your OTP for Vendor Registration",
         html: emailHtml,
