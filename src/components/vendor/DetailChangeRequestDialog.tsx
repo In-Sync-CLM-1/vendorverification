@@ -28,6 +28,8 @@ export function DetailChangeRequestDialog({ open, onOpenChange, vendorId, onSubm
   const [mobile, setMobile] = useState("");
   const [bankAccount, setBankAccount] = useState("");
   const [bankIfsc, setBankIfsc] = useState("");
+  const [gstNumber, setGstNumber] = useState("");
+  const [msmeNumber, setMsmeNumber] = useState("");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -37,6 +39,8 @@ export function DetailChangeRequestDialog({ open, onOpenChange, vendorId, onSubm
     setMobile("");
     setBankAccount("");
     setBankIfsc("");
+    setGstNumber("");
+    setMsmeNumber("");
     setNote("");
   };
 
@@ -47,6 +51,8 @@ export function DetailChangeRequestDialog({ open, onOpenChange, vendorId, onSubm
       requested_mobile: mobile.trim() || null,
       requested_bank_account_number: bankAccount.trim() || null,
       requested_bank_ifsc: bankIfsc.trim() || null,
+      requested_gst_number: gstNumber.trim() || null,
+      requested_msme_number: msmeNumber.trim() || null,
     };
     if (Object.values(fields).every((v) => v === null)) {
       toast.error("Fill in at least one field you want to change");
@@ -107,6 +113,16 @@ export function DetailChangeRequestDialog({ open, onOpenChange, vendorId, onSubm
             <div className="space-y-1.5">
               <Label htmlFor="dcr-ifsc">IFSC</Label>
               <Input id="dcr-ifsc" value={bankIfsc} onChange={(e) => setBankIfsc(e.target.value.toUpperCase())} placeholder="Leave blank to keep unchanged" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="dcr-gst">GST Number</Label>
+              <Input id="dcr-gst" value={gstNumber} onChange={(e) => setGstNumber(e.target.value.toUpperCase())} placeholder="Leave blank to keep unchanged" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="dcr-msme">MSME Number</Label>
+              <Input id="dcr-msme" value={msmeNumber} onChange={(e) => setMsmeNumber(e.target.value.toUpperCase())} placeholder="Leave blank to keep unchanged" />
             </div>
           </div>
           <div className="space-y-1.5">

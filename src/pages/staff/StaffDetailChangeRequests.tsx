@@ -28,6 +28,8 @@ interface ChangeRequest {
   requested_mobile: string | null;
   requested_bank_account_number: string | null;
   requested_bank_ifsc: string | null;
+  requested_gst_number: string | null;
+  requested_msme_number: string | null;
   vendor_note: string | null;
   created_at: string;
   vendors: { company_name: string; vendor_code: string | null } | null;
@@ -74,6 +76,8 @@ export default function StaffDetailChangeRequests() {
         if (req.requested_mobile) updates.primary_mobile = req.requested_mobile;
         if (req.requested_bank_account_number) updates.bank_account_number = req.requested_bank_account_number;
         if (req.requested_bank_ifsc) updates.bank_ifsc = req.requested_bank_ifsc;
+        if (req.requested_gst_number) updates.gst_number = req.requested_gst_number;
+        if (req.requested_msme_number) updates.msme_number = req.requested_msme_number;
 
         if (Object.keys(updates).length > 0) {
           const { error: vendorErr } = await supabase.from("vendors").update(updates).eq("id", req.vendor_id);
@@ -145,6 +149,8 @@ export default function StaffDetailChangeRequests() {
                         <FieldDiff label="Mobile" value={req.requested_mobile} />
                         <FieldDiff label="Bank Account" value={req.requested_bank_account_number} />
                         <FieldDiff label="IFSC" value={req.requested_bank_ifsc} />
+                        <FieldDiff label="GST Number" value={req.requested_gst_number} />
+                        <FieldDiff label="MSME Number" value={req.requested_msme_number} />
                       </div>
 
                       {req.vendor_note && (
