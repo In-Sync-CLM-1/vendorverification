@@ -459,13 +459,16 @@ export default function VendorPortalDashboard() {
                   const status = r.document?.status;
                   const needsAttention = status === "reupload_requested" || status === "rejected";
                   const isMissing = !r.document;
+                  const isApproved = status === "approved";
                   const rowClass = needsAttention
                     ? "border-orange-200 bg-orange-50"
                     : isMissing
                       ? r.is_mandatory
                         ? "border-amber-200 bg-amber-50"
                         : "border-border"
-                      : "border-border";
+                      : isApproved
+                        ? "border-emerald-200 bg-emerald-50"
+                        : "border-border";
                   const statusLabel = isMissing
                     ? r.is_mandatory
                       ? "Not uploaded (required)"
@@ -500,11 +503,17 @@ export default function VendorPortalDashboard() {
                           <p className="text-xs text-orange-700 mt-0.5">{r.document.review_comments}</p>
                         )}
                       </div>
-                      {(isMissing || needsAttention) && (
+                      {(isMissing || needsAttention || isApproved) && (
                         <Button
                           size="sm"
                           variant="outline"
-                          className={needsAttention ? "shrink-0 border-orange-400 text-orange-700" : "shrink-0"}
+                          className={
+                            needsAttention
+                              ? "shrink-0 border-orange-400 text-orange-700"
+                              : isApproved
+                                ? "shrink-0 border-emerald-400 text-emerald-700"
+                                : "shrink-0"
+                          }
                           onClick={() =>
                             setDocumentTarget({
                               document_id: r.document?.id || null,
