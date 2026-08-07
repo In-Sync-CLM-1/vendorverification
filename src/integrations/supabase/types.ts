@@ -617,6 +617,50 @@ export type Database = {
           },
         ]
       }
+      invoice_action_tokens: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          invoice_id: string
+          staff_user_id: string
+          tenant_id: string
+          token_hash: string
+          used_action: string | null
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          invoice_id: string
+          staff_user_id: string
+          tenant_id: string
+          token_hash: string
+          used_action?: string | null
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          invoice_id?: string
+          staff_user_id?: string
+          tenant_id?: string
+          token_hash?: string
+          used_action?: string | null
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_action_tokens_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -1012,6 +1056,8 @@ export type Database = {
           is_active: boolean
           logo_url: string | null
           name: string
+          notification_from_email: string | null
+          notification_from_name: string | null
           primary_color: string | null
           privacy_policy_url: string | null
           short_name: string
@@ -1029,6 +1075,8 @@ export type Database = {
           is_active?: boolean
           logo_url?: string | null
           name: string
+          notification_from_email?: string | null
+          notification_from_name?: string | null
           primary_color?: string | null
           privacy_policy_url?: string | null
           short_name: string
@@ -1046,6 +1094,8 @@ export type Database = {
           is_active?: boolean
           logo_url?: string | null
           name?: string
+          notification_from_email?: string | null
+          notification_from_name?: string | null
           primary_color?: string | null
           privacy_policy_url?: string | null
           short_name?: string
@@ -1089,6 +1139,91 @@ export type Database = {
           },
         ]
       }
+      vendor_advance_requests: {
+        Row: {
+          activity_name: string
+          ai_confidence_score: number | null
+          ai_extracted_data: Json | null
+          ai_model_version: string | null
+          amount: number
+          created_at: string
+          id: string
+          proforma_invoice_file_key: string | null
+          project_id: string | null
+          project_name: string | null
+          requested_by: string | null
+          review_comments: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["advance_request_status"]
+          tenant_id: string
+          vendor_id: string
+          vendor_remarks: string | null
+        }
+        Insert: {
+          activity_name: string
+          ai_confidence_score?: number | null
+          ai_extracted_data?: Json | null
+          ai_model_version?: string | null
+          amount: number
+          created_at?: string
+          id?: string
+          proforma_invoice_file_key?: string | null
+          project_id?: string | null
+          project_name?: string | null
+          requested_by?: string | null
+          review_comments?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["advance_request_status"]
+          tenant_id: string
+          vendor_id: string
+          vendor_remarks?: string | null
+        }
+        Update: {
+          activity_name?: string
+          ai_confidence_score?: number | null
+          ai_extracted_data?: Json | null
+          ai_model_version?: string | null
+          amount?: number
+          created_at?: string
+          id?: string
+          proforma_invoice_file_key?: string | null
+          project_id?: string | null
+          project_name?: string | null
+          requested_by?: string | null
+          review_comments?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["advance_request_status"]
+          tenant_id?: string
+          vendor_id?: string
+          vendor_remarks?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_advance_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_advance_requests_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_advance_requests_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_decrypted"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendor_categories: {
         Row: {
           created_at: string
@@ -1120,6 +1255,88 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_detail_change_requests: {
+        Row: {
+          created_at: string
+          id: string
+          requested_bank_account_number: string | null
+          requested_bank_ifsc: string | null
+          requested_by: string | null
+          requested_contact_name: string | null
+          requested_email: string | null
+          requested_gst_number: string | null
+          requested_mobile: string | null
+          requested_msme_number: string | null
+          review_comments: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["detail_change_request_status"]
+          tenant_id: string
+          vendor_id: string
+          vendor_note: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          requested_bank_account_number?: string | null
+          requested_bank_ifsc?: string | null
+          requested_by?: string | null
+          requested_contact_name?: string | null
+          requested_email?: string | null
+          requested_gst_number?: string | null
+          requested_mobile?: string | null
+          requested_msme_number?: string | null
+          review_comments?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["detail_change_request_status"]
+          tenant_id: string
+          vendor_id: string
+          vendor_note?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          requested_bank_account_number?: string | null
+          requested_bank_ifsc?: string | null
+          requested_by?: string | null
+          requested_contact_name?: string | null
+          requested_email?: string | null
+          requested_gst_number?: string | null
+          requested_mobile?: string | null
+          requested_msme_number?: string | null
+          review_comments?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["detail_change_request_status"]
+          tenant_id?: string
+          vendor_id?: string
+          vendor_note?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_detail_change_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_detail_change_requests_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_detail_change_requests_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_decrypted"
             referencedColumns: ["id"]
           },
         ]
@@ -1371,6 +1588,7 @@ export type Database = {
           ai_model_version: string | null
           created_at: string
           description: string | null
+          due_date: string | null
           gst_amount: number
           id: string
           invoice_amount: number
@@ -1394,6 +1612,7 @@ export type Database = {
           ai_model_version?: string | null
           created_at?: string
           description?: string | null
+          due_date?: string | null
           gst_amount?: number
           id?: string
           invoice_amount: number
@@ -1417,6 +1636,7 @@ export type Database = {
           ai_model_version?: string | null
           created_at?: string
           description?: string | null
+          due_date?: string | null
           gst_amount?: number
           id?: string
           invoice_amount?: number
@@ -1451,6 +1671,109 @@ export type Database = {
           },
           {
             foreignKeyName: "vendor_invoices_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_decrypted"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_pi_quotations: {
+        Row: {
+          ai_confidence_score: number | null
+          ai_extracted_data: Json | null
+          ai_model_version: string | null
+          amount: number | null
+          created_at: string
+          document_date: string | null
+          document_type: Database["public"]["Enums"]["pi_quotation_document_type"]
+          file_key: string
+          id: string
+          project_name: string
+          project_number: string | null
+          project_owner_email: string | null
+          project_owner_external_id: string | null
+          project_owner_name: string | null
+          project_owner_user_id: string | null
+          review_comments: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rmpl_project_id: string
+          status: Database["public"]["Enums"]["pi_quotation_status"]
+          submitted_by: string | null
+          tenant_id: string
+          vendor_id: string
+          vendor_remarks: string | null
+        }
+        Insert: {
+          ai_confidence_score?: number | null
+          ai_extracted_data?: Json | null
+          ai_model_version?: string | null
+          amount?: number | null
+          created_at?: string
+          document_date?: string | null
+          document_type: Database["public"]["Enums"]["pi_quotation_document_type"]
+          file_key: string
+          id?: string
+          project_name: string
+          project_number?: string | null
+          project_owner_email?: string | null
+          project_owner_external_id?: string | null
+          project_owner_name?: string | null
+          project_owner_user_id?: string | null
+          review_comments?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rmpl_project_id: string
+          status?: Database["public"]["Enums"]["pi_quotation_status"]
+          submitted_by?: string | null
+          tenant_id: string
+          vendor_id: string
+          vendor_remarks?: string | null
+        }
+        Update: {
+          ai_confidence_score?: number | null
+          ai_extracted_data?: Json | null
+          ai_model_version?: string | null
+          amount?: number | null
+          created_at?: string
+          document_date?: string | null
+          document_type?: Database["public"]["Enums"]["pi_quotation_document_type"]
+          file_key?: string
+          id?: string
+          project_name?: string
+          project_number?: string | null
+          project_owner_email?: string | null
+          project_owner_external_id?: string | null
+          project_owner_name?: string | null
+          project_owner_user_id?: string | null
+          review_comments?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rmpl_project_id?: string
+          status?: Database["public"]["Enums"]["pi_quotation_status"]
+          submitted_by?: string | null
+          tenant_id?: string
+          vendor_id?: string
+          vendor_remarks?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_pi_quotations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_pi_quotations_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_pi_quotations_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors_decrypted"
@@ -1605,6 +1928,8 @@ export type Database = {
           gst_number: string | null
           gst_number_encrypted: string | null
           id: string
+          msme_number: string | null
+          msme_number_encrypted: string | null
           nominee_contact: string | null
           nominee_contact_encrypted: string | null
           nominee_name: string | null
@@ -1649,6 +1974,8 @@ export type Database = {
           gst_number?: string | null
           gst_number_encrypted?: string | null
           id?: string
+          msme_number?: string | null
+          msme_number_encrypted?: string | null
           nominee_contact?: string | null
           nominee_contact_encrypted?: string | null
           nominee_name?: string | null
@@ -1693,6 +2020,8 @@ export type Database = {
           gst_number?: string | null
           gst_number_encrypted?: string | null
           id?: string
+          msme_number?: string | null
+          msme_number_encrypted?: string | null
           nominee_contact?: string | null
           nominee_contact_encrypted?: string | null
           nominee_name?: string | null
@@ -2180,6 +2509,7 @@ export type Database = {
           current_status: Database["public"]["Enums"]["vendor_status"] | null
           gst_number: string | null
           id: string | null
+          msme_number: string | null
           nominee_contact: string | null
           nominee_name: string | null
           operational_address: string | null
@@ -2214,6 +2544,7 @@ export type Database = {
           current_status?: Database["public"]["Enums"]["vendor_status"] | null
           gst_number?: never
           id?: string | null
+          msme_number?: never
           nominee_contact?: never
           nominee_name?: string | null
           operational_address?: string | null
@@ -2248,6 +2579,7 @@ export type Database = {
           current_status?: Database["public"]["Enums"]["vendor_status"] | null
           gst_number?: never
           id?: string | null
+          msme_number?: never
           nominee_contact?: never
           nominee_name?: string | null
           operational_address?: string | null
@@ -2304,8 +2636,22 @@ export type Database = {
       }
       generate_referral_code: { Args: never; Returns: string }
       get_user_tenant_id: { Args: { _user_id: string }; Returns: string }
+      get_vendor_contact: {
+        Args: { p_vendor_id: string }
+        Returns: {
+          company_name: string
+          email: string
+          mobile: string
+          primary_contact_name: string
+          tenant_id: string
+        }[]
+      }
       get_vendor_decrypted: { Args: { p_vendor_id: string }; Returns: Json }
       get_vendor_id: { Args: { _user_id: string }; Returns: string }
+      get_vendor_sensitive_info: {
+        Args: { p_vendor_id: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2328,7 +2674,14 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "maker" | "checker" | "approver" | "admin" | "platform_admin"
+      advance_request_status: "pending" | "approved" | "rejected"
+      app_role:
+        | "maker"
+        | "checker"
+        | "approver"
+        | "admin"
+        | "platform_admin"
+        | "accounts"
       billing_category:
         | "subscription_payment"
         | "free_trial_credit"
@@ -2337,12 +2690,14 @@ export type Database = {
         | "gst"
         | "api_call"
       billing_transaction_type: "credit" | "debit"
+      detail_change_request_status: "pending" | "approved" | "rejected"
       document_status:
         | "uploaded"
         | "under_review"
         | "approved"
         | "rejected"
         | "expired"
+        | "reupload_requested"
       fraud_alert_severity: "critical" | "high" | "medium" | "low"
       fraud_alert_status: "pending" | "reviewed" | "dismissed" | "confirmed"
       fraud_alert_type:
@@ -2359,6 +2714,8 @@ export type Database = {
         | "rejected"
         | "partially_paid"
         | "paid"
+      pi_quotation_document_type: "proforma_invoice" | "quotation"
+      pi_quotation_status: "submitted" | "approved" | "rejected"
       subscription_plan:
         | "free_trial"
         | "starter"
@@ -2518,7 +2875,15 @@ export const Constants = {
   },
   public: {
     Enums: {
-      app_role: ["maker", "checker", "approver", "admin", "platform_admin"],
+      advance_request_status: ["pending", "approved", "rejected"],
+      app_role: [
+        "maker",
+        "checker",
+        "approver",
+        "admin",
+        "platform_admin",
+        "accounts",
+      ],
       billing_category: [
         "subscription_payment",
         "free_trial_credit",
@@ -2528,12 +2893,14 @@ export const Constants = {
         "api_call",
       ],
       billing_transaction_type: ["credit", "debit"],
+      detail_change_request_status: ["pending", "approved", "rejected"],
       document_status: [
         "uploaded",
         "under_review",
         "approved",
         "rejected",
         "expired",
+        "reupload_requested",
       ],
       fraud_alert_severity: ["critical", "high", "medium", "low"],
       fraud_alert_status: ["pending", "reviewed", "dismissed", "confirmed"],
@@ -2553,6 +2920,8 @@ export const Constants = {
         "partially_paid",
         "paid",
       ],
+      pi_quotation_document_type: ["proforma_invoice", "quotation"],
+      pi_quotation_status: ["submitted", "approved", "rejected"],
       subscription_plan: [
         "free_trial",
         "starter",

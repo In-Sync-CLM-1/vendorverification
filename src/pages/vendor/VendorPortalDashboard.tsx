@@ -22,6 +22,7 @@ import { PaymentBreakupTable } from "@/components/invoices/PaymentBreakupTable";
 import { InvoiceUploadDialog } from "@/components/invoices/InvoiceUploadDialog";
 import { DetailChangeRequestDialog } from "@/components/vendor/DetailChangeRequestDialog";
 import { AdvanceRequestDialog } from "@/components/vendor/AdvanceRequestDialog";
+import { PiQuotationDialog } from "@/components/vendor/PiQuotationDialog";
 import { DocumentUploadDialog, DocumentActionTarget } from "@/components/documents/DocumentUploadDialog";
 import {
   formatINR,
@@ -63,6 +64,7 @@ export default function VendorPortalDashboard() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [changeRequestOpen, setChangeRequestOpen] = useState(false);
   const [advanceRequestOpen, setAdvanceRequestOpen] = useState(false);
+  const [piQuotationOpen, setPiQuotationOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [documentTarget, setDocumentTarget] = useState<DocumentActionTarget | null>(null);
 
@@ -154,6 +156,29 @@ export default function VendorPortalDashboard() {
           };
         } | null;
         proforma_invoice_file_key: string | null;
+      }>;
+    },
+    enabled: !!vendor?.id,
+  });
+
+  const { data: piQuotations = [], refetch: refetchPiQuotations } = useQuery({
+    queryKey: ["portal-pi-quotations", vendor?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vendor_pi_quotations")
+        .select("id, document_type, project_name, amount, status, review_comments, file_key, created_at")
+        .eq("vendor_id", vendor!.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data || []) as Array<{
+        id: string;
+        document_type: "proforma_invoice" | "quotation";
+        project_name: string;
+        amount: number | null;
+        status: "submitted" | "approved" | "rejected";
+        review_comments: string | null;
+        file_key: string;
+        created_at: string;
       }>;
     },
     enabled: !!vendor?.id,
@@ -391,6 +416,9 @@ export default function VendorPortalDashboard() {
             <Button onClick={() => setChangeRequestOpen(true)} size="sm" variant="outline">
               <UserCog className="h-4 w-4 mr-2" /> Update My Details
             </Button>
+            <Button onClick={() => setPiQuotationOpen(true)} size="sm" variant="outline">
+              <FileText className="h-4 w-4 mr-2" /> Submit PI / Quotation
+            </Button>
             <Button onClick={() => setAdvanceRequestOpen(true)} size="sm" variant="outline">
               <HandCoins className="h-4 w-4 mr-2" /> Request Advance
             </Button>
@@ -567,6 +595,52 @@ export default function VendorPortalDashboard() {
                         )}
                       </div>
                       <Badge variant="outline" className={statusMeta.className}>{statusMeta.label}</Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* PI / Quotation submissions */}
+        {piQuotations.length > 0 && (
+          <Card>
+            <CardContent className="p-4">
+              <h2 className="font-semibold mb-3">Your PI / Quotation Submissions</h2>
+              <div className="space-y-2">
+                {piQuotations.map((r) => {
+                  const statusMeta =
+                    r.status === "approved"
+                      ? { label: "Approved", className: "bg-emerald-100 text-emerald-800 border-emerald-200" }
+                      : r.status === "rejected"
+                        ? { label: "Not Approved", className: "bg-red-100 text-red-800 border-red-200" }
+                        : { label: "Pending Review", className: "bg-amber-100 text-amber-800 border-amber-200" };
+                  return (
+                    <div key={r.id} className="flex items-center justify-between gap-3 text-sm border rounded-md px-3 py-2">
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">
+                          {r.document_type === "quotation" ? "Quotation" : "Proforma Invoice"} · {r.project_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {r.amount != null ? formatINR(r.amount) : "Amount not detected"} · submitted{" "}
+                          {new Date(r.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                        </p>
+                        {r.status === "rejected" && r.review_comments && (
+                          <p className="text-xs text-destructive mt-0.5">{r.review_comments}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2"
+                          onClick={() => openInvoiceFile(r.file_key).catch((err) => toast.error(err.message))}
+                        >
+                          <Paperclip className="h-3.5 w-3.5 mr-1" /> File
+                        </Button>
+                        <Badge variant="outline" className={statusMeta.className}>{statusMeta.label}</Badge>
+                      </div>
                     </div>
                   );
                 })}
@@ -794,6 +868,13 @@ export default function VendorPortalDashboard() {
         vendorId={vendor.id}
         pendingRequests={advanceRequests.filter((r) => r.status === "pending")}
         onSubmitted={refetchAdvanceRequests}
+      />
+
+      <PiQuotationDialog
+        open={piQuotationOpen}
+        onOpenChange={setPiQuotationOpen}
+        vendorId={vendor.id}
+        onSubmitted={refetchPiQuotations}
       />
 
       <DocumentUploadDialog

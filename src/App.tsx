@@ -34,6 +34,7 @@ import StaffInvoices from "./pages/staff/StaffInvoices";
 import StaffPaymentMatching from "./pages/staff/StaffPaymentMatching";
 import StaffDetailChangeRequests from "./pages/staff/StaffDetailChangeRequests";
 import StaffAdvanceRequests from "./pages/staff/StaffAdvanceRequests";
+import ProjectOwnerApprovals from "./pages/staff/ProjectOwnerApprovals";
 import VendorSensitiveInfo from "./pages/staff/VendorSensitiveInfo";
 const StaffInvoiceAnalytics = lazy(() => import("./pages/staff/StaffInvoiceAnalytics"));
 
@@ -92,6 +93,7 @@ const App = () => (
             <Route path="/staff/payment-matching" element={<StaffPaymentMatching />} />
             <Route path="/staff/change-requests" element={<StaffDetailChangeRequests />} />
             <Route path="/staff/advance-requests" element={<StaffAdvanceRequests />} />
+            <Route path="/staff/pi-approvals" element={<ProjectOwnerApprovals />} />
             <Route path="/staff/sensitive-info" element={<VendorSensitiveInfo />} />
             <Route
               path="/staff/invoice-analytics"
