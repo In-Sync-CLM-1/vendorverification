@@ -35,6 +35,7 @@ interface StaffUser {
 const ROLE_OPTIONS = [
   { value: "maker", label: "Reviewer", description: "Reviews vendor applications and documents" },
   { value: "approver", label: "Approver", description: "Final approval authority" },
+  { value: "accounts", label: "Accounts", description: "Issues POs and handles advance processing & payments" },
   { value: "admin", label: "Admin", description: "Full system access" },
 ];
 

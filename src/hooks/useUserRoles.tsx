@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 
-export type AppRole = "maker" | "approver" | "admin" | "platform_admin";
+export type AppRole = "maker" | "approver" | "admin" | "platform_admin" | "accounts";
 
 export function useUserRoles() {
   const { user, userType } = useAuth();
@@ -28,6 +28,7 @@ export function useUserRoles() {
   const isPlatformAdmin = hasRole("platform_admin");
   const isMaker = hasRole("maker");
   const isApprover = hasRole("approver");
+  const isAccounts = hasRole("accounts") || isAdmin;
 
   return {
     roles,
@@ -37,5 +38,6 @@ export function useUserRoles() {
     isPlatformAdmin,
     isMaker,
     isApprover,
+    isAccounts,
   };
 }
