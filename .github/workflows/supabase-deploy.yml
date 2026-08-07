@@ -23,7 +23,10 @@ jobs:
           fetch-depth: 0
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Pinned: supabase-cli >=2.11x has a bug where `link` crashes parsing
+          # this project's API key list ("SchemaError ... inserted_at"). 2.95.4
+          # is the last version confirmed working here.
+          version: 2.95.4
       - name: Link project
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
       - name: Mark legacy migrations as applied
