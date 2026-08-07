@@ -7,22 +7,30 @@ import { supabase } from "@/integrations/supabase/client";
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface RmplProject {
+export interface RmplProject {
   id: string;
   project_name: string;
+  project_number: string | null;
+  project_owner_external_id: string | null;
+  project_owner_name: string | null;
+  project_owner_email: string | null;
+  project_owner_user_id: string | null;
 }
 
 interface ProjectComboboxProps {
   value: string | null;
   valueName?: string | null;
-  onChange: (projectId: string, projectName: string) => void;
+  onChange: (project: RmplProject) => void;
   disabled?: boolean;
 }
 
 // Project list is read live from RMPL (the org's separate project-tracking
 // Supabase project) via the list-rmpl-projects edge function, filtered to
 // projects currently in execution — RMPL owns this data, this app never
-// creates or edits a project of its own.
+// creates or edits a project of its own. Each project also carries its
+// resolved owner (matched into this app's own staff accounts by email) so
+// callers can route approvals without a separate picker. Used by both staff
+// (tagging an advance request) and vendors (submitting a PI/Quotation).
 export function ProjectCombobox({ value, valueName, onChange, disabled }: ProjectComboboxProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -51,7 +59,7 @@ export function ProjectCombobox({ value, valueName, onChange, disabled }: Projec
           disabled={disabled}
           className="w-full justify-between font-normal"
         >
-          <span className="truncate">{selectedName || "Assign to project…"}</span>
+          <span className="truncate">{selectedName || "Select project…"}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -74,7 +82,7 @@ export function ProjectCombobox({ value, valueName, onChange, disabled }: Projec
                       key={p.id}
                       value={p.id}
                       onSelect={() => {
-                        onChange(p.id, p.project_name);
+                        onChange(p);
                         setSearch("");
                         setOpen(false);
                       }}

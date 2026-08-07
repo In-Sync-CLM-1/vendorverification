@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ProjectCombobox } from "@/components/staff/ProjectCombobox";
+import { ProjectCombobox } from "@/components/shared/ProjectCombobox";
 import { AdvanceRequestCharts } from "@/components/advance/AdvanceRequestCharts";
 import { Loader2, HandCoins, Check, X, FileText } from "lucide-react";
 import { toast } from "sonner";
@@ -176,7 +176,7 @@ export default function StaffAdvanceRequests() {
                         <ProjectCombobox
                           value={projectChoice[req.id]?.id || null}
                           valueName={projectChoice[req.id]?.name}
-                          onChange={(id, name) => setProjectChoice((prev) => ({ ...prev, [req.id]: { id, name } }))}
+                          onChange={(project) => setProjectChoice((prev) => ({ ...prev, [req.id]: { id: project.id, name: project.project_name } }))}
                           disabled={actioningId === req.id}
                         />
                       </div>

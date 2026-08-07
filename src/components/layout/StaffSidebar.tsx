@@ -24,6 +24,7 @@ import {
   UserCog,
   Lock,
   HandCoins,
+  ClipboardCheck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -68,6 +69,7 @@ const navSections = [
       { title: "Match Payments", url: "/staff/payment-matching", icon: Landmark },
       { title: "Invoice Analytics", url: "/staff/invoice-analytics", icon: ChartColumnBig },
       { title: "Advance Requests", url: "/staff/advance-requests", icon: HandCoins },
+      { title: "PI / Quotation Approvals", url: "/staff/pi-approvals", icon: ClipboardCheck },
     ],
   },
 ];

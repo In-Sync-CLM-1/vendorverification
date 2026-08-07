@@ -12,10 +12,31 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+interface RmplProjectRow {
+  id: string;
+  project_name: string;
+  project_number: string | null;
+  project_owner: string | null;
+}
+
+interface RmplProfileRow {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+}
+
 // Reads the RMPL (In-Sync RMPL OPM) project list — a separate Supabase
 // project — filtered to projects currently in execution. RMPL owns the
-// project master data; this app only ever reads it, to let staff tag a
-// vendor advance request against the right client project.
+// project master data; this app only ever reads it.
+//
+// Also resolves each project's owner (RMPL's own profiles.id/full_name/
+// email) and matches that owner's email into THIS app's own profiles, so a
+// vendor's PI/Quotation submission (or a staff member tagging an advance
+// request) can be routed to the right Project Owner without a manual
+// picker. Unlike this app's own `profiles`, whose `id` is a separate
+// generated key, the match result stored as `project_owner_user_id` is the
+// local person's *auth* user id (profiles.user_id) — that's what RLS
+// policies compare against auth.uid().
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -38,12 +59,13 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Not signed in" }, 401);
     }
     const { data: isStaff } = await admin.rpc("is_internal_staff", { _user_id: user.id });
-    if (!isStaff) {
-      return jsonResponse({ error: "Only staff can view the project list" }, 403);
+    const { data: isVendor } = await admin.rpc("is_vendor_user", { _user_id: user.id });
+    if (!isStaff && !isVendor) {
+      return jsonResponse({ error: "Only staff or vendor users can view the project list" }, 403);
     }
 
     const params = new URLSearchParams({
-      select: "id,project_name",
+      select: "id,project_name,project_number,project_owner",
       status: "eq.execution",
       order: "project_name.asc",
       limit: "200",
@@ -60,8 +82,54 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Could not reach RMPL" }, 502);
     }
 
-    const projects = await rmplRes.json();
-    return jsonResponse({ projects });
+    const projects = await rmplRes.json() as RmplProjectRow[];
+
+    const ownerIds = [...new Set(projects.map((p) => p.project_owner).filter((id): id is string => !!id))];
+    let owners: RmplProfileRow[] = [];
+    if (ownerIds.length > 0) {
+      const ownerParams = new URLSearchParams({
+        select: "id,full_name,email",
+        id: `in.(${ownerIds.join(",")})`,
+      });
+      const ownersRes = await fetch(`${rmplUrl}/rest/v1/profiles?${ownerParams.toString()}`, {
+        headers: { apikey: rmplKey, Authorization: `Bearer ${rmplKey}` },
+      });
+      if (ownersRes.ok) owners = await ownersRes.json();
+    }
+    const ownerById = new Map(owners.map((o) => [o.id, o]));
+
+    // Match each project owner's email into this app's own profiles so a
+    // PI/Quotation (or advance request) can be routed to that person.
+    // profiles.id here is its own generated key, distinct from the auth
+    // user id — take profiles.user_id, not profiles.id.
+    const ownerEmails = [...new Set(owners.map((o) => o.email).filter((e): e is string => !!e))];
+    let localMatches: { user_id: string; email: string }[] = [];
+    if (ownerEmails.length > 0) {
+      const { data } = await admin
+        .from("profiles")
+        .select("user_id, email")
+        .in("email", ownerEmails);
+      localMatches = (data ?? []) as { user_id: string; email: string }[];
+    }
+    const localUserIdByEmail = new Map(
+      localMatches.map((m) => [m.email.toLowerCase(), m.user_id])
+    );
+
+    const enriched = projects.map((p) => {
+      const owner = p.project_owner ? ownerById.get(p.project_owner) : null;
+      const ownerEmail = owner?.email ?? null;
+      return {
+        id: p.id,
+        project_name: p.project_name,
+        project_number: p.project_number,
+        project_owner_external_id: p.project_owner,
+        project_owner_name: owner?.full_name ?? null,
+        project_owner_email: ownerEmail,
+        project_owner_user_id: ownerEmail ? localUserIdByEmail.get(ownerEmail.toLowerCase()) ?? null : null,
+      };
+    });
+
+    return jsonResponse({ projects: enriched });
   } catch (error) {
     console.error("list-rmpl-projects failed:", error);
     return jsonResponse({ error: "Request failed" }, 500);
