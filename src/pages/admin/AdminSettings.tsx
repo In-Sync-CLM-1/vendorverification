@@ -65,7 +65,7 @@ export default function AdminSettings() {
   const [editingDocType, setEditingDocType] = useState<any>(null);
 
   const [categoryForm, setCategoryForm] = useState({ name: "", description: "", is_active: true });
-  const [docTypeForm, setDocTypeForm] = useState({ name: "", description: "", has_expiry: false, max_file_size_mb: 5 });
+  const [docTypeForm, setDocTypeForm] = useState({ name: "", description: "", has_expiry: false, max_file_size_mb: 20 });
 
   // Encryption key state
   const [encryptionKey, setEncryptionKey] = useState("");
@@ -168,7 +168,7 @@ export default function AdminSettings() {
         if (error) throw error;
       }
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["admin-doc-types"] }); toast.success(editingDocType ? "Document type updated" : "Document type created"); setShowDocTypeDialog(false); setEditingDocType(null); setDocTypeForm({ name: "", description: "", has_expiry: false, max_file_size_mb: 5 }); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["admin-doc-types"] }); toast.success(editingDocType ? "Document type updated" : "Document type created"); setShowDocTypeDialog(false); setEditingDocType(null); setDocTypeForm({ name: "", description: "", has_expiry: false, max_file_size_mb: 20 }); },
     onError: (error: Error) => toast.error(error.message),
   });
 
@@ -459,13 +459,13 @@ export default function AdminSettings() {
       </Dialog>
 
       {/* Document Type Dialog */}
-      <Dialog open={showDocTypeDialog} onOpenChange={(open) => { setShowDocTypeDialog(open); if (!open) { setEditingDocType(null); setDocTypeForm({ name: "", description: "", has_expiry: false, max_file_size_mb: 5 }); } }}>
+      <Dialog open={showDocTypeDialog} onOpenChange={(open) => { setShowDocTypeDialog(open); if (!open) { setEditingDocType(null); setDocTypeForm({ name: "", description: "", has_expiry: false, max_file_size_mb: 20 }); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>{editingDocType ? "Edit Document Type" : "Add Document Type"}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div><Label htmlFor="doc-name">Name *</Label><Input id="doc-name" value={docTypeForm.name} onChange={(e) => setDocTypeForm(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g., GST Certificate" /></div>
             <div><Label htmlFor="doc-desc">Description</Label><Input id="doc-desc" value={docTypeForm.description} onChange={(e) => setDocTypeForm(prev => ({ ...prev, description: e.target.value }))} placeholder="Brief description" /></div>
-            <div><Label htmlFor="doc-size">Max File Size (MB)</Label><Input id="doc-size" type="number" value={docTypeForm.max_file_size_mb} onChange={(e) => setDocTypeForm(prev => ({ ...prev, max_file_size_mb: parseInt(e.target.value) || 5 }))} min={1} max={20} /></div>
+            <div><Label htmlFor="doc-size">Max File Size (MB)</Label><Input id="doc-size" type="number" value={docTypeForm.max_file_size_mb} onChange={(e) => setDocTypeForm(prev => ({ ...prev, max_file_size_mb: parseInt(e.target.value) || 20 }))} min={1} max={20} /></div>
             <div className="flex items-center justify-between"><Label htmlFor="doc-expiry">Has Expiry Date</Label><Switch id="doc-expiry" checked={docTypeForm.has_expiry} onCheckedChange={(checked) => setDocTypeForm(prev => ({ ...prev, has_expiry: checked }))} /></div>
           </div>
           <DialogFooter>

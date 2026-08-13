@@ -14,7 +14,7 @@ interface DocumentCaptureProps {
 export function DocumentCapture({
   onCapture,
   accept = "image/*,application/pdf",
-  maxSizeMB = 5,
+  maxSizeMB = 20,
   disabled = false,
   className,
 }: DocumentCaptureProps) {

@@ -219,7 +219,7 @@ const slides: Slide[] = [
     render: () => (
       <SlideLayout step={5} total={5} icon={<Upload className="h-6 w-6" />} color="teal" title="Document Upload" subtitle="Upload required documents per vendor category">
         <AnimatedList items={[
-          "Formats: PDF, JPG, PNG (max 10 MB)",
+          "Formats: PDF, JPG, PNG (max 20 MB)",
           "Stored in Supabase Storage with RLS",
           "Each upload triggers AI analysis",
           "Mandatory documents marked with *",

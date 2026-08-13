@@ -250,7 +250,7 @@ export function InvoiceUploadDialog({ open, onOpenChange, vendorId, onUploaded, 
 
         <div className="grid gap-4 py-2">
           <div className="space-y-1.5">
-            <Label htmlFor="inv-file">Invoice File (PDF/JPG/PNG, max 10MB) *</Label>
+            <Label htmlFor="inv-file">Invoice File (PDF/JPG/PNG, max 20MB) *</Label>
             <Input
               id="inv-file"
               type="file"
@@ -305,7 +305,7 @@ export function InvoiceUploadDialog({ open, onOpenChange, vendorId, onUploaded, 
           <div className="rounded-lg border border-dashed p-3 space-y-3">
             <p className="text-sm font-medium">Purchase Order (optional)</p>
             <div className="space-y-1.5">
-              <Label htmlFor="po-file">PO File (PDF/JPG/PNG, max 10MB)</Label>
+              <Label htmlFor="po-file">PO File (PDF/JPG/PNG, max 20MB)</Label>
               <Input
                 id="po-file"
                 type="file"
