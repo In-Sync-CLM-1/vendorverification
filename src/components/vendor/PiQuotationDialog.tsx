@@ -99,6 +99,11 @@ export function PiQuotationDialog({ open, onOpenChange, vendorId, onSubmitted }:
         .single();
       if (error) throw new Error(error.message);
 
+      // Fire-and-forget: the submission stands on its own if the alert fails.
+      supabase.functions
+        .invoke("notify-pi-quotation-submitted", { body: { pi_quotation_id: inserted.id } })
+        .catch(() => {});
+
       toast.success(`${documentType === "quotation" ? "Quotation" : "Proforma Invoice"} submitted — the project owner will review it`);
 
       reset();

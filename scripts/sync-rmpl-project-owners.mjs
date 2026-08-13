@@ -70,7 +70,7 @@ async function main() {
   const owners = await sql(
     rmplRef,
     rmplToken,
-    `SELECT DISTINCT pr.email, pr.full_name, u.encrypted_password, count(*) OVER (PARTITION BY pr.email) AS projects
+    `SELECT DISTINCT pr.email, pr.full_name, pr.phone, u.encrypted_password, count(*) OVER (PARTITION BY pr.email) AS projects
        FROM public.projects p
        JOIN public.profiles pr ON pr.id = p.project_owner
        JOIN auth.users u ON lower(u.email) = lower(pr.email)
@@ -83,11 +83,12 @@ async function main() {
   const existing = await sql(
     vendorRef,
     vendorToken,
-    `SELECT lower(public.decrypt_pii(email_encrypted)) AS email, is_active
+    `SELECT id, lower(public.decrypt_pii(email_encrypted)) AS email, is_active,
+            public.decrypt_pii(phone_encrypted) AS phone
        FROM public.profiles
       WHERE lower(public.decrypt_pii(email_encrypted)) IN (${emails});`
   );
-  const have = new Map(existing.map((r) => [r.email, r.is_active]));
+  const have = new Map(existing.map((r) => [r.email, r]));
 
   // An owner may already have a login here whose profile is unusable — wrong
   // tenant, switched off, or an address destroyed by the old PII-masking fault
@@ -108,8 +109,16 @@ async function main() {
   const toRepair = pending.filter((o) => authByEmail.has(o.email.toLowerCase()));
   const todo = pending.filter((o) => !authByEmail.has(o.email.toLowerCase()));
 
+  // WhatsApp alerts need a number on the profile here, so an owner already
+  // present but without one gets their RMPL mobile filled in.
+  const toBackfillPhone = owners.filter((o) => {
+    const row = have.get(o.email.toLowerCase());
+    return row && !row.phone && o.phone;
+  });
+
   console.log(`RMPL project owners: ${owners.length}`);
   console.log(`already usable in Vendor-Sync: ${owners.length - pending.length}`);
+  if (toBackfillPhone.length) console.log(`missing a mobile number: ${toBackfillPhone.length}`);
   console.log(`to create: ${todo.length}`);
   for (const o of todo) console.log(`  - ${o.full_name} <${o.email}>`);
   if (toRepair.length) {
@@ -150,8 +159,8 @@ async function main() {
       vendorToken,
       `UPDATE auth.users SET encrypted_password = ${lit(o.encrypted_password)}
         WHERE id = ${lit(created.id)};
-       INSERT INTO public.profiles (user_id, tenant_id, full_name, email, is_active)
-       VALUES (${lit(created.id)}, ${lit(TENANT_ID)}, ${lit(o.full_name)}, ${lit(email)}, true);`
+       INSERT INTO public.profiles (user_id, tenant_id, full_name, email, phone, is_active)
+       VALUES (${lit(created.id)}, ${lit(TENANT_ID)}, ${lit(o.full_name)}, ${lit(email)}, ${o.phone ? lit(o.phone) : "NULL"}, true);`
     );
     console.log(`  created ${o.full_name} <${email}>`);
   }
@@ -161,13 +170,14 @@ async function main() {
     const row = authByEmail.get(email);
     // Re-setting profiles.email lets the PII trigger re-encrypt a real address
     // over the masked one.
+    const phoneLit = o.phone ? lit(o.phone) : "NULL";
     const profileSql = row.profile_id
       ? `UPDATE public.profiles
             SET tenant_id = ${lit(TENANT_ID)}, full_name = ${lit(o.full_name)},
-                email = ${lit(email)}, is_active = true
+                email = ${lit(email)}, phone = ${phoneLit}, is_active = true
           WHERE id = ${lit(row.profile_id)};`
-      : `INSERT INTO public.profiles (user_id, tenant_id, full_name, email, is_active)
-         VALUES (${lit(row.user_id)}, ${lit(TENANT_ID)}, ${lit(o.full_name)}, ${lit(email)}, true);`;
+      : `INSERT INTO public.profiles (user_id, tenant_id, full_name, email, phone, is_active)
+         VALUES (${lit(row.user_id)}, ${lit(TENANT_ID)}, ${lit(o.full_name)}, ${lit(email)}, ${phoneLit}, true);`;
 
     await sql(
       vendorRef,
@@ -177,6 +187,16 @@ async function main() {
        ${profileSql}`
     );
     console.log(`  repaired ${o.full_name} <${email}>`);
+  }
+
+  for (const o of toBackfillPhone) {
+    const row = have.get(o.email.toLowerCase());
+    await sql(
+      vendorRef,
+      vendorToken,
+      `UPDATE public.profiles SET phone = ${lit(o.phone)} WHERE id = ${lit(row.id)};`
+    );
+    console.log(`  mobile added for ${o.full_name}`);
   }
 }
 
