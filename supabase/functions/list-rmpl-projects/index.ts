@@ -64,9 +64,14 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Only staff or vendor users can view the project list" }, 403);
     }
 
+    // Projects in execution, plus a small allow-list of standing projects that
+    // never reach that status but still get billed against — RMPL-26-999
+    // ("RMPL Internal") is the catch-all every internal billing is raised on.
+    const ALWAYS_INCLUDED_PROJECT_NUMBERS = ["RMPL-26-999"];
+
     const params = new URLSearchParams({
       select: "id,project_name,project_number,project_owner",
-      status: "eq.execution",
+      or: `(status.eq.execution,project_number.in.(${ALWAYS_INCLUDED_PROJECT_NUMBERS.join(",")}))`,
       order: "project_name.asc",
       limit: "200",
     });
@@ -102,17 +107,20 @@ Deno.serve(async (req) => {
     // PI/Quotation (or advance request) can be routed to that person.
     // profiles.id here is its own generated key, distinct from the auth
     // user id — take profiles.user_id, not profiles.id.
+    // Match on the DECRYPTED address via find_staff_by_emails — profiles.email
+    // holds a masked value, so comparing against that column matches nobody and
+    // every project would come back with no owner.
     const ownerEmails = [...new Set(owners.map((o) => o.email).filter((e): e is string => !!e))];
-    let localMatches: { user_id: string; email: string }[] = [];
+    let localMatches: { user_id: string; matched_email: string }[] = [];
     if (ownerEmails.length > 0) {
-      const { data } = await admin
-        .from("profiles")
-        .select("user_id, email")
-        .in("email", ownerEmails);
-      localMatches = (data ?? []) as { user_id: string; email: string }[];
+      const { data, error: matchError } = await admin.rpc("find_staff_by_emails", {
+        p_emails: ownerEmails,
+      });
+      if (matchError) console.error("staff email match failed:", matchError.message);
+      localMatches = (data ?? []) as { user_id: string; matched_email: string }[];
     }
     const localUserIdByEmail = new Map(
-      localMatches.map((m) => [m.email.toLowerCase(), m.user_id])
+      localMatches.map((m) => [m.matched_email.toLowerCase(), m.user_id])
     );
 
     const enriched = projects.map((p) => {
