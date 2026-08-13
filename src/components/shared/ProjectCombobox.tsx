@@ -26,7 +26,8 @@ interface ProjectComboboxProps {
 
 // Project list is read live from RMPL (the org's separate project-tracking
 // Supabase project) via the list-rmpl-projects edge function, filtered to
-// projects currently in execution — RMPL owns this data, this app never
+// projects currently in execution plus the standing internal-billing project
+// (RMPL-26-999) — RMPL owns this data, this app never
 // creates or edits a project of its own. Each project also carries its
 // resolved owner (matched into this app's own staff accounts by email) so
 // callers can route approvals without a separate picker. Used by both staff
@@ -46,7 +47,14 @@ export function ProjectCombobox({ value, valueName, onChange, disabled }: Projec
     staleTime: 60_000,
   });
 
-  const filtered = projects.filter((p) => p.project_name.toLowerCase().includes(search.trim().toLowerCase()));
+  // Match on project number as well as name — people look a project up by its
+  // number ("RMPL-26-999") at least as often as by its name.
+  const needle = search.trim().toLowerCase();
+  const filtered = projects.filter(
+    (p) =>
+      p.project_name.toLowerCase().includes(needle) ||
+      (p.project_number || "").toLowerCase().includes(needle)
+  );
   const selectedName = projects.find((p) => p.id === value)?.project_name || valueName;
 
   return (
@@ -65,7 +73,7 @@ export function ProjectCombobox({ value, valueName, onChange, disabled }: Projec
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
         <Command shouldFilter={false}>
-          <CommandInput placeholder="Search RMPL projects in execution…" value={search} onValueChange={setSearch} />
+          <CommandInput placeholder="Search by project name or number…" value={search} onValueChange={setSearch} />
           <CommandList>
             {isLoading ? (
               <div className="py-6 flex justify-center">
@@ -75,7 +83,7 @@ export function ProjectCombobox({ value, valueName, onChange, disabled }: Projec
               <CommandEmpty>Could not load projects from RMPL.</CommandEmpty>
             ) : (
               <>
-                <CommandEmpty>No matching project in execution.</CommandEmpty>
+                <CommandEmpty>No matching project.</CommandEmpty>
                 <CommandGroup>
                   {filtered.map((p) => (
                     <CommandItem
@@ -87,8 +95,11 @@ export function ProjectCombobox({ value, valueName, onChange, disabled }: Projec
                         setOpen(false);
                       }}
                     >
-                      <Check className={cn("mr-2 h-4 w-4", value === p.id ? "opacity-100" : "opacity-0")} />
-                      {p.project_name}
+                      <Check className={cn("mr-2 h-4 w-4 shrink-0", value === p.id ? "opacity-100" : "opacity-0")} />
+                      <span className="truncate">{p.project_name}</span>
+                      {p.project_number && (
+                        <span className="ml-2 text-xs text-muted-foreground shrink-0">{p.project_number}</span>
+                      )}
                     </CommandItem>
                   ))}
                 </CommandGroup>
