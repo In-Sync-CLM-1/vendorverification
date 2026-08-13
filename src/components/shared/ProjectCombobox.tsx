@@ -15,6 +15,8 @@ export interface RmplProject {
   project_owner_name: string | null;
   project_owner_email: string | null;
   project_owner_user_id: string | null;
+  /** True when the project's own owner has no account here and the PI is going to the fallback approver (Accounts) instead. */
+  routed_to_default_approver?: boolean;
 }
 
 interface ProjectComboboxProps {

@@ -147,11 +147,15 @@ export function PiQuotationDialog({ open, onOpenChange, vendorId, onSubmitted }:
               onChange={setProject}
               disabled={busy}
             />
-            {project && project.project_owner_user_id === null && (
+            {project && project.project_owner_user_id === null ? (
               <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
                 <TriangleAlert className="h-3 w-3" /> This project's owner isn't set up in the portal yet — you won't be able to submit against it.
               </p>
-            )}
+            ) : project?.project_owner_name ? (
+              <p className="text-xs text-muted-foreground">
+                Goes to {project.project_owner_name} for approval
+              </p>
+            ) : null}
           </div>
 
           <div className="space-y-1.5">

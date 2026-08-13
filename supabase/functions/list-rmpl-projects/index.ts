@@ -74,10 +74,21 @@ Deno.serve(async (req) => {
     // Projects in execution, plus a small allow-list of standing projects that
     // never reach that status but still get billed against — RMPL-26-999
     // ("RMPL Internal") is the catch-all every internal billing is raised on.
-    // Approvals for those go to Accounts (INTERNAL_BILLING_APPROVER_EMAIL),
-    // not to whoever RMPL happens to record as the project's owner.
     const ALWAYS_INCLUDED_PROJECT_NUMBERS = ["RMPL-26-999"];
-    const internalBillingApprover = Deno.env.get("INTERNAL_BILLING_APPROVER_EMAIL") || null;
+
+    // Every project must be able to accept a PI — that's the business process.
+    // Most RMPL project owners have no account in this portal, and a project
+    // whose owner can't be resolved is un-submittable, so approvals fall back
+    // to Accounts. The real owner still gets it the moment they have an
+    // account, so onboarding an owner silently improves routing with no code
+    // change. The internal-billing project always goes to Accounts regardless
+    // of whom RMPL records as its owner.
+    const defaultApproverEmail =
+      Deno.env.get("DEFAULT_PI_APPROVER_EMAIL") ||
+      Deno.env.get("INTERNAL_BILLING_APPROVER_EMAIL") ||
+      null;
+
+    const { data: callerTenantId } = await admin.rpc("get_user_tenant_id", { _user_id: user.id });
 
     const params = new URLSearchParams({
       select: "id,project_name,project_number,project_owner",
@@ -121,7 +132,7 @@ Deno.serve(async (req) => {
     // holds a masked value, so comparing against that column matches nobody and
     // every project would come back with no owner.
     const ownerEmails = [...new Set(owners.map((o) => o.email).filter((e): e is string => !!e))];
-    const lookupEmails = [...new Set([...ownerEmails, internalBillingApprover].filter((e): e is string => !!e))];
+    const lookupEmails = [...new Set([...ownerEmails, defaultApproverEmail].filter((e): e is string => !!e))];
     let localMatches: LocalStaffMatch[] = [];
     if (lookupEmails.length > 0) {
       const { data, error: matchError } = await admin.rpc("find_staff_by_emails", {
@@ -130,46 +141,46 @@ Deno.serve(async (req) => {
       if (matchError) console.error("staff email match failed:", matchError.message);
       localMatches = (data ?? []) as LocalStaffMatch[];
     }
+
+    // Only people in the caller's own organisation can approve for them —
+    // routing to someone in another tenant would file the PI where they can
+    // never see it (their read policy is tenant-scoped).
     const localByEmail = new Map(
-      localMatches.map((m) => [m.matched_email.toLowerCase(), m])
+      localMatches
+        .filter((m) => !callerTenantId || m.tenant_id === callerTenantId)
+        .map((m) => [m.matched_email.toLowerCase(), m])
     );
 
-    // The internal-billing project is a standing container, not a real piece of
-    // delivery work — whoever RMPL records as its owner isn't the person who
-    // should be approving a vendor's PI against it. Route those to Accounts.
-    const billingApprover = internalBillingApprover
-      ? localByEmail.get(internalBillingApprover.toLowerCase()) ?? null
+    const defaultApprover = defaultApproverEmail
+      ? localByEmail.get(defaultApproverEmail.toLowerCase()) ?? null
       : null;
-    if (internalBillingApprover && !billingApprover) {
-      console.error("internal-billing approver has no active portal account:", internalBillingApprover);
+    if (defaultApproverEmail && !defaultApprover) {
+      console.error("default PI approver has no active portal account in this tenant:", defaultApproverEmail);
     }
 
     const enriched = projects.map((p) => {
       const isInternalBilling =
         !!p.project_number && ALWAYS_INCLUDED_PROJECT_NUMBERS.includes(p.project_number);
 
-      if (isInternalBilling && billingApprover) {
-        return {
-          id: p.id,
-          project_name: p.project_name,
-          project_number: p.project_number,
-          project_owner_external_id: null,
-          project_owner_name: billingApprover.full_name,
-          project_owner_email: billingApprover.matched_email,
-          project_owner_user_id: billingApprover.user_id,
-        };
-      }
-
       const owner = p.project_owner ? ownerById.get(p.project_owner) : null;
       const ownerEmail = owner?.email ?? null;
+      const ownerMatch = ownerEmail ? localByEmail.get(ownerEmail.toLowerCase()) ?? null : null;
+
+      // The project's own owner approves whenever they have an account here;
+      // otherwise it goes to Accounts so the vendor is never blocked.
+      const approver = isInternalBilling ? defaultApprover : ownerMatch ?? defaultApprover;
+
       return {
         id: p.id,
         project_name: p.project_name,
         project_number: p.project_number,
-        project_owner_external_id: p.project_owner,
-        project_owner_name: owner?.full_name ?? null,
-        project_owner_email: ownerEmail,
-        project_owner_user_id: ownerEmail ? localByEmail.get(ownerEmail.toLowerCase())?.user_id ?? null : null,
+        project_owner_external_id: approver === ownerMatch ? p.project_owner : null,
+        project_owner_name: approver?.full_name ?? owner?.full_name ?? null,
+        project_owner_email: approver?.matched_email ?? ownerEmail,
+        project_owner_user_id: approver?.user_id ?? null,
+        // What the vendor sees: who this actually goes to, and whether that is
+        // the project's own owner or the Accounts fallback.
+        routed_to_default_approver: !!approver && approver !== ownerMatch,
       };
     });
 

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { StaffLayout } from "@/components/layout/StaffLayout";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRoles } from "@/hooks/useUserRoles";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +26,9 @@ interface PiQuotation {
   document_type: "proforma_invoice" | "quotation";
   file_key: string;
   project_name: string;
+  project_number: string | null;
+  project_owner_user_id: string | null;
+  project_owner_name: string | null;
   amount: number | null;
   vendor_remarks: string | null;
   status: "submitted" | "approved" | "rejected";
@@ -35,23 +39,33 @@ interface PiQuotation {
 
 export default function ProjectOwnerApprovals() {
   const { user } = useAuth();
+  const { isAccounts, isAdmin } = useUserRoles();
   const queryClient = useQueryClient();
   const [comments, setComments] = useState<Record<string, string>>({});
   const [actioningId, setActioningId] = useState<string | null>(null);
 
+  // Accounts and admins oversee the whole organisation's submissions, not just
+  // the ones routed to them personally — filtering everyone to "mine" left a
+  // real submission invisible to everybody except the one owner it landed on.
+  // RLS already scopes staff reads to their own tenant.
   const { data: submissions = [], isLoading } = useQuery({
-    queryKey: ["project-owner-pi-quotations", user?.id],
+    queryKey: ["project-owner-pi-quotations", user?.id, isAccounts],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("vendor_pi_quotations")
         .select("*, vendors(company_name, vendor_code)")
-        .eq("project_owner_user_id", user!.id)
         .order("created_at", { ascending: false });
+      if (!isAccounts) query = query.eq("project_owner_user_id", user!.id);
+      const { data, error } = await query;
       if (error) throw error;
       return (data || []) as PiQuotation[];
     },
     enabled: !!user?.id,
   });
+
+  // Only the project owner may decide while it is still submitted; admins keep
+  // an override. Anyone else is here to watch, not to act.
+  const canDecide = (s: PiQuotation) => s.project_owner_user_id === user?.id || isAdmin;
 
   const pending = submissions.filter((s) => s.status === "submitted");
   const decided = submissions.filter((s) => s.status !== "submitted");
@@ -93,8 +107,9 @@ export default function ProjectOwnerApprovals() {
         <div className="p-4 border-b bg-card">
           <h1 className="text-xl font-semibold">PI / Quotation Approvals</h1>
           <p className="text-sm text-muted-foreground">
-            Submissions routed to you as the Project Owner for the RMPL project the vendor picked.
-            Approving one clears it for Accounts to issue a PO.
+            {isAccounts
+              ? "Every PI and Quotation submitted to your organisation. Approving one clears it for Accounts to issue a PO."
+              : "Submissions routed to you as the Project Owner for the RMPL project the vendor picked. Approving one clears it for Accounts to issue a PO."}
           </p>
         </div>
 
@@ -108,7 +123,9 @@ export default function ProjectOwnerApprovals() {
               ) : pending.length === 0 ? (
                 <div className="p-10 text-center space-y-2">
                   <ClipboardCheck className="h-10 w-10 text-muted-foreground mx-auto" />
-                  <p className="font-medium">Nothing awaiting your approval</p>
+                  <p className="font-medium">
+                    {isAccounts ? "Nothing awaiting approval" : "Nothing awaiting your approval"}
+                  </p>
                 </div>
               ) : (
                 <div className="divide-y">
@@ -118,9 +135,14 @@ export default function ProjectOwnerApprovals() {
                         <div>
                           <p className="font-medium">{s.vendors?.company_name}</p>
                           <p className="text-xs text-muted-foreground">
-                            {s.vendors?.vendor_code} · {s.project_name} · submitted{" "}
+                            {s.vendors?.vendor_code} · {s.project_number || s.project_name} · submitted{" "}
                             {new Date(s.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
                           </p>
+                          {s.project_owner_user_id !== user?.id && s.project_owner_name && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              Awaiting {s.project_owner_name}
+                            </p>
+                          )}
                         </div>
                         <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200">
                           {s.document_type === "quotation" ? "Quotation" : "Proforma Invoice"}
@@ -142,33 +164,37 @@ export default function ProjectOwnerApprovals() {
                         <FileText className="h-3.5 w-3.5 mr-1.5" /> View Document
                       </Button>
 
-                      <div className="space-y-1.5">
-                        <Label htmlFor={`comment-${s.id}`} className="text-xs text-muted-foreground">
-                          Comment (shown to vendor if rejected)
-                        </Label>
-                        <Textarea
-                          id={`comment-${s.id}`}
-                          rows={2}
-                          value={comments[s.id] || ""}
-                          onChange={(e) => setComments((prev) => ({ ...prev, [s.id]: e.target.value }))}
-                          placeholder="Optional"
-                        />
-                      </div>
+                      {canDecide(s) && (
+                        <>
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`comment-${s.id}`} className="text-xs text-muted-foreground">
+                              Comment (shown to vendor if rejected)
+                            </Label>
+                            <Textarea
+                              id={`comment-${s.id}`}
+                              rows={2}
+                              value={comments[s.id] || ""}
+                              onChange={(e) => setComments((prev) => ({ ...prev, [s.id]: e.target.value }))}
+                              placeholder="Optional"
+                            />
+                          </div>
 
-                      <div className="flex gap-2">
-                        <Button size="sm" disabled={actioningId === s.id} onClick={() => handleDecide(s, true)}>
-                          <Check className="h-4 w-4 mr-1" /> Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-destructive border-destructive"
-                          disabled={actioningId === s.id}
-                          onClick={() => handleDecide(s, false)}
-                        >
-                          <X className="h-4 w-4 mr-1" /> Reject
-                        </Button>
-                      </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" disabled={actioningId === s.id} onClick={() => handleDecide(s, true)}>
+                              <Check className="h-4 w-4 mr-1" /> Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-destructive border-destructive"
+                              disabled={actioningId === s.id}
+                              onClick={() => handleDecide(s, false)}
+                            >
+                              <X className="h-4 w-4 mr-1" /> Reject
+                            </Button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
