@@ -26,7 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PaymentBreakupTable } from "@/components/invoices/PaymentBreakupTable";
-import { RecordPaymentDialog } from "@/components/invoices/RecordPaymentDialog";
+import { RecordPaymentDialog, invoiceTarget } from "@/components/invoices/RecordPaymentDialog";
 import {
   formatINR,
   INVOICE_STATUS_META,
@@ -417,7 +417,7 @@ export default function StaffInvoices() {
         <RecordPaymentDialog
           open={payOpen}
           onOpenChange={setPayOpen}
-          invoice={selected}
+          target={invoiceTarget(selected)}
           alreadySettled={selectedSettled}
           onRecorded={() => {
             setSelected(null);

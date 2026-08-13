@@ -17,9 +17,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, ClipboardCheck, Check, X, FileText } from "lucide-react";
+import { Loader2, ClipboardCheck, Check, X, FileText, IndianRupee } from "lucide-react";
 import { toast } from "sonner";
 import { formatINR, openInvoiceFile } from "@/lib/invoices";
+import { RecordPaymentDialog, PaymentTarget } from "@/components/invoices/RecordPaymentDialog";
 
 interface PiQuotation {
   id: string;
@@ -34,6 +35,7 @@ interface PiQuotation {
   status: "submitted" | "approved" | "rejected";
   review_comments: string | null;
   created_at: string;
+  vendor_id: string;
   vendors: { company_name: string; vendor_code: string | null } | null;
 }
 
@@ -43,6 +45,7 @@ export default function ProjectOwnerApprovals() {
   const queryClient = useQueryClient();
   const [comments, setComments] = useState<Record<string, string>>({});
   const [actioningId, setActioningId] = useState<string | null>(null);
+  const [payTarget, setPayTarget] = useState<PaymentTarget | null>(null);
 
   // Accounts and admins oversee the whole organisation's submissions, not just
   // the ones routed to them personally — filtering everyone to "mine" left a
@@ -66,6 +69,28 @@ export default function ProjectOwnerApprovals() {
   // Only the project owner may decide while it is still submitted; admins keep
   // an override. Anyone else is here to watch, not to act.
   const canDecide = (s: PiQuotation) => s.project_owner_user_id === user?.id || isAdmin;
+
+  // Money already recorded against these PIs — it moves to the invoice when one
+  // is raised against them.
+  const { data: piPayments = [] } = useQuery({
+    queryKey: ["pi-quotation-payments", submissions.map((s) => s.id).join(",")],
+    queryFn: async () => {
+      const ids = submissions.map((s) => s.id);
+      if (ids.length === 0) return [];
+      const { data, error } = await supabase
+        .from("vendor_invoice_payments")
+        .select("pi_quotation_id, total_settled")
+        .in("pi_quotation_id", ids);
+      if (error) throw error;
+      return (data || []) as { pi_quotation_id: string; total_settled: number | null }[];
+    },
+    enabled: submissions.length > 0,
+  });
+
+  const settledByPi = piPayments.reduce<Record<string, number>>((acc, p) => {
+    if (p.pi_quotation_id) acc[p.pi_quotation_id] = (acc[p.pi_quotation_id] || 0) + Number(p.total_settled || 0);
+    return acc;
+  }, {});
 
   const pending = submissions.filter((s) => s.status === "submitted");
   const decided = submissions.filter((s) => s.status !== "submitted");
@@ -216,6 +241,7 @@ export default function ProjectOwnerApprovals() {
                         <TableHead>Project</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Payment</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -239,6 +265,35 @@ export default function ProjectOwnerApprovals() {
                               {s.status === "approved" ? "Approved" : "Rejected"}
                             </Badge>
                           </TableCell>
+                          <TableCell className="text-right">
+                            {s.status === "approved" ? (
+                              <div className="flex items-center justify-end gap-2">
+                                {settledByPi[s.id] > 0 && (
+                                  <span className="text-xs text-muted-foreground">
+                                    {formatINR(settledByPi[s.id])} paid
+                                  </span>
+                                )}
+                                {isAccounts && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-xs"
+                                    onClick={() =>
+                                      setPayTarget({
+                                        kind: "pi_quotation",
+                                        id: s.id,
+                                        vendor_id: s.vendor_id,
+                                        amount: Number(s.amount || 0),
+                                        label: `${s.document_type === "quotation" ? "Quotation" : "Proforma Invoice"} · ${s.project_number || s.project_name}`,
+                                      })
+                                    }
+                                  >
+                                    <IndianRupee className="h-3 w-3 mr-1" /> Record
+                                  </Button>
+                                )}
+                              </div>
+                            ) : null}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -249,6 +304,19 @@ export default function ProjectOwnerApprovals() {
           )}
         </div>
       </div>
+
+      {payTarget && (
+        <RecordPaymentDialog
+          open={!!payTarget}
+          onOpenChange={(o) => !o && setPayTarget(null)}
+          target={payTarget}
+          alreadySettled={settledByPi[payTarget.id] || 0}
+          onRecorded={() => {
+            setPayTarget(null);
+            queryClient.invalidateQueries({ queryKey: ["pi-quotation-payments"] });
+          }}
+        />
+      )}
     </StaffLayout>
   );
 }
