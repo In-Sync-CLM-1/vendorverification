@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       api_keys: {
@@ -1597,9 +1572,15 @@ export type Database = {
           invoice_number: string
           po_file_key: string | null
           po_number: string | null
+          project_name: string | null
+          project_number: string | null
+          project_owner_email: string | null
+          project_owner_name: string | null
+          project_owner_user_id: string | null
           rejection_reason: string | null
           reviewed_at: string | null
           reviewed_by: string | null
+          rmpl_project_id: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           submitted_by: string | null
           tenant_id: string
@@ -1621,9 +1602,15 @@ export type Database = {
           invoice_number: string
           po_file_key?: string | null
           po_number?: string | null
+          project_name?: string | null
+          project_number?: string | null
+          project_owner_email?: string | null
+          project_owner_name?: string | null
+          project_owner_user_id?: string | null
           rejection_reason?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          rmpl_project_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           submitted_by?: string | null
           tenant_id: string
@@ -1645,9 +1632,15 @@ export type Database = {
           invoice_number?: string
           po_file_key?: string | null
           po_number?: string | null
+          project_name?: string | null
+          project_number?: string | null
+          project_owner_email?: string | null
+          project_owner_name?: string | null
+          project_owner_user_id?: string | null
           rejection_reason?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          rmpl_project_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           submitted_by?: string | null
           tenant_id?: string
@@ -2624,6 +2617,15 @@ export type Database = {
         Args: { _additional_days: number; _tenant_id: string }
         Returns: Json
       }
+      find_staff_by_emails: {
+        Args: { p_emails: string[] }
+        Returns: {
+          full_name: string
+          matched_email: string
+          tenant_id: string
+          user_id: string
+        }[]
+      }
       find_vendor_by_contact: {
         Args: { p_identifier: string }
         Returns: {
@@ -2635,6 +2637,7 @@ export type Database = {
         }[]
       }
       generate_referral_code: { Args: never; Returns: string }
+      get_staff_mobile: { Args: { p_user_id: string }; Returns: string }
       get_user_tenant_id: { Args: { _user_id: string }; Returns: string }
       get_vendor_contact: {
         Args: { p_vendor_id: string }
@@ -2667,6 +2670,10 @@ export type Database = {
       set_organization_active: {
         Args: { _active: boolean; _tenant_id: string }
         Returns: Json
+      }
+      settle_pi_into_invoice: {
+        Args: { p_invoice_id: string; p_pi_quotation_id: string }
+        Returns: undefined
       }
       upsert_vault_secret: {
         Args: { secret_name: string; secret_value: string }
@@ -2870,9 +2877,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       advance_request_status: ["pending", "approved", "rejected"],
