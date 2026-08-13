@@ -25,6 +25,13 @@ interface RmplProfileRow {
   email: string | null;
 }
 
+interface LocalStaffMatch {
+  user_id: string;
+  matched_email: string;
+  full_name: string | null;
+  tenant_id: string;
+}
+
 // Reads the RMPL (In-Sync RMPL OPM) project list — a separate Supabase
 // project — filtered to projects currently in execution. RMPL owns the
 // project master data; this app only ever reads it.
@@ -67,7 +74,10 @@ Deno.serve(async (req) => {
     // Projects in execution, plus a small allow-list of standing projects that
     // never reach that status but still get billed against — RMPL-26-999
     // ("RMPL Internal") is the catch-all every internal billing is raised on.
+    // Approvals for those go to Accounts (INTERNAL_BILLING_APPROVER_EMAIL),
+    // not to whoever RMPL happens to record as the project's owner.
     const ALWAYS_INCLUDED_PROJECT_NUMBERS = ["RMPL-26-999"];
+    const internalBillingApprover = Deno.env.get("INTERNAL_BILLING_APPROVER_EMAIL") || null;
 
     const params = new URLSearchParams({
       select: "id,project_name,project_number,project_owner",
@@ -111,19 +121,45 @@ Deno.serve(async (req) => {
     // holds a masked value, so comparing against that column matches nobody and
     // every project would come back with no owner.
     const ownerEmails = [...new Set(owners.map((o) => o.email).filter((e): e is string => !!e))];
-    let localMatches: { user_id: string; matched_email: string }[] = [];
-    if (ownerEmails.length > 0) {
+    const lookupEmails = [...new Set([...ownerEmails, internalBillingApprover].filter((e): e is string => !!e))];
+    let localMatches: LocalStaffMatch[] = [];
+    if (lookupEmails.length > 0) {
       const { data, error: matchError } = await admin.rpc("find_staff_by_emails", {
-        p_emails: ownerEmails,
+        p_emails: lookupEmails,
       });
       if (matchError) console.error("staff email match failed:", matchError.message);
-      localMatches = (data ?? []) as { user_id: string; matched_email: string }[];
+      localMatches = (data ?? []) as LocalStaffMatch[];
     }
-    const localUserIdByEmail = new Map(
-      localMatches.map((m) => [m.matched_email.toLowerCase(), m.user_id])
+    const localByEmail = new Map(
+      localMatches.map((m) => [m.matched_email.toLowerCase(), m])
     );
 
+    // The internal-billing project is a standing container, not a real piece of
+    // delivery work — whoever RMPL records as its owner isn't the person who
+    // should be approving a vendor's PI against it. Route those to Accounts.
+    const billingApprover = internalBillingApprover
+      ? localByEmail.get(internalBillingApprover.toLowerCase()) ?? null
+      : null;
+    if (internalBillingApprover && !billingApprover) {
+      console.error("internal-billing approver has no active portal account:", internalBillingApprover);
+    }
+
     const enriched = projects.map((p) => {
+      const isInternalBilling =
+        !!p.project_number && ALWAYS_INCLUDED_PROJECT_NUMBERS.includes(p.project_number);
+
+      if (isInternalBilling && billingApprover) {
+        return {
+          id: p.id,
+          project_name: p.project_name,
+          project_number: p.project_number,
+          project_owner_external_id: null,
+          project_owner_name: billingApprover.full_name,
+          project_owner_email: billingApprover.matched_email,
+          project_owner_user_id: billingApprover.user_id,
+        };
+      }
+
       const owner = p.project_owner ? ownerById.get(p.project_owner) : null;
       const ownerEmail = owner?.email ?? null;
       return {
@@ -133,7 +169,7 @@ Deno.serve(async (req) => {
         project_owner_external_id: p.project_owner,
         project_owner_name: owner?.full_name ?? null,
         project_owner_email: ownerEmail,
-        project_owner_user_id: ownerEmail ? localUserIdByEmail.get(ownerEmail.toLowerCase()) ?? null : null,
+        project_owner_user_id: ownerEmail ? localByEmail.get(ownerEmail.toLowerCase())?.user_id ?? null : null,
       };
     });
 
