@@ -57,7 +57,7 @@ export function DocumentUploadStep({ categoryDocs, token, uploadedDocs, onDocUpl
   return (
     <div className="space-y-4 p-8">
       <p className="text-base text-muted-foreground">
-        Upload required documents. Supported: PDF, JPG, PNG (max 5MB)
+        Upload required documents. Supported: PDF, JPG, PNG (max 20MB)
       </p>
 
       <div className="space-y-4">

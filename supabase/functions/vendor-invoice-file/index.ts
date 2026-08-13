@@ -81,9 +81,9 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: "Missing file" }, 400);
       }
 
-      const MAX_FILE_SIZE = 10 * 1024 * 1024;
+      const MAX_FILE_SIZE = 20 * 1024 * 1024;
       if (file.size > MAX_FILE_SIZE) {
-        return jsonResponse({ error: "File too large. Max size 10 MB." }, 400);
+        return jsonResponse({ error: "File too large. Max size 20 MB." }, 400);
       }
 
       const fileName = file.name || "";

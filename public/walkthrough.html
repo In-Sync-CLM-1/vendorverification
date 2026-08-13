@@ -625,7 +625,7 @@
       <p>Required documents depend on the selected vendor category. Each category has a configured list via <code>category_documents</code>.</p>
       <ul class="mt-2">
         <li>Accepted formats: <strong>PDF, JPG, PNG</strong></li>
-        <li>Max file size: <strong>10 MB</strong> per document</li>
+        <li>Max file size: <strong>20 MB</strong> per document</li>
         <li>Files stored in Supabase Storage bucket: <code>vendor-documents</code></li>
         <li>Path: <code>referral/{identifier}/{docTypeId}/{timestamp}_{filename}</code></li>
         <li>Each upload immediately triggers <strong>AI document analysis</strong></li>
@@ -827,7 +827,7 @@
     <div class="card">
       <h3><span class="icon-circle blue">&#128225;</span> Upload Pipeline</h3>
       <ul>
-        <li>Accepted: PDF, JPG, PNG (max 10 MB)</li>
+        <li>Accepted: PDF, JPG, PNG (max 20 MB)</li>
         <li>Stored in Supabase Storage with RLS</li>
         <li>Folder structure per vendor + doc type</li>
         <li>Versioning: <code>version_number</code> tracked</li>

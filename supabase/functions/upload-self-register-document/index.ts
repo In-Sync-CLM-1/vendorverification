@@ -76,8 +76,8 @@ serve(async (req) => {
       });
     }
 
-    // Validate file size (max 10MB)
-    const MAX_FILE_SIZE = 10 * 1024 * 1024;
+    // Validate file size (max 20MB)
+    const MAX_FILE_SIZE = 20 * 1024 * 1024;
     if (file.size > MAX_FILE_SIZE) {
       return new Response(JSON.stringify({ error: "File too large" }), {
         status: 400,
