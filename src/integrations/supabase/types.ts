@@ -1479,10 +1479,11 @@ export type Database = {
           created_at: string
           gst_amount: number
           id: string
-          invoice_id: string
+          invoice_id: string | null
           is_full_settlement: boolean
           payment_date: string
           payout_amount: number
+          pi_quotation_id: string | null
           recorded_by: string | null
           remarks: string | null
           tds_amount: number
@@ -1496,10 +1497,11 @@ export type Database = {
           created_at?: string
           gst_amount?: number
           id?: string
-          invoice_id: string
+          invoice_id?: string | null
           is_full_settlement?: boolean
           payment_date?: string
           payout_amount?: number
+          pi_quotation_id?: string | null
           recorded_by?: string | null
           remarks?: string | null
           tds_amount?: number
@@ -1513,10 +1515,11 @@ export type Database = {
           created_at?: string
           gst_amount?: number
           id?: string
-          invoice_id?: string
+          invoice_id?: string | null
           is_full_settlement?: boolean
           payment_date?: string
           payout_amount?: number
+          pi_quotation_id?: string | null
           recorded_by?: string | null
           remarks?: string | null
           tds_amount?: number
@@ -1531,6 +1534,13 @@ export type Database = {
             columns: ["invoice_id"]
             isOneToOne: false
             referencedRelation: "vendor_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_invoice_payments_pi_quotation_id_fkey"
+            columns: ["pi_quotation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_pi_quotations"
             referencedColumns: ["id"]
           },
           {

@@ -18,10 +18,28 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatINR, VendorInvoice } from "@/lib/invoices";
 import { Loader2, IndianRupee } from "lucide-react";
 
+/** A payment hangs off either an invoice or an approved PI/Quotation — the
+ *  latter carries across to the invoice when one is raised against it. */
+export interface PaymentTarget {
+  kind: "invoice" | "pi_quotation";
+  id: string;
+  vendor_id: string;
+  amount: number;
+  label: string;
+}
+
+export const invoiceTarget = (invoice: VendorInvoice): PaymentTarget => ({
+  kind: "invoice",
+  id: invoice.id,
+  vendor_id: invoice.vendor_id,
+  amount: Number(invoice.invoice_amount),
+  label: `Invoice ${invoice.invoice_number}`,
+});
+
 interface RecordPaymentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  invoice: VendorInvoice;
+  target: PaymentTarget;
   alreadySettled: number;
   onRecorded: () => void;
 }
@@ -29,7 +47,7 @@ interface RecordPaymentDialogProps {
 export function RecordPaymentDialog({
   open,
   onOpenChange,
-  invoice,
+  target,
   alreadySettled,
   onRecorded,
 }: RecordPaymentDialogProps) {
@@ -54,16 +72,16 @@ export function RecordPaymentDialog({
   );
 
   const totalSettled = nums.advance + nums.tds + nums.payout;
-  const remaining = Number(invoice.invoice_amount) - alreadySettled;
+  const remaining = target.amount - alreadySettled;
 
   // How much approved advance this vendor still has available to net off,
   // across all their invoices — purely informational, doesn't gate entry.
   const { data: advanceAvailable } = useQuery({
-    queryKey: ["vendor-advance-available", invoice.vendor_id],
+    queryKey: ["vendor-advance-available", target.vendor_id],
     queryFn: async () => {
       const [{ data: approved }, { data: adjustedRows }] = await Promise.all([
-        supabase.from("vendor_advance_requests").select("amount").eq("vendor_id", invoice.vendor_id).eq("status", "approved"),
-        supabase.from("vendor_invoice_payments").select("advance_adjusted").eq("vendor_id", invoice.vendor_id),
+        supabase.from("vendor_advance_requests").select("amount").eq("vendor_id", target.vendor_id).eq("status", "approved"),
+        supabase.from("vendor_invoice_payments").select("advance_adjusted").eq("vendor_id", target.vendor_id),
       ]);
       const totalApproved = (approved || []).reduce((s, r) => s + Number(r.amount), 0);
       const totalAdjusted = (adjustedRows || []).reduce((s, r) => s + Number(r.advance_adjusted || 0), 0);
@@ -84,10 +102,11 @@ export function RecordPaymentDialog({
     setSaving(true);
     try {
       const { error } = await supabase.from("vendor_invoice_payments").insert({
-        invoice_id: invoice.id,
-        // tenant_id / vendor_id are derived server-side from the invoice
+        invoice_id: target.kind === "invoice" ? target.id : null,
+        pi_quotation_id: target.kind === "pi_quotation" ? target.id : null,
+        // tenant_id / vendor_id are derived server-side from the parent document
         tenant_id: "00000000-0000-0000-0000-000000000000",
-        vendor_id: invoice.vendor_id,
+        vendor_id: target.vendor_id,
         payment_date: paymentDate,
         advance_adjusted: nums.advance,
         gst_amount: nums.gst,
@@ -101,15 +120,18 @@ export function RecordPaymentDialog({
 
       toast.success("Payment recorded");
 
-      supabase.functions
+      // Only invoices have a vendor-facing status notification.
+      if (target.kind === "invoice") {
+        supabase.functions
         .invoke("notify-vendor-invoice-status", {
           body: {
             event: "payment_recorded",
-            invoice_id: invoice.id,
+            invoice_id: target.id,
             extra: { amount: totalSettled, utr: utr.trim() || undefined, advance_adjusted: nums.advance || undefined },
           },
         })
         .catch((e) => console.error("Vendor notification failed:", e));
+      }
 
       onOpenChange(false);
       setAdvance("");
@@ -132,7 +154,7 @@ export function RecordPaymentDialog({
         <DialogHeader>
           <DialogTitle>Record Payment</DialogTitle>
           <DialogDescription>
-            Invoice {invoice.invoice_number} · {formatINR(Number(invoice.invoice_amount))}
+            {target.label} · {formatINR(target.amount)}
             {alreadySettled > 0 && (
               <> · settled so far {formatINR(alreadySettled)} · remaining {formatINR(Math.max(remaining, 0))}</>
             )}
