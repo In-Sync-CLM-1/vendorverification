@@ -296,11 +296,20 @@ export function InvoiceUploadDialog({ open, onOpenChange, vendorId, onUploaded, 
               </SelectContent>
             </Select>
             {selectedPi && (
-              <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-                <TriangleAlert className="h-3 w-3" />
-                This {selectedPi.document_type === "quotation" ? "quotation" : "proforma invoice"} will be
-                removed once the invoice is submitted.
-              </p>
+              <>
+                <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                  <TriangleAlert className="h-3 w-3" />
+                  This {selectedPi.document_type === "quotation" ? "quotation" : "proforma invoice"} will be
+                  removed once the invoice is submitted.
+                </p>
+                {selectedPi.amount != null && parseFloat(amount) > Number(selectedPi.amount) + 1 && (
+                  <p className="text-xs text-destructive flex items-center gap-1.5">
+                    <TriangleAlert className="h-3 w-3" />
+                    This invoice ({formatINR(parseFloat(amount))}) is more than the approved
+                    {" "}{formatINR(Number(selectedPi.amount))} — it cannot be settled against it.
+                  </p>
+                )}
+              </>
             )}
           </div>
         )}
