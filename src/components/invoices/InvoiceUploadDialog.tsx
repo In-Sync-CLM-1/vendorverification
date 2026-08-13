@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -12,11 +13,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadInvoiceFile, analyzeInvoiceFile, InvoiceExtraction, LOW_CONFIDENCE, formatINR } from "@/lib/invoices";
-import { Loader2, Upload, Sparkles, TriangleAlert, HandCoins } from "lucide-react";
+import { Loader2, Upload, Sparkles, TriangleAlert, HandCoins, FileCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+interface OpenPiQuotation {
+  id: string;
+  document_type: "proforma_invoice" | "quotation";
+  amount: number | null;
+  project_number: string | null;
+  project_name: string | null;
+  status: "submitted" | "approved" | "rejected";
+  created_at: string;
+}
 
 interface VendorAdvanceRequest {
   id: string;
@@ -76,8 +88,29 @@ export function InvoiceUploadDialog({ open, onOpenChange, vendorId, onUploaded, 
   const [poRead, setPoRead] = useState<InvoiceExtraction | null>(null);
 
   const [saving, setSaving] = useState(false);
+  const [settlePiId, setSettlePiId] = useState<string | null>(null);
+
+  // An invoice and the PI/Quotation it was raised against are the same work —
+  // settling one against the other stops it being billed as two documents.
+  const { data: openPis = [] } = useQuery({
+    queryKey: ["vendor-open-pi-quotations", vendorId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vendor_pi_quotations")
+        .select("id, document_type, amount, project_number, project_name, status, created_at")
+        .eq("vendor_id", vendorId)
+        .in("status", ["submitted", "approved"])
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data || []) as OpenPiQuotation[];
+    },
+    enabled: open && !!vendorId,
+  });
+
+  const selectedPi = openPis.find((p) => p.id === settlePiId) || null;
 
   const reset = () => {
+    setSettlePiId(null);
     setInvoiceNumber("");
     setInvoiceDate("");
     setDueDate("");
@@ -184,6 +217,19 @@ export function InvoiceUploadDialog({ open, onOpenChange, vendorId, onUploaded, 
         throw new Error(error.message);
       }
 
+      // Settle the selected PI/Quotation into this invoice — carries its project
+      // and approver across, then removes it so the work isn't billed twice.
+      // Blocking: if it fails the vendor must know the PI is still open.
+      if (inserted?.id && settlePiId) {
+        const { error: settleError } = await supabase.rpc("settle_pi_into_invoice", {
+          p_invoice_id: inserted.id,
+          p_pi_quotation_id: settlePiId,
+        });
+        if (settleError) {
+          toast.error(`Invoice submitted, but the PI could not be settled against it: ${settleError.message}`);
+        }
+      }
+
       // Alert approvers (email + WhatsApp) that a new invoice needs review. Non-blocking.
       if (inserted?.id) {
         supabase.functions.invoke("notify-invoice-submitted", { body: { invoice_id: inserted.id } }).catch(() => {
@@ -215,6 +261,49 @@ export function InvoiceUploadDialog({ open, onOpenChange, vendorId, onUploaded, 
             cannot be changed.
           </DialogDescription>
         </DialogHeader>
+
+        {openPis.length > 0 && (
+          <div className="rounded-lg border bg-muted/40 p-3 space-y-2">
+            <p className="text-sm font-medium flex items-center gap-1.5">
+              <FileCheck className="h-3.5 w-3.5" /> Is this invoice against an open PI / Quotation?
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Pick it and it will be closed off against this invoice, so the same work isn't
+              raised twice. Leave it unselected if this invoice stands on its own.
+            </p>
+            <Select
+              value={settlePiId ?? "none"}
+              onValueChange={(v) => {
+                const id = v === "none" ? null : v;
+                setSettlePiId(id);
+                const pi = openPis.find((p) => p.id === id);
+                if (pi?.amount != null && !amount) setAmount(String(pi.amount));
+              }}
+              disabled={busy}
+            >
+              <SelectTrigger className="bg-background">
+                <SelectValue placeholder="None — this is a standalone invoice" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None — this is a standalone invoice</SelectItem>
+                {openPis.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.document_type === "quotation" ? "Quotation" : "Proforma Invoice"}
+                    {p.amount != null ? ` · ${formatINR(Number(p.amount))}` : ""}
+                    {p.project_number ? ` · ${p.project_number}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedPi && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                <TriangleAlert className="h-3 w-3" />
+                This {selectedPi.document_type === "quotation" ? "quotation" : "proforma invoice"} will be
+                removed once the invoice is submitted.
+              </p>
+            )}
+          </div>
+        )}
 
         {advanceRequests.length > 0 && (
           <div className="rounded-lg border bg-muted/40 p-3 space-y-2">
