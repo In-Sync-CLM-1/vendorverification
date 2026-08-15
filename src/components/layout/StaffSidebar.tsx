@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useTenant } from "@/contexts/TenantContext";
 import { useTenantLogo } from "@/hooks/useTenantLogo";
+import { OrgSwitcher } from "./OrgSwitcher";
 
 const EMAIL_NAME_MAP: Record<string, string> = {
   "a@in-sync.co.in": "Amit Sengupta",
@@ -137,6 +138,7 @@ export function StaffSidebar() {
       </div>
 
       <SidebarContent>
+        {!collapsed && <OrgSwitcher />}
         {/* A platform admin belongs to a tenant like anyone else, so they get
             the normal staff navigation as well as the console — not instead
             of it. */}
