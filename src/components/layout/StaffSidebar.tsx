@@ -137,7 +137,10 @@ export function StaffSidebar() {
       </div>
 
       <SidebarContent>
-        {isPlatformAdmin ? (
+        {/* A platform admin belongs to a tenant like anyone else, so they get
+            the normal staff navigation as well as the console — not instead
+            of it. */}
+        {isPlatformAdmin && (
           <SidebarGroup>
             <SidebarGroupLabel>Platform</SidebarGroupLabel>
             <SidebarGroupContent>
@@ -161,7 +164,8 @@ export function StaffSidebar() {
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-        ) : (
+        )}
+        {(
           <>
             {navSections.map((section) => (
               <SidebarGroup key={section.label}>

@@ -14,8 +14,6 @@ interface StaffLayoutProps {
   title?: string;
 }
 
-const PLATFORM_ALLOWED_PATHS = ["/platform/", "/staff/profile", "/staff/login"];
-
 export function StaffLayout({ children, title }: StaffLayoutProps) {
   const { user, userType, loading, signOut } = useAuth();
   const { tenant } = useTenant();
@@ -32,17 +30,12 @@ export function StaffLayout({ children, title }: StaffLayoutProps) {
       navigate("/staff/login");
       return;
     }
-    // Role-based redirects: platform admins must use /platform/*, regular
-    // staff must NOT use /platform/*.
+    // Regular staff must not reach /platform/*. Platform admins may use both:
+    // they belong to a tenant like anyone else, and arriving from another tool
+    // should land them in that workspace rather than bouncing them to the
+    // console. The console stays reachable from the sidebar.
     if (!loading && !rolesLoading && user && userType === "staff") {
-      const path = location.pathname;
-      const isPlatformPath = path.startsWith("/platform/");
-      const isAllowedForPlatform = PLATFORM_ALLOWED_PATHS.some((p) =>
-        p.endsWith("/") ? path.startsWith(p) : path === p
-      );
-      if (isPlatformAdmin && !isAllowedForPlatform) {
-        navigate("/platform/dashboard", { replace: true });
-      } else if (!isPlatformAdmin && isPlatformPath) {
+      if (!isPlatformAdmin && location.pathname.startsWith("/platform/")) {
         navigate("/staff/dashboard", { replace: true });
       }
     }
