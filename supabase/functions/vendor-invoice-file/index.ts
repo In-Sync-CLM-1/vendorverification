@@ -138,6 +138,13 @@ Deno.serve(async (req) => {
           .maybeSingle());
       }
       if (!invoice) {
+        ({ data: invoice } = await admin
+          .from("vendor_pi_quotations")
+          .select("id, tenant_id, vendor_id")
+          .eq("file_key", key)
+          .maybeSingle());
+      }
+      if (!invoice) {
         return jsonResponse({ error: "File not found" }, 404);
       }
 
