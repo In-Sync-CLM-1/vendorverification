@@ -20,7 +20,6 @@ import {
   Upload,
   Building2,
   ReceiptIndianRupee,
-  ChartColumnBig,
   Landmark,
   UserCog,
   Lock,
@@ -67,7 +66,6 @@ const navSections = [
       { title: "Advance Requests", url: "/staff/advance-requests", icon: HandCoins },
       { title: "Invoices", url: "/staff/invoices", icon: ReceiptIndianRupee },
       { title: "Match Payments", url: "/staff/payment-matching", icon: Landmark },
-      { title: "Invoice Analytics", url: "/staff/invoice-analytics", icon: ChartColumnBig },
     ],
   },
   {
