@@ -1,4 +1,3 @@
-import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -37,7 +36,6 @@ import StaffAdvanceRequests from "./pages/staff/StaffAdvanceRequests";
 import ProjectOwnerApprovals from "./pages/staff/ProjectOwnerApprovals";
 import VendorSensitiveInfo from "./pages/staff/VendorSensitiveInfo";
 import StaffReports from "./pages/staff/StaffReports";
-const StaffInvoiceAnalytics = lazy(() => import("./pages/staff/StaffInvoiceAnalytics"));
 
 // Admin Pages
 import AdminUserManagement from "./pages/admin/AdminUserManagement";
@@ -97,14 +95,8 @@ const App = () => (
             <Route path="/staff/pi-approvals" element={<ProjectOwnerApprovals />} />
             <Route path="/staff/sensitive-info" element={<VendorSensitiveInfo />} />
             <Route path="/staff/reports" element={<StaffReports />} />
-            <Route
-              path="/staff/invoice-analytics"
-              element={
-                <Suspense fallback={<div className="min-h-screen" />}>
-                  <StaffInvoiceAnalytics />
-                </Suspense>
-              }
-            />
+            {/* Invoice Analytics was merged into the one Dashboard */}
+            <Route path="/staff/invoice-analytics" element={<Navigate to="/staff/dashboard" replace />} />
             <Route path="/staff/bulk-import" element={<BulkImportVendors />} />
             <Route path="/staff/bulk-invite" element={<BulkInviteVendors />} />
 

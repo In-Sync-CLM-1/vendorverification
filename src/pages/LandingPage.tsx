@@ -708,7 +708,7 @@ export default function LandingPage() {
                 <span className="h-2.5 w-2.5 rounded-full bg-white/25" />
                 <span className="h-2.5 w-2.5 rounded-full bg-white/25" />
                 <span className="ml-3 hidden sm:block rounded-md bg-white/10 px-3 py-0.5 text-[11px] text-white/60 font-mono">
-                  vendor.in-sync.co.in/staff/invoice-analytics
+                  vendor.in-sync.co.in/staff/dashboard
                 </span>
               </div>
               <img

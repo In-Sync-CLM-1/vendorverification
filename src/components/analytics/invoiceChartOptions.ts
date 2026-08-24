@@ -798,3 +798,48 @@ export function dumbbellOption(
     ],
   };
 }
+
+/** Grouped bars: PI/Quotation, Advance Request and Invoices side by side, each split by Submitted/Approved/Settled. */
+export function paymentFlowOption(
+  rows: { name: string; submitted: number; approved: number; settled: number }[],
+): EChartsCoreOption {
+  return {
+    textStyle: CHART_TEXT,
+    grid: { left: 8, right: 16, top: 40, bottom: 8, containLabel: true },
+    legend: {
+      top: 0,
+      left: 0,
+      icon: "roundRect",
+      itemWidth: 12,
+      itemHeight: 8,
+      itemGap: 16,
+      textStyle: { color: VIZ.inkSecondary, fontSize: 12 },
+    },
+    tooltip: {
+      ...TOOLTIP_COMMON,
+      trigger: "axis",
+      axisPointer: { type: "shadow", shadowStyle: { color: "rgba(0,0,0,0.03)" } },
+      valueFormatter: (v: number) => fullINR(v || 0),
+    },
+    xAxis: { type: "category", data: rows.map((r) => r.name), ...AXIS_COMMON, splitLine: { show: false } },
+    yAxis: {
+      type: "value",
+      ...AXIS_COMMON,
+      axisLabel: { ...AXIS_COMMON.axisLabel, formatter: (v: number) => compactINR(v) },
+    },
+    series: [
+      {
+        name: "Submitted", type: "bar", data: rows.map((r) => r.submitted), color: VIZ.blue, ...BAR_STYLE,
+        label: { show: true, position: "top", formatter: (p: { value: number }) => (p.value > 0 ? compactINR(p.value) : ""), color: VIZ.inkMuted, fontSize: 11 },
+      },
+      {
+        name: "Approved", type: "bar", data: rows.map((r) => r.approved), color: VIZ.yellow, ...BAR_STYLE,
+        label: { show: true, position: "top", formatter: (p: { value: number }) => (p.value > 0 ? compactINR(p.value) : ""), color: VIZ.inkMuted, fontSize: 11 },
+      },
+      {
+        name: "Settled", type: "bar", data: rows.map((r) => r.settled), color: VIZ.aqua, ...BAR_STYLE,
+        label: { show: true, position: "top", formatter: (p: { value: number }) => (p.value > 0 ? compactINR(p.value) : ""), color: VIZ.inkMuted, fontSize: 11 },
+      },
+    ],
+  };
+}
