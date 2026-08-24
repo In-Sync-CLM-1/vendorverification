@@ -25,6 +25,7 @@ import {
   Lock,
   HandCoins,
   ClipboardCheck,
+  FileBarChart,
 } from "lucide-react";
 import {
   Sidebar,
@@ -52,25 +53,29 @@ const navSections = [
     items: [{ title: "Dashboard", url: "/staff/dashboard", icon: LayoutDashboard }],
   },
   {
+    label: "Vendor Payments",
+    items: [
+      { title: "Reports", url: "/staff/reports", icon: FileBarChart },
+      { title: "PI / Quotation Approvals", url: "/staff/pi-approvals", icon: ClipboardCheck },
+      { title: "Advance Requests", url: "/staff/advance-requests", icon: HandCoins },
+      { title: "Invoices", url: "/staff/invoices", icon: ReceiptIndianRupee },
+      { title: "Match Payments", url: "/staff/payment-matching", icon: Landmark },
+      { title: "Invoice Analytics", url: "/staff/invoice-analytics", icon: ChartColumnBig },
+    ],
+  },
+  {
+    label: "Invite Vendors",
+    items: [{ title: "Bulk Invite", url: "/staff/bulk-invite", icon: Send }],
+  },
+  {
     label: "Vendor Onboarding",
     items: [
       { title: "Approval Queue", url: "/staff/queue", icon: ClipboardList },
       { title: "Vendor List", url: "/staff/vendors", icon: List },
       { title: "Fraud Alerts", url: "/staff/fraud-alerts", icon: ShieldAlert },
       { title: "Bulk Import", url: "/staff/bulk-import", icon: Upload },
-      { title: "Bulk Invite", url: "/staff/bulk-invite", icon: Send },
       { title: "Detail Change Requests", url: "/staff/change-requests", icon: UserCog },
       { title: "Sensitive Info", url: "/staff/sensitive-info", icon: Lock },
-    ],
-  },
-  {
-    label: "Invoices & Payments",
-    items: [
-      { title: "Invoices", url: "/staff/invoices", icon: ReceiptIndianRupee },
-      { title: "Match Payments", url: "/staff/payment-matching", icon: Landmark },
-      { title: "Invoice Analytics", url: "/staff/invoice-analytics", icon: ChartColumnBig },
-      { title: "Advance Requests", url: "/staff/advance-requests", icon: HandCoins },
-      { title: "PI / Quotation Approvals", url: "/staff/pi-approvals", icon: ClipboardCheck },
     ],
   },
 ];

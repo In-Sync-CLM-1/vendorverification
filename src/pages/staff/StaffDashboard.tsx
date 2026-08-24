@@ -26,7 +26,11 @@ import {
   ChevronRight,
   Download,
   Sparkles,
+  ClipboardCheck,
+  HandCoins,
+  ReceiptIndianRupee,
 } from "lucide-react";
+import { formatINR } from "@/lib/invoices";
 
 export default function StaffDashboard() {
   const { user } = useAuth();
@@ -73,6 +77,57 @@ export default function StaffDashboard() {
     enabled: !!user,
   });
 
+  // Vendor payment pipeline: PI/Quotation -> Advance Request -> Invoice, so
+  // the one dashboard shows where every stage stands instead of staff having
+  // to open three separate pages to piece it together.
+  const { data: financeStats } = useQuery({
+    queryKey: ["dashboard-finance-stats"],
+    queryFn: async () => {
+      const [piRes, advanceRes, invoiceRes, paymentsRes] = await Promise.all([
+        supabase.from("vendor_pi_quotations").select("status"),
+        supabase.from("vendor_advance_requests").select("status, amount"),
+        supabase.from("vendor_invoices").select("id, status, invoice_amount"),
+        supabase.from("vendor_invoice_payments").select("invoice_id, total_settled"),
+      ]);
+      if (piRes.error) throw piRes.error;
+      if (advanceRes.error) throw advanceRes.error;
+      if (invoiceRes.error) throw invoiceRes.error;
+      if (paymentsRes.error) throw paymentsRes.error;
+
+      const settledByInvoice = new Map<string, number>();
+      for (const p of paymentsRes.data || []) {
+        settledByInvoice.set(
+          p.invoice_id,
+          (settledByInvoice.get(p.invoice_id) || 0) + Number(p.total_settled || 0)
+        );
+      }
+
+      const pendingPi = (piRes.data || []).filter((r) => r.status === "submitted").length;
+      const pendingAdvance = (advanceRes.data || []).filter((r) => r.status === "pending");
+      const pendingAdvanceValue = pendingAdvance.reduce((s, r) => s + Number(r.amount || 0), 0);
+      const invoicesToReview = (invoiceRes.data || []).filter((r) =>
+        ["submitted", "under_review"].includes(r.status)
+      ).length;
+      const invoicesToPay = (invoiceRes.data || []).filter((r) =>
+        ["approved", "partially_paid"].includes(r.status)
+      );
+      const invoicesToPayValue = invoicesToPay.reduce(
+        (s, r) => s + Number(r.invoice_amount) - (settledByInvoice.get(r.id) || 0),
+        0
+      );
+
+      return {
+        pendingPi,
+        pendingAdvanceCount: pendingAdvance.length,
+        pendingAdvanceValue,
+        invoicesToReview,
+        invoicesToPay: invoicesToPay.length,
+        invoicesToPayValue,
+      };
+    },
+    enabled: !!user,
+  });
+
   // Check if invitations exist (for onboarding checklist)
   const { data: invitationCount } = useQuery({
     queryKey: ["invitation-count", user?.id],
@@ -111,6 +166,9 @@ export default function StaffDashboard() {
     returnedToMaker > 0 && { label: `${returnedToMaker} vendor${returnedToMaker > 1 ? "s" : ""} returned by approver for re-review`, action: "/staff/queue", color: "text-orange-600", icon: AlertTriangle },
     (docStats?.expiring ?? 0) > 0 && { label: `${docStats?.expiring} document${(docStats?.expiring ?? 0) > 1 ? "s" : ""} expiring in 30 days`, action: "/staff/vendors", color: "text-destructive", icon: AlertTriangle },
     (dataRequestStats?.overdue ?? 0) > 0 && isAdmin && { label: `${dataRequestStats?.overdue} overdue data request${(dataRequestStats?.overdue ?? 0) > 1 ? "s" : ""}`, action: "/admin/dpdp-audit", color: "text-destructive", icon: Shield },
+    (financeStats?.pendingPi ?? 0) > 0 && { label: `${financeStats?.pendingPi} PI/Quotation${(financeStats?.pendingPi ?? 0) > 1 ? "s" : ""} awaiting approval`, action: "/staff/pi-approvals", color: "text-accent", icon: ClipboardCheck },
+    (financeStats?.pendingAdvanceCount ?? 0) > 0 && { label: `${financeStats?.pendingAdvanceCount} advance request${(financeStats?.pendingAdvanceCount ?? 0) > 1 ? "s" : ""} awaiting a decision`, action: "/staff/advance-requests", color: "text-amber-600", icon: HandCoins },
+    (financeStats?.invoicesToReview ?? 0) > 0 && { label: `${financeStats?.invoicesToReview} invoice${(financeStats?.invoicesToReview ?? 0) > 1 ? "s" : ""} awaiting review`, action: "/staff/invoices", color: "text-primary", icon: ReceiptIndianRupee },
   ].filter(Boolean) as { label: string; action: string; color: string; icon: typeof Clock }[];
 
   const statusLabel = (status: string) => {
@@ -192,6 +250,24 @@ export default function StaffDashboard() {
             <div class="section-title">Needs Attention</div>
             ${attentionItems.map(item => `<div class="attention">${item.label}</div>`).join("")}
           ` : ""}
+
+          <div class="section-title">Vendor Payment Pipeline</div>
+          <div class="metric-row">
+            <span class="metric-label">PI / Quotation Awaiting Approval</span>
+            <span class="metric-value">${financeStats?.pendingPi ?? 0}</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">Advance Requests Pending</span>
+            <span class="metric-value">${financeStats?.pendingAdvanceCount ?? 0} (${formatINR(financeStats?.pendingAdvanceValue ?? 0)})</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">Invoices Awaiting Review</span>
+            <span class="metric-value">${financeStats?.invoicesToReview ?? 0}</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">Invoices Awaiting Payment</span>
+            <span class="metric-value">${financeStats?.invoicesToPay ?? 0} (${formatINR(financeStats?.invoicesToPayValue ?? 0)})</span>
+          </div>
 
           <div class="section-title">Key Metrics</div>
           <div class="metric-row">
@@ -315,6 +391,41 @@ export default function StaffDashboard() {
             <p className="text-4xl font-extrabold text-primary mt-2">{totalVendors}</p>
             <div className="absolute bottom-0 right-0 opacity-[0.07]"><Users className="h-20 w-20 -mb-3 -mr-3" /></div>
           </button>
+        </div>
+
+        {/* Vendor Payment Pipeline: PI/Quotation -> Advance Request -> Invoice */}
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <h2 className="text-base font-bold text-foreground mb-4">Vendor Payment Pipeline</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <button
+              onClick={() => navigate("/staff/pi-approvals")}
+              className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-accent/10 to-accent/5 border border-accent/20 p-5 text-left transition-all hover:shadow-lg hover:-translate-y-1"
+            >
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">PI / Quotation Awaiting Approval</span>
+              <p className="text-4xl font-extrabold text-accent mt-2">{financeStats?.pendingPi ?? 0}</p>
+              <div className="absolute bottom-0 right-0 opacity-[0.07]"><ClipboardCheck className="h-20 w-20 -mb-3 -mr-3" /></div>
+            </button>
+
+            <button
+              onClick={() => navigate("/staff/advance-requests")}
+              className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[hsl(var(--warning))]/10 to-[hsl(var(--warning))]/5 border border-[hsl(var(--warning))]/20 p-5 text-left transition-all hover:shadow-lg hover:-translate-y-1"
+            >
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Advance Requests Pending</span>
+              <p className="text-4xl font-extrabold text-[hsl(var(--warning))] mt-2">{financeStats?.pendingAdvanceCount ?? 0}</p>
+              <p className="text-xs text-muted-foreground mt-1">{formatINR(financeStats?.pendingAdvanceValue ?? 0)}</p>
+              <div className="absolute bottom-0 right-0 opacity-[0.07]"><HandCoins className="h-20 w-20 -mb-3 -mr-3" /></div>
+            </button>
+
+            <button
+              onClick={() => navigate("/staff/invoices")}
+              className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 p-5 text-left transition-all hover:shadow-lg hover:-translate-y-1"
+            >
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Invoices To Review / Pay</span>
+              <p className="text-4xl font-extrabold text-primary mt-2">{financeStats?.invoicesToReview ?? 0} / {financeStats?.invoicesToPay ?? 0}</p>
+              <p className="text-xs text-muted-foreground mt-1">{formatINR(financeStats?.invoicesToPayValue ?? 0)} awaiting payment</p>
+              <div className="absolute bottom-0 right-0 opacity-[0.07]"><ReceiptIndianRupee className="h-20 w-20 -mb-3 -mr-3" /></div>
+            </button>
+          </div>
         </div>
 
         {/* Activity + Metrics */}
