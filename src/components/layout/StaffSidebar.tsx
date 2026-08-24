@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/useAuth";
@@ -46,6 +47,12 @@ import { OrgSwitcher } from "./OrgSwitcher";
 const EMAIL_NAME_MAP: Record<string, string> = {
   "a@in-sync.co.in": "Amit Sengupta",
 };
+
+// Every staff page wraps itself in its own <StaffLayout>, so this sidebar
+// remounts fresh on every navigation. Without this, the menu's scroll
+// position snapped back to the top on every click instead of staying where
+// the user left it.
+let savedScrollTop = 0;
 
 const navSections = [
   {
@@ -96,6 +103,11 @@ export function StaffSidebar() {
   const location = useLocation();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = savedScrollTop;
+  }, []);
 
   const { data: profile } = useQuery({
     queryKey: ["sidebar-profile", user?.id],
@@ -142,7 +154,7 @@ export function StaffSidebar() {
         )}
       </div>
 
-      <SidebarContent>
+      <SidebarContent ref={scrollRef} onScroll={(e) => { savedScrollTop = e.currentTarget.scrollTop; }}>
         {!collapsed && <OrgSwitcher />}
         {/* A platform admin belongs to a tenant like anyone else, so they get
             the normal staff navigation as well as the console — not instead
