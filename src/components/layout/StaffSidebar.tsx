@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/useAuth";
@@ -25,6 +26,7 @@ import {
   Lock,
   HandCoins,
   ClipboardCheck,
+  FileBarChart,
 } from "lucide-react";
 import {
   Sidebar,
@@ -46,10 +48,31 @@ const EMAIL_NAME_MAP: Record<string, string> = {
   "a@in-sync.co.in": "Amit Sengupta",
 };
 
+// Every staff page wraps itself in its own <StaffLayout>, so this sidebar
+// remounts fresh on every navigation. Without this, the menu's scroll
+// position snapped back to the top on every click instead of staying where
+// the user left it.
+let savedScrollTop = 0;
+
 const navSections = [
   {
     label: "Overview",
     items: [{ title: "Dashboard", url: "/staff/dashboard", icon: LayoutDashboard }],
+  },
+  {
+    label: "Vendor Payments",
+    items: [
+      { title: "Reports", url: "/staff/reports", icon: FileBarChart },
+      { title: "PI / Quotation Approvals", url: "/staff/pi-approvals", icon: ClipboardCheck },
+      { title: "Advance Requests", url: "/staff/advance-requests", icon: HandCoins },
+      { title: "Invoices", url: "/staff/invoices", icon: ReceiptIndianRupee },
+      { title: "Match Payments", url: "/staff/payment-matching", icon: Landmark },
+      { title: "Invoice Analytics", url: "/staff/invoice-analytics", icon: ChartColumnBig },
+    ],
+  },
+  {
+    label: "Invite Vendors",
+    items: [{ title: "Bulk Invite", url: "/staff/bulk-invite", icon: Send }],
   },
   {
     label: "Vendor Onboarding",
@@ -58,19 +81,8 @@ const navSections = [
       { title: "Vendor List", url: "/staff/vendors", icon: List },
       { title: "Fraud Alerts", url: "/staff/fraud-alerts", icon: ShieldAlert },
       { title: "Bulk Import", url: "/staff/bulk-import", icon: Upload },
-      { title: "Bulk Invite", url: "/staff/bulk-invite", icon: Send },
       { title: "Detail Change Requests", url: "/staff/change-requests", icon: UserCog },
       { title: "Sensitive Info", url: "/staff/sensitive-info", icon: Lock },
-    ],
-  },
-  {
-    label: "Invoices & Payments",
-    items: [
-      { title: "Invoices", url: "/staff/invoices", icon: ReceiptIndianRupee },
-      { title: "Match Payments", url: "/staff/payment-matching", icon: Landmark },
-      { title: "Invoice Analytics", url: "/staff/invoice-analytics", icon: ChartColumnBig },
-      { title: "Advance Requests", url: "/staff/advance-requests", icon: HandCoins },
-      { title: "PI / Quotation Approvals", url: "/staff/pi-approvals", icon: ClipboardCheck },
     ],
   },
 ];
@@ -91,6 +103,11 @@ export function StaffSidebar() {
   const location = useLocation();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = savedScrollTop;
+  }, []);
 
   const { data: profile } = useQuery({
     queryKey: ["sidebar-profile", user?.id],
@@ -137,7 +154,7 @@ export function StaffSidebar() {
         )}
       </div>
 
-      <SidebarContent>
+      <SidebarContent ref={scrollRef} onScroll={(e) => { savedScrollTop = e.currentTarget.scrollTop; }}>
         {!collapsed && <OrgSwitcher />}
         {/* A platform admin belongs to a tenant like anyone else, so they get
             the normal staff navigation as well as the console — not instead

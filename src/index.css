@@ -139,6 +139,15 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
 
+  /* Keep the element scrollable, just don't show the scrollbar track/thumb */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
   /* ── Landing page atmosphere ─────────────────────────────
      Brand-tinted patterns; pair with an absolutely-positioned
      aria-hidden overlay inside a `relative` section. */
