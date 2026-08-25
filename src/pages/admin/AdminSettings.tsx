@@ -20,7 +20,6 @@ import {
   Edit,
   Trash2,
   Loader2,
-  BarChart3,
   ShieldAlert,
   Database,
   KeyRound,
@@ -196,7 +195,6 @@ export default function AdminSettings() {
             <TabsTrigger value="encryption" className="flex items-center gap-2"><KeyRound className="h-4 w-4" />Encryption</TabsTrigger>
             <TabsTrigger value="data-requests" className="flex items-center gap-2"><Database className="h-4 w-4" />Data Requests</TabsTrigger>
             <TabsTrigger value="breach" className="flex items-center gap-2"><ShieldAlert className="h-4 w-4" />Breach</TabsTrigger>
-            <TabsTrigger value="reports" className="flex items-center gap-2"><BarChart3 className="h-4 w-4" />Reports</TabsTrigger>
             <TabsTrigger value="webhooks" className="flex items-center gap-2"><Globe className="h-4 w-4" />Webhooks</TabsTrigger>
             <TabsTrigger value="api-keys" className="flex items-center gap-2"><Key className="h-4 w-4" />API Keys</TabsTrigger>
           </TabsList>
@@ -421,15 +419,6 @@ export default function AdminSettings() {
 
           <TabsContent value="breach" className="flex-1 flex flex-col mt-0">
             <BreachNotificationPanel />
-          </TabsContent>
-
-          <TabsContent value="reports" className="flex-1 flex flex-col mt-0">
-            <div className="p-6 text-center">
-              <BarChart3 className="h-16 w-16 mx-auto mb-4 text-primary/50" />
-              <p className="text-lg font-semibold mb-2">Reports & Analytics</p>
-              <p className="text-muted-foreground mb-4">View vendor status reports, approval timelines, and pending case analysis.</p>
-              <Button onClick={() => window.location.href = "/staff/reports"}>Go to Reports</Button>
-            </div>
           </TabsContent>
 
           <TabsContent value="webhooks" className="flex-1 flex flex-col mt-0">

@@ -25,7 +25,6 @@ import {
   Lock,
   HandCoins,
   ClipboardCheck,
-  FileBarChart,
 } from "lucide-react";
 import {
   Sidebar,
@@ -61,7 +60,6 @@ const navSections = [
   {
     label: "Vendor Payments",
     items: [
-      { title: "Reports", url: "/staff/reports", icon: FileBarChart },
       { title: "PI / Quotation Approvals", url: "/staff/pi-approvals", icon: ClipboardCheck },
       { title: "Advance Requests", url: "/staff/advance-requests", icon: HandCoins },
       { title: "Invoices", url: "/staff/invoices", icon: ReceiptIndianRupee },
