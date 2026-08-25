@@ -390,19 +390,14 @@ export default function StaffDashboard() {
 
   return (
     <StaffLayout title="Dashboard">
-      <div ref={dashboardRef} className="p-4 md:p-6 space-y-5 w-full">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">
-              Welcome back, {firstName}
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              {format(new Date(), "EEEE, dd MMMM yyyy")}
-            </p>
-          </div>
-          <Button variant="outline" onClick={handleDownloadPDF}>
-            <Download className="h-4 w-4 mr-2" />
+      <div ref={dashboardRef} className="p-4 md:p-6 space-y-4 w-full">
+        {/* Compact header — one line, StaffLayout's top bar already carries the page title */}
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            Welcome back, <span className="font-semibold text-foreground">{firstName}</span> · {format(new Date(), "EEE, dd MMM yyyy")}
+          </p>
+          <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
+            <Download className="h-3.5 w-3.5 mr-1.5" />
             Download Report
           </Button>
         </div>
@@ -413,144 +408,134 @@ export default function StaffDashboard() {
           hasInvitations={(invitationCount ?? 0) > 0}
         />
 
-        {/* Needs Your Attention */}
-        {attentionItems.length > 0 && (
-          <div className="rounded-2xl border border-warning/30 bg-warning/5 p-5">
-            <h2 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-warning" />
-              Needs Your Attention
-            </h2>
-            <div className="space-y-2">
-              {attentionItems.map((item, i) => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={i}
-                    onClick={() => navigate(item.action)}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/80 border border-border/50 hover:shadow-sm transition-all text-left group"
-                  >
-                    <Icon className={`h-5 w-5 ${item.color} shrink-0`} />
-                    <span className="text-sm font-medium text-foreground flex-1">{item.label}</span>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Vendor Status + Cash Needed — the two headline cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <button
-            onClick={() => navigate("/staff/vendors")}
-            className="text-left rounded-2xl border border-border bg-card p-5 hover:shadow-md hover:-translate-y-0.5 transition-all"
-          >
-            <div className="flex items-start justify-between">
+        {/* Main row: the trend graph leads, everything else condenses into the side column */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+          {/* Trend — the operational pulse, gets the graph on screen one */}
+          <Card className="lg:col-span-8">
+            <CardHeader className="pb-1 flex-row items-start justify-between space-y-0">
               <div>
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Vendor Status</span>
-                <p className="text-4xl font-extrabold text-foreground mt-1 leading-none">{totalVendors}</p>
-                <p className="text-xs text-muted-foreground mt-1.5">total vendors</p>
-              </div>
-              <div className="h-11 w-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                <Users className="h-5 w-5 text-primary" />
-              </div>
-            </div>
-
-            {/* proportion bar — the shape of the pipeline at a glance */}
-            <div className="mt-4 h-2 w-full rounded-full overflow-hidden bg-muted flex">
-              <div className="h-full bg-[hsl(var(--success))]" style={{ width: `${approvedPct}%` }} />
-              <div className="h-full bg-[hsl(var(--warning))]" style={{ width: `${pendingPct}%` }} />
-              <div className="h-full bg-destructive" style={{ width: `${rejectedPct}%` }} />
-              <div className="h-full bg-muted-foreground/30" style={{ width: `${draftPct}%` }} />
-            </div>
-            <div className="mt-3 flex items-center gap-4 text-sm flex-wrap">
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-[hsl(var(--success))]" />
-                <b>{approvedVendors}</b> <span className="text-muted-foreground">approved</span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-[hsl(var(--warning))]" />
-                <b>{pendingVendors}</b> <span className="text-muted-foreground">pending</span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-destructive" />
-                <b>{rejectedVendors}</b> <span className="text-muted-foreground">rejected</span>
-              </span>
-              {draftVendors > 0 && (
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-muted-foreground/30" />
-                  <b>{draftVendors}</b> <span className="text-muted-foreground">not yet submitted</span>
-                </span>
-              )}
-            </div>
-          </button>
-
-          <button
-            onClick={() => navigate("/staff/invoices")}
-            className="text-left rounded-2xl border border-border bg-card p-5 hover:shadow-md hover:-translate-y-0.5 transition-all"
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Cash Needed — Next 15 Days</span>
-                <p className="text-4xl font-extrabold text-foreground mt-1 leading-none">{compactINR(a.cashNeeded15.dueSoonAmount)}</p>
-                <p className="text-xs text-muted-foreground mt-1.5">
-                  {a.cashNeeded15.dueSoonCount} invoice{a.cashNeeded15.dueSoonCount === 1 ? "" : "s"} due by {format(new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), "dd MMM")}
+                <CardTitle className="text-base font-semibold">Invoice Submissions & Backlog — last 12 weeks</CardTitle>
+                <p className="text-xs text-muted-foreground !mt-1">
+                  New invoices submitted each week, against how many are still open awaiting a decision
                 </p>
               </div>
-              <div className="h-11 w-11 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
-                <Wallet className="h-5 w-5 text-amber-600" />
+              <div className="text-right shrink-0">
+                <p className="text-2xl font-extrabold text-foreground leading-none">{backlogNow}</p>
+                <p className={`text-xs font-medium mt-1 ${backlogDelta > 0 ? "text-destructive" : backlogDelta < 0 ? "text-[hsl(var(--success))]" : "text-muted-foreground"}`}>
+                  {backlogDelta > 0 ? `▲ up ${backlogDelta}` : backlogDelta < 0 ? `▼ down ${Math.abs(backlogDelta)}` : "unchanged"} vs 12 weeks ago
+                </p>
               </div>
-            </div>
+            </CardHeader>
+            <CardContent>
+              <EChart
+                option={submissionPendencyOption(a.pendencyTrend.labels, a.pendencyTrend.submitted, a.pendencyTrend.pendency)}
+                height={420}
+              />
+            </CardContent>
+          </Card>
 
-            {cashTotal > 0 && (
-              <div className="mt-4 h-2 w-full rounded-full overflow-hidden bg-muted flex">
-                <div className="h-full bg-destructive" style={{ width: `${overdueSharePct}%` }} />
-                <div className="h-full bg-amber-500" style={{ width: `${100 - overdueSharePct}%` }} />
+          {/* Side column — the small numbers, condensed */}
+          <div className="lg:col-span-4 flex flex-col gap-3">
+            {attentionItems.length > 0 && (
+              <div className="rounded-xl border border-warning/30 bg-warning/5 p-3">
+                <h2 className="text-xs font-bold text-foreground mb-2 flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-warning" />
+                  Needs Your Attention
+                </h2>
+                <div className="space-y-1.5">
+                  {attentionItems.map((item, i) => {
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => navigate(item.action)}
+                        className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg bg-white/80 border border-border/50 hover:shadow-sm transition-all text-left group"
+                      >
+                        <Icon className={`h-3.5 w-3.5 ${item.color} shrink-0`} />
+                        <span className="text-xs font-medium text-foreground flex-1 leading-tight">{item.label}</span>
+                        <ArrowRight className="h-3 w-3 text-muted-foreground group-hover:translate-x-0.5 transition-transform shrink-0" />
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
-            <div className="mt-3">
-              {a.cashNeeded15.overdueAmount > 0 ? (
-                <div className="flex items-center gap-1.5 text-sm text-destructive font-medium">
-                  <TriangleAlert className="h-3.5 w-3.5 shrink-0" />
-                  {compactINR(a.cashNeeded15.overdueAmount)} already overdue ({a.cashNeeded15.overdueCount})
-                </div>
-              ) : a.cashNeeded15.missingDueDateCount > 0 ? (
-                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                  {a.cashNeeded15.missingDueDateCount} open invoice{a.cashNeeded15.missingDueDateCount === 1 ? "" : "s"} with no due date on file
-                </div>
-              ) : (
-                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  Nothing overdue right now
+
+            <button
+              onClick={() => navigate("/staff/vendors")}
+              className="text-left rounded-xl border border-border bg-card p-3 hover:shadow-md transition-all"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Vendor Status</span>
+                <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              </div>
+              <p className="text-2xl font-extrabold text-foreground leading-none mt-1">{totalVendors} <span className="text-xs font-normal text-muted-foreground">total</span></p>
+
+              <div className="mt-2 h-1.5 w-full rounded-full overflow-hidden bg-muted flex">
+                <div className="h-full bg-[hsl(var(--success))]" style={{ width: `${approvedPct}%` }} />
+                <div className="h-full bg-[hsl(var(--warning))]" style={{ width: `${pendingPct}%` }} />
+                <div className="h-full bg-destructive" style={{ width: `${rejectedPct}%` }} />
+                <div className="h-full bg-muted-foreground/30" style={{ width: `${draftPct}%` }} />
+              </div>
+              <div className="mt-2 flex items-center gap-x-3 gap-y-1 text-xs flex-wrap">
+                <span className="flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--success))]" />
+                  <b>{approvedVendors}</b> <span className="text-muted-foreground">approved</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--warning))]" />
+                  <b>{pendingVendors}</b> <span className="text-muted-foreground">pending</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
+                  <b>{rejectedVendors}</b> <span className="text-muted-foreground">rejected</span>
+                </span>
+                {draftVendors > 0 && (
+                  <span className="flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/30" />
+                    <b>{draftVendors}</b> <span className="text-muted-foreground">draft</span>
+                  </span>
+                )}
+              </div>
+            </button>
+
+            <button
+              onClick={() => navigate("/staff/invoices")}
+              className="text-left rounded-xl border border-border bg-card p-3 hover:shadow-md transition-all"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Cash Needed — 15 Days</span>
+                <Wallet className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+              </div>
+              <p className="text-2xl font-extrabold text-foreground leading-none mt-1">{compactINR(a.cashNeeded15.dueSoonAmount)}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                {a.cashNeeded15.dueSoonCount} invoice{a.cashNeeded15.dueSoonCount === 1 ? "" : "s"} due by {format(new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), "dd MMM")}
+              </p>
+
+              {cashTotal > 0 && (
+                <div className="mt-2 h-1.5 w-full rounded-full overflow-hidden bg-muted flex">
+                  <div className="h-full bg-destructive" style={{ width: `${overdueSharePct}%` }} />
+                  <div className="h-full bg-amber-500" style={{ width: `${100 - overdueSharePct}%` }} />
                 </div>
               )}
-            </div>
-          </button>
+              <div className="mt-2">
+                {a.cashNeeded15.overdueAmount > 0 ? (
+                  <div className="flex items-center gap-1.5 text-xs text-destructive font-medium">
+                    <TriangleAlert className="h-3 w-3 shrink-0" />
+                    {compactINR(a.cashNeeded15.overdueAmount)} overdue ({a.cashNeeded15.overdueCount})
+                  </div>
+                ) : a.cashNeeded15.missingDueDateCount > 0 ? (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <AlertTriangle className="h-3 w-3 shrink-0" />
+                    {a.cashNeeded15.missingDueDateCount} open invoice{a.cashNeeded15.missingDueDateCount === 1 ? "" : "s"} with no due date
+                  </div>
+                ) : (
+                  <div className="text-xs text-muted-foreground">Nothing overdue right now</div>
+                )}
+              </div>
+            </button>
+          </div>
         </div>
-
-        {/* Trend — the operational pulse, gets the most space */}
-        <Card>
-          <CardHeader className="pb-1 flex-row items-start justify-between space-y-0">
-            <div>
-              <CardTitle className="text-base font-semibold">Invoice Submissions & Backlog — last 12 weeks</CardTitle>
-              <p className="text-xs text-muted-foreground !mt-1">
-                New invoices submitted each week, against how many are still open awaiting a decision
-              </p>
-            </div>
-            <div className="text-right shrink-0">
-              <p className="text-2xl font-extrabold text-foreground leading-none">{backlogNow}</p>
-              <p className={`text-xs font-medium mt-1 ${backlogDelta > 0 ? "text-destructive" : backlogDelta < 0 ? "text-[hsl(var(--success))]" : "text-muted-foreground"}`}>
-                {backlogDelta > 0 ? `▲ up ${backlogDelta}` : backlogDelta < 0 ? `▼ down ${Math.abs(backlogDelta)}` : "unchanged"} vs 12 weeks ago
-              </p>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <EChart
-              option={submissionPendencyOption(a.pendencyTrend.labels, a.pendencyTrend.submitted, a.pendencyTrend.pendency)}
-              height={340}
-            />
-          </CardContent>
-        </Card>
 
         {/* ══════════════ Vendor Finance (merged Invoice Analytics) ══════════════ */}
         <div className="pt-4">
