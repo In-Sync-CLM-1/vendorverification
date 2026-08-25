@@ -799,6 +799,60 @@ export function dumbbellOption(
   };
 }
 
+/** Weekly invoice submissions (bars) against the open pendency/backlog count (line) — the operational pulse. */
+export function submissionPendencyOption(
+  labels: string[],
+  submitted: number[],
+  pendency: number[],
+): EChartsCoreOption {
+  return {
+    textStyle: CHART_TEXT,
+    grid: { left: 8, right: 16, top: 40, bottom: 8, containLabel: true },
+    legend: {
+      top: 0,
+      left: 0,
+      itemGap: 16,
+      textStyle: { color: VIZ.inkSecondary, fontSize: 12 },
+      data: [
+        { name: "Invoices submitted", icon: "roundRect" },
+        { name: "Open pendency" },
+      ],
+    },
+    tooltip: {
+      ...TOOLTIP_COMMON,
+      trigger: "axis",
+      axisPointer: { type: "shadow", shadowStyle: { color: "rgba(0,0,0,0.03)" } },
+      formatter: (ps: { seriesName: string; value: number; axisValueLabel: string }[]) => {
+        const rows = ps.map((p) => `<span style="color:${VIZ.inkMuted}">${p.seriesName}</span> <b>${p.value}</b>`).join("<br/>");
+        return `<div style="margin-bottom:4px;font-weight:600">Week of ${ps[0]?.axisValueLabel || ""}</div>${rows}`;
+      },
+    },
+    xAxis: { type: "category", data: labels, ...AXIS_COMMON, splitLine: { show: false } },
+    yAxis: { type: "value", ...AXIS_COMMON, minInterval: 1 },
+    series: [
+      {
+        name: "Invoices submitted", type: "bar", data: submitted, color: VIZ.blue,
+        barMaxWidth: 28, itemStyle: { borderRadius: [4, 4, 0, 0] },
+      },
+      {
+        name: "Open pendency", type: "line", data: pendency, color: VIZ.critical,
+        lineStyle: { width: 2.5 }, symbol: "circle", symbolSize: 7,
+        itemStyle: { borderColor: VIZ.surface, borderWidth: 2 },
+        areaStyle: { color: VIZ.critical, opacity: 0.08 },
+        endLabel: {
+          show: true,
+          formatter: (p: { value: number }) => `${p.value} open`,
+          color: VIZ.inkSecondary,
+          fontSize: 11,
+          fontWeight: 600,
+          distance: 6,
+        },
+        z: 3,
+      },
+    ],
+  };
+}
+
 /** Grouped bars: PI/Quotation, Advance Request and Invoices side by side, each split by Submitted/Approved/Settled. */
 export function paymentFlowOption(
   rows: { name: string; submitted: number; approved: number; settled: number }[],
