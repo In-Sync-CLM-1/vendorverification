@@ -11,6 +11,13 @@ export interface PaymentFlowStage {
   submittedCount: number;
 }
 
+export interface FlowTrendSeries {
+  key: "pi" | "advance" | "invoice";
+  name: string;
+  submitted: number[];
+  approved: number[];
+}
+
 interface VendorRef {
   vendor_id: string;
   vendors: { company_name: string } | null;
@@ -134,7 +141,49 @@ export function useVendorPaymentFlow(range: AnalyticsRange, vendorFilter: string
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name));
 
-    return { stages: [pi, advance, invoice] as PaymentFlowStage[], vendorOptions };
+    // ── weekly trend, always the last 12 weeks (ignores the range/vendor filters — this
+    // is the always-on headline chart, not the filtered deep-dive below it) ──
+    const today = new Date();
+    const weekStart = (d: Date) => {
+      const c = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const day = (c.getDay() + 6) % 7;
+      c.setDate(c.getDate() - day);
+      return c;
+    };
+    const thisWeekStart = weekStart(today);
+    const TREND_WEEKS = 12;
+    const trendWeeks = Array.from({ length: TREND_WEEKS }, (_, idx) => {
+      const w = TREND_WEEKS - 1 - idx;
+      const start = new Date(thisWeekStart.getFullYear(), thisWeekStart.getMonth(), thisWeekStart.getDate() - w * 7);
+      const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
+      return { start, end, label: start.toLocaleString("en-IN", { day: "2-digit", month: "short" }) };
+    });
+    const toDate = (iso: string) => new Date((iso || "").slice(0, 10) + "T00:00:00");
+    const weeklyCounts = <T extends { status: string }>(rows: T[], dateOf: (r: T) => string, approvedStatuses: string[]) => {
+      const submitted = trendWeeks.map(() => 0);
+      const approved = trendWeeks.map(() => 0);
+      for (const r of rows) {
+        const d = toDate(dateOf(r));
+        const wi = trendWeeks.findIndex(({ start, end }) => d >= start && d <= end);
+        if (wi === -1) continue;
+        submitted[wi] += 1;
+        if (approvedStatuses.includes(r.status)) approved[wi] += 1;
+      }
+      return { submitted, approved };
+    };
+    const piTrend = weeklyCounts(piRows, (r) => r.created_at, ["approved"]);
+    const advanceTrend = weeklyCounts(advanceRows, (r) => r.created_at, ["approved"]);
+    const invoiceTrend = weeklyCounts(invoiceRows, (r) => r.invoice_date, ["approved", "partially_paid", "paid"]);
+    const flowTrend = {
+      labels: trendWeeks.map((w) => w.label),
+      series: [
+        { key: "pi", name: "PI / Quotation", ...piTrend },
+        { key: "advance", name: "Advance Request", ...advanceTrend },
+        { key: "invoice", name: "Invoices", ...invoiceTrend },
+      ] as FlowTrendSeries[],
+    };
+
+    return { stages: [pi, advance, invoice] as PaymentFlowStage[], vendorOptions, flowTrend };
   }, [piRows, advanceRows, invoiceRows, payments, range, vendorFilter]);
 
   return { ...computed, isLoading: piLoading || advLoading || invLoading || payLoading };

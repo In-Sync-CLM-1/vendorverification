@@ -799,57 +799,76 @@ export function dumbbellOption(
   };
 }
 
-/** Weekly invoice submissions (bars) against the open pendency/backlog count (line) — the operational pulse. */
-export function submissionPendencyOption(
+/** Parameter identity → base color for the flow-trend area chart. Fixed, not palette-order — color follows the entity everywhere else on this page too. */
+export const FLOW_TREND_COLORS: Record<string, string> = {
+  pi: VIZ.violet,
+  advance: VIZ.aqua,
+  invoice: VIZ.blue,
+};
+
+const hexToRgba = (hex: string, alpha: number) => {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+};
+
+/**
+ * PI/Quotation, Advance Request and Invoices over the last 12 weeks, each as a
+ * light "submitted" area with a darker "approved" area layered on top — one
+ * color per parameter, two shades per color for the two states.
+ */
+export function paymentFlowTrendOption(
   labels: string[],
-  submitted: number[],
-  pendency: number[],
+  series: { key: string; name: string; submitted: number[]; approved: number[] }[],
 ): EChartsCoreOption {
+  const echartSeries = series.flatMap((s) => {
+    const color = FLOW_TREND_COLORS[s.key] || VIZ.blue;
+    return [
+      {
+        name: `${s.name} — submitted`,
+        type: "line" as const,
+        data: s.submitted,
+        color: hexToRgba(color, 0.9),
+        lineStyle: { width: 1.5, color: hexToRgba(color, 0.55) },
+        symbol: "circle",
+        symbolSize: 5,
+        showSymbol: false,
+        areaStyle: { color: hexToRgba(color, 0.18) },
+        emphasis: { focus: "series" as const },
+        z: 1,
+      },
+      {
+        name: `${s.name} — approved`,
+        type: "line" as const,
+        data: s.approved,
+        color,
+        lineStyle: { width: 2, color },
+        symbol: "circle",
+        symbolSize: 5,
+        showSymbol: false,
+        areaStyle: { color: hexToRgba(color, 0.6) },
+        emphasis: { focus: "series" as const },
+        z: 2,
+      },
+    ];
+  });
   return {
     textStyle: CHART_TEXT,
-    grid: { left: 8, right: 16, top: 40, bottom: 8, containLabel: true },
-    legend: {
-      top: 0,
-      left: 0,
-      itemGap: 16,
-      textStyle: { color: VIZ.inkSecondary, fontSize: 12 },
-      data: [
-        { name: "Invoices submitted", icon: "roundRect" },
-        { name: "Open pendency" },
-      ],
-    },
+    grid: { left: 8, right: 16, top: 8, bottom: 30, containLabel: true },
     tooltip: {
       ...TOOLTIP_COMMON,
       trigger: "axis",
-      axisPointer: { type: "shadow", shadowStyle: { color: "rgba(0,0,0,0.03)" } },
+      axisPointer: { type: "line", lineStyle: { color: VIZ.axis, width: 1 } },
       formatter: (ps: { seriesName: string; value: number; axisValueLabel: string }[]) => {
-        const rows = ps.map((p) => `<span style="color:${VIZ.inkMuted}">${p.seriesName}</span> <b>${p.value}</b>`).join("<br/>");
-        return `<div style="margin-bottom:4px;font-weight:600">Week of ${ps[0]?.axisValueLabel || ""}</div>${rows}`;
+        const rows = ps
+          .filter((p) => p.value > 0)
+          .map((p) => `<span style="color:${VIZ.inkMuted}">${p.seriesName}</span> <b>${p.value}</b>`)
+          .join("<br/>");
+        return `<div style="margin-bottom:4px;font-weight:600">Week of ${ps[0]?.axisValueLabel || ""}</div>${rows || "nothing this week"}`;
       },
     },
-    xAxis: { type: "category", data: labels, ...AXIS_COMMON, splitLine: { show: false } },
+    xAxis: { type: "category", data: labels, boundaryGap: false, ...AXIS_COMMON, splitLine: { show: false } },
     yAxis: { type: "value", ...AXIS_COMMON, minInterval: 1 },
-    series: [
-      {
-        name: "Invoices submitted", type: "bar", data: submitted, color: VIZ.blue,
-        barMaxWidth: 28, itemStyle: { borderRadius: [4, 4, 0, 0] },
-      },
-      {
-        name: "Open pendency", type: "line", data: pendency, color: VIZ.critical,
-        lineStyle: { width: 2.5 }, symbol: "circle", symbolSize: 7,
-        itemStyle: { borderColor: VIZ.surface, borderWidth: 2 },
-        areaStyle: { color: VIZ.critical, opacity: 0.08 },
-        endLabel: {
-          show: true,
-          formatter: (p: { value: number }) => `${p.value} open`,
-          color: VIZ.inkSecondary,
-          fontSize: 11,
-          fontWeight: 600,
-          distance: 6,
-        },
-        z: 3,
-      },
-    ],
+    series: echartSeries,
   };
 }
 

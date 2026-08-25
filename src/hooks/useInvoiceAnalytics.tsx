@@ -509,39 +509,6 @@ export function useInvoiceAnalytics(range: AnalyticsRange, vendorFilter: string)
       missingDueDateCount,
     };
 
-    // ── submission & pendency trend: last 12 weeks, always (the dashboard's operational pulse) ──
-    const weekStart = (d: Date) => {
-      const c = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-      const day = (c.getDay() + 6) % 7;
-      c.setDate(c.getDate() - day);
-      return c;
-    };
-    const thisWeekStart = weekStart(today);
-    const TREND_WEEKS = 12;
-    const trendWeeks = Array.from({ length: TREND_WEEKS }, (_, idx) => {
-      const w = TREND_WEEKS - 1 - idx;
-      const start = new Date(thisWeekStart.getFullYear(), thisWeekStart.getMonth(), thisWeekStart.getDate() - w * 7);
-      const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
-      return { start, end, label: start.toLocaleString("en-IN", { day: "2-digit", month: "short" }) };
-    });
-    const PENDING_STATUSES: InvoiceStatus[] = ["submitted", "under_review"];
-    const isOpenAt = (i: InvoiceWithVendor, end: Date) => {
-      const created = toDate(i.created_at.slice(0, 10));
-      if (created > end) return false;
-      if (PENDING_STATUSES.includes(i.status)) return true;
-      if (!i.reviewed_at) return false;
-      return toDate(i.reviewed_at.slice(0, 10)) > end;
-    };
-    const trendSubmitted = trendWeeks.map(({ start, end }) =>
-      invoices.filter((i) => { const c = toDate(i.created_at.slice(0, 10)); return c >= start && c <= end; }).length
-    );
-    const trendPendency = trendWeeks.map(({ end }) => invoices.filter((i) => isOpenAt(i, end)).length);
-    const pendencyTrend = {
-      labels: trendWeeks.map((w) => w.label),
-      submitted: trendSubmitted,
-      pendency: trendPendency,
-    };
-
     // monthly rollup for the structured CSV
     const byMonthCsv = months.map((m, idx) => ({
       month: m.label,
@@ -592,7 +559,7 @@ export function useInvoiceAnalytics(range: AnalyticsRange, vendorFilter: string)
       flowLabels, flowSubmitted, flowApproved, flowSettled: flowSettled.map(Math.round),
       flowGranularity: (weekly ? "week" : "month") as "week" | "month",
       rejectionRows, byMonthCsv, approveTrend, paidRanking,
-      cashNeeded15, pendencyTrend,
+      cashNeeded15,
     };
   }, [invoices, payments, range, vendorFilter]);
 
