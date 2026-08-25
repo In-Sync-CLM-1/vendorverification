@@ -10,7 +10,6 @@ import { useInvoiceAnalytics } from "@/hooks/useInvoiceAnalytics";
 import { useVendorPaymentFlow } from "@/hooks/useVendorPaymentFlow";
 import { OnboardingChecklist } from "@/components/staff/OnboardingChecklist";
 import { supabase } from "@/integrations/supabase/client";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -28,37 +27,23 @@ import {
   defaultAnalyticsRange,
 } from "@/components/analytics/AnalyticsDateFilter";
 import {
-  cashMotionOption,
-  pipelineOption,
-  compositionOption,
   agingHeatmapOption,
   dumbbellOption,
-  lifecycleFunnelOption,
-  vendorDensityOption,
-  quadrantOption,
-  delayHistogramOption,
-  flowTrendOption,
   rejectionOption,
-  paidRankingOption,
-  approveTrendOption,
   paymentFlowOption,
+  submissionPendencyOption,
 } from "@/components/analytics/invoiceChartOptions";
-import { compactINR, fullINR } from "@/lib/vizPalette";
+import { compactINR } from "@/lib/vizPalette";
 import { formatINR } from "@/lib/invoices";
-import { formatDistanceToNow, format } from "date-fns";
+import { format } from "date-fns";
 import {
   Loader2,
   Clock,
   FileCheck,
   Users,
   ArrowRight,
-  CheckCircle2,
-  FileSearch,
   AlertTriangle,
-  Zap,
-  Target,
   Shield,
-  ChevronRight,
   Download,
   Sparkles,
   ClipboardCheck,
@@ -66,6 +51,7 @@ import {
   ReceiptIndianRupee,
   TriangleAlert,
   FileBarChart2,
+  Wallet,
 } from "lucide-react";
 
 const pctDelta = (cur: number, prev: number | null): number | null =>
@@ -214,8 +200,9 @@ export default function StaffDashboard() {
   const approvedVendors = vendors?.filter((v) => v.current_status === "approved").length || 0;
   const totalVendors = vendors?.length || 0;
   const returnedToMaker = vendors?.filter((v) => (v.current_status as string) === "returned_to_maker").length || 0;
-
-  const recentActivity = vendors?.slice(0, 6) || [];
+  const rejectedVendors = vendors?.filter((v) => v.current_status === "rejected").length || 0;
+  const pendingVendors = pendingReview + pendingApproval + returnedToMaker;
+  const draftVendors = totalVendors - approvedVendors - pendingVendors - rejectedVendors;
 
   const attentionItems = [
     pendingReview > 0 && { label: `${pendingReview} vendor${pendingReview > 1 ? "s" : ""} pending review`, action: "/staff/queue", color: "text-warning", icon: Clock },
@@ -227,31 +214,6 @@ export default function StaffDashboard() {
     (financeStats?.pendingAdvanceCount ?? 0) > 0 && { label: `${financeStats?.pendingAdvanceCount} advance request${(financeStats?.pendingAdvanceCount ?? 0) > 1 ? "s" : ""} awaiting a decision`, action: "/staff/advance-requests", color: "text-amber-600", icon: HandCoins },
     (financeStats?.invoicesToReview ?? 0) > 0 && { label: `${financeStats?.invoicesToReview} invoice${(financeStats?.invoicesToReview ?? 0) > 1 ? "s" : ""} awaiting review`, action: "/staff/invoices", color: "text-primary", icon: ReceiptIndianRupee },
   ].filter(Boolean) as { label: string; action: string; color: string; icon: typeof Clock }[];
-
-  const statusLabel = (status: string) => {
-    const map: Record<string, string> = {
-      draft: "Draft",
-      pending_review: "Submitted for Review",
-      pending_approval: "Pending Approval",
-      approved: "Approved",
-      rejected: "Rejected",
-      returned_to_maker: "Returned by Approver",
-    };
-    return map[status] || status;
-  };
-
-  const statusIcon = (status: string) => {
-    if (status === "approved") return <CheckCircle2 className="h-4 w-4" />;
-    if (status === "rejected" || status === "returned_to_maker") return <AlertTriangle className="h-4 w-4" />;
-    return <FileSearch className="h-4 w-4" />;
-  };
-
-  const statusColor = (status: string) => {
-    if (status === "approved") return "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]";
-    if (status === "rejected") return "bg-destructive/10 text-destructive";
-    if (status === "returned_to_maker") return "bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))]";
-    return "bg-primary/10 text-primary";
-  };
 
   const firstName = profile?.full_name?.split(" ")[0] || "there";
 
@@ -286,16 +248,16 @@ export default function StaffDashboard() {
 
           <div class="grid">
             <div class="card">
-              <div class="card-label">Pending Review</div>
-              <div class="card-value" style="color: #eab308">${pendingReview}</div>
-            </div>
-            <div class="card">
-              <div class="card-label">Pending Approval</div>
-              <div class="card-value" style="color: #6366f1">${pendingApproval}</div>
-            </div>
-            <div class="card">
-              <div class="card-label">Approved</div>
+              <div class="card-label">Approved Vendors</div>
               <div class="card-value" style="color: #22c55e">${approvedVendors}</div>
+            </div>
+            <div class="card">
+              <div class="card-label">Pending Vendors</div>
+              <div class="card-value" style="color: #eab308">${pendingVendors}</div>
+            </div>
+            <div class="card">
+              <div class="card-label">Rejected Vendors</div>
+              <div class="card-value" style="color: #ef4444">${rejectedVendors}</div>
             </div>
             <div class="card">
               <div class="card-label">Total Vendors</div>
@@ -307,6 +269,16 @@ export default function StaffDashboard() {
             <div class="section-title">Needs Attention</div>
             ${attentionItems.map(item => `<div class="attention">${item.label}</div>`).join("")}
           ` : ""}
+
+          <div class="section-title">Cash Needed — Next 15 Days</div>
+          <div class="metric-row">
+            <span class="metric-label">Overdue Already</span>
+            <span class="metric-value">${formatINR(a.cashNeeded15.overdueAmount)} (${a.cashNeeded15.overdueCount} invoice${a.cashNeeded15.overdueCount === 1 ? "" : "s"})</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">Due Within 15 Days</span>
+            <span class="metric-value">${formatINR(a.cashNeeded15.dueSoonAmount)} (${a.cashNeeded15.dueSoonCount} invoice${a.cashNeeded15.dueSoonCount === 1 ? "" : "s"})</span>
+          </div>
 
           <div class="section-title">Vendor Payment Pipeline</div>
           <div class="metric-row">
@@ -324,24 +296,6 @@ export default function StaffDashboard() {
           <div class="metric-row">
             <span class="metric-label">Invoices Awaiting Payment</span>
             <span class="metric-value">${financeStats?.invoicesToPay ?? 0} (${formatINR(financeStats?.invoicesToPayValue ?? 0)})</span>
-          </div>
-
-          <div class="section-title">Key Metrics</div>
-          <div class="metric-row">
-            <span class="metric-label">Compliance Rate</span>
-            <span class="metric-value">${docStats?.complianceRate ?? 0}%</span>
-          </div>
-          <div class="metric-row">
-            <span class="metric-label">Documents Expiring (30 days)</span>
-            <span class="metric-value">${docStats?.expiring ?? 0}</span>
-          </div>
-          <div class="metric-row">
-            <span class="metric-label">Total Documents</span>
-            <span class="metric-value">${docStats?.total ?? 0}</span>
-          </div>
-          <div class="metric-row">
-            <span class="metric-label">Approved Documents</span>
-            <span class="metric-value">${docStats?.approved ?? 0}</span>
           </div>
           ${isAdmin ? `
           <div class="metric-row">
@@ -361,8 +315,23 @@ export default function StaffDashboard() {
   };
 
   // ── merged in from the old standalone Invoice Analytics page ──
-  const pipelineTotal = a.pipeline.reduce((s, p) => s + p.amount, 0);
   const hasAnyInvoiceData = a.totalInvoiceCount > 0 || a.overdueRows.length > 0;
+
+  // Vendor status shape, for the proportion bar under the headline number.
+  const vendorShare = (n: number) => (totalVendors > 0 ? Math.round((n / totalVendors) * 100) : 0);
+  const approvedPct = vendorShare(approvedVendors);
+  const pendingPct = vendorShare(pendingVendors);
+  const rejectedPct = vendorShare(rejectedVendors);
+  const draftPct = vendorShare(draftVendors);
+
+  // Cash-needed shape, for the overdue vs due-soon split bar.
+  const cashTotal = a.cashNeeded15.overdueAmount + a.cashNeeded15.dueSoonAmount;
+  const overdueSharePct = cashTotal > 0 ? Math.round((a.cashNeeded15.overdueAmount / cashTotal) * 100) : 0;
+
+  // Backlog direction, for the trend chart's headline callout.
+  const backlogNow = a.pendencyTrend.pendency[a.pendencyTrend.pendency.length - 1] ?? 0;
+  const backlogWasAt = a.pendencyTrend.pendency[0] ?? 0;
+  const backlogDelta = backlogNow - backlogWasAt;
   const heatmapHeight = Math.max(160, a.agingRows.length * 38 + 80);
   const dumbbellHeight = Math.max(180, a.dumbbell.length * 42 + 70);
 
@@ -470,130 +439,118 @@ export default function StaffDashboard() {
           </div>
         )}
 
-        {/* KPI Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <button
-            onClick={() => navigate("/staff/queue")}
-            className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[hsl(var(--warning))]/10 to-[hsl(var(--warning))]/5 border border-[hsl(var(--warning))]/20 p-5 text-left transition-all hover:shadow-lg hover:-translate-y-1"
-          >
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Pending Review</span>
-            <p className="text-4xl font-extrabold text-[hsl(var(--warning))] mt-2">{pendingReview}</p>
-            <div className="absolute bottom-0 right-0 opacity-[0.07]"><Clock className="h-20 w-20 -mb-3 -mr-3" /></div>
-          </button>
-
-          <button
-            onClick={() => navigate("/staff/queue")}
-            className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-accent/10 to-accent/5 border border-accent/20 p-5 text-left transition-all hover:shadow-lg hover:-translate-y-1"
-          >
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Pending Approval</span>
-            <p className="text-4xl font-extrabold text-accent mt-2">{pendingApproval}</p>
-            <div className="absolute bottom-0 right-0 opacity-[0.07]"><FileCheck className="h-20 w-20 -mb-3 -mr-3" /></div>
-          </button>
-
+        {/* Vendor Status + Cash Needed — the two headline cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <button
             onClick={() => navigate("/staff/vendors")}
-            className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[hsl(var(--success))]/10 to-[hsl(var(--success))]/5 border border-[hsl(var(--success))]/20 p-5 text-left transition-all hover:shadow-lg hover:-translate-y-1"
+            className="text-left rounded-2xl border border-border bg-card p-5 hover:shadow-md hover:-translate-y-0.5 transition-all"
           >
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Approved</span>
-            <p className="text-4xl font-extrabold text-[hsl(var(--success))] mt-2">{approvedVendors}</p>
-            <div className="absolute bottom-0 right-0 opacity-[0.07]"><CheckCircle2 className="h-20 w-20 -mb-3 -mr-3" /></div>
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Vendor Status</span>
+                <p className="text-4xl font-extrabold text-foreground mt-1 leading-none">{totalVendors}</p>
+                <p className="text-xs text-muted-foreground mt-1.5">total vendors</p>
+              </div>
+              <div className="h-11 w-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <Users className="h-5 w-5 text-primary" />
+              </div>
+            </div>
+
+            {/* proportion bar — the shape of the pipeline at a glance */}
+            <div className="mt-4 h-2 w-full rounded-full overflow-hidden bg-muted flex">
+              <div className="h-full bg-[hsl(var(--success))]" style={{ width: `${approvedPct}%` }} />
+              <div className="h-full bg-[hsl(var(--warning))]" style={{ width: `${pendingPct}%` }} />
+              <div className="h-full bg-destructive" style={{ width: `${rejectedPct}%` }} />
+              <div className="h-full bg-muted-foreground/30" style={{ width: `${draftPct}%` }} />
+            </div>
+            <div className="mt-3 flex items-center gap-4 text-sm flex-wrap">
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-[hsl(var(--success))]" />
+                <b>{approvedVendors}</b> <span className="text-muted-foreground">approved</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-[hsl(var(--warning))]" />
+                <b>{pendingVendors}</b> <span className="text-muted-foreground">pending</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-destructive" />
+                <b>{rejectedVendors}</b> <span className="text-muted-foreground">rejected</span>
+              </span>
+              {draftVendors > 0 && (
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-muted-foreground/30" />
+                  <b>{draftVendors}</b> <span className="text-muted-foreground">not yet submitted</span>
+                </span>
+              )}
+            </div>
           </button>
 
           <button
-            onClick={() => navigate("/staff/vendors")}
-            className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 p-5 text-left transition-all hover:shadow-lg hover:-translate-y-1"
+            onClick={() => navigate("/staff/invoices")}
+            className="text-left rounded-2xl border border-border bg-card p-5 hover:shadow-md hover:-translate-y-0.5 transition-all"
           >
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Total Vendors</span>
-            <p className="text-4xl font-extrabold text-primary mt-2">{totalVendors}</p>
-            <div className="absolute bottom-0 right-0 opacity-[0.07]"><Users className="h-20 w-20 -mb-3 -mr-3" /></div>
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Cash Needed — Next 15 Days</span>
+                <p className="text-4xl font-extrabold text-foreground mt-1 leading-none">{compactINR(a.cashNeeded15.dueSoonAmount)}</p>
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  {a.cashNeeded15.dueSoonCount} invoice{a.cashNeeded15.dueSoonCount === 1 ? "" : "s"} due by {format(new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), "dd MMM")}
+                </p>
+              </div>
+              <div className="h-11 w-11 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+                <Wallet className="h-5 w-5 text-amber-600" />
+              </div>
+            </div>
+
+            {cashTotal > 0 && (
+              <div className="mt-4 h-2 w-full rounded-full overflow-hidden bg-muted flex">
+                <div className="h-full bg-destructive" style={{ width: `${overdueSharePct}%` }} />
+                <div className="h-full bg-amber-500" style={{ width: `${100 - overdueSharePct}%` }} />
+              </div>
+            )}
+            <div className="mt-3">
+              {a.cashNeeded15.overdueAmount > 0 ? (
+                <div className="flex items-center gap-1.5 text-sm text-destructive font-medium">
+                  <TriangleAlert className="h-3.5 w-3.5 shrink-0" />
+                  {compactINR(a.cashNeeded15.overdueAmount)} already overdue ({a.cashNeeded15.overdueCount})
+                </div>
+              ) : a.cashNeeded15.missingDueDateCount > 0 ? (
+                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  {a.cashNeeded15.missingDueDateCount} open invoice{a.cashNeeded15.missingDueDateCount === 1 ? "" : "s"} with no due date on file
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  Nothing overdue right now
+                </div>
+              )}
+            </div>
           </button>
         </div>
 
-        {/* Activity + Metrics */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-          {/* Recent Activity */}
-          <div className="lg:col-span-3 rounded-2xl border border-border bg-card p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-foreground">Recent Activity</h2>
-              <button
-                onClick={() => navigate("/staff/queue")}
-                className="text-xs text-primary font-semibold hover:underline flex items-center gap-1"
-              >
-                View Queue <ChevronRight className="h-3 w-3" />
-              </button>
+        {/* Trend — the operational pulse, gets the most space */}
+        <Card>
+          <CardHeader className="pb-1 flex-row items-start justify-between space-y-0">
+            <div>
+              <CardTitle className="text-base font-semibold">Invoice Submissions & Backlog — last 12 weeks</CardTitle>
+              <p className="text-xs text-muted-foreground !mt-1">
+                New invoices submitted each week, against how many are still open awaiting a decision
+              </p>
             </div>
-            <div className="space-y-0 max-h-[280px] overflow-y-auto">
-              {recentActivity.map((vendor) => (
-                <button
-                  key={vendor.id}
-                  onClick={() => navigate(`/staff/vendor/${vendor.id}`)}
-                  className="flex items-start gap-3 w-full p-2.5 rounded-lg hover:bg-muted/50 transition-colors text-left"
-                >
-                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${statusColor(vendor.current_status)}`}>
-                    {statusIcon(vendor.current_status)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">{vendor.company_name}</p>
-                    <p className="text-[11px] text-muted-foreground truncate">{statusLabel(vendor.current_status)}</p>
-                  </div>
-                  <span className="text-[10px] text-muted-foreground/70 shrink-0">
-                    {formatDistanceToNow(new Date(vendor.updated_at), { addSuffix: true })}
-                  </span>
-                </button>
-              ))}
-              {recentActivity.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-8">No recent activity</p>
-              )}
+            <div className="text-right shrink-0">
+              <p className="text-2xl font-extrabold text-foreground leading-none">{backlogNow}</p>
+              <p className={`text-xs font-medium mt-1 ${backlogDelta > 0 ? "text-destructive" : backlogDelta < 0 ? "text-[hsl(var(--success))]" : "text-muted-foreground"}`}>
+                {backlogDelta > 0 ? `▲ up ${backlogDelta}` : backlogDelta < 0 ? `▼ down ${Math.abs(backlogDelta)}` : "unchanged"} vs 12 weeks ago
+              </p>
             </div>
-          </div>
-
-          {/* Key Metrics */}
-          <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-5">
-            <h2 className="text-base font-bold text-foreground mb-4">Key Metrics</h2>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[11px] text-muted-foreground">Compliance Rate</p>
-                  <p className="text-2xl font-bold text-foreground">{docStats?.complianceRate ?? 0}%</p>
-                </div>
-                <div className="h-11 w-11 rounded-xl bg-[hsl(var(--success))]/10 flex items-center justify-center">
-                  <Target className="h-5 w-5 text-[hsl(var(--success))]" />
-                </div>
-              </div>
-              <div className="h-px bg-border" />
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[11px] text-muted-foreground">Expiring Documents</p>
-                  <p className="text-2xl font-bold text-foreground">{docStats?.expiring ?? 0}</p>
-                </div>
-                <div className="h-11 w-11 rounded-xl bg-[hsl(var(--warning))]/10 flex items-center justify-center">
-                  <Zap className="h-5 w-5 text-[hsl(var(--warning))]" />
-                </div>
-              </div>
-              {isAdmin && (
-                <>
-                  <div className="h-px bg-border" />
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-[11px] text-muted-foreground">DPDP Data Requests</p>
-                      <div className="flex items-center gap-2">
-                        <p className="text-2xl font-bold text-foreground">{dataRequestStats?.pending ?? 0}</p>
-                        {(dataRequestStats?.overdue ?? 0) > 0 && (
-                          <Badge variant="destructive" className="text-[10px]">
-                            {dataRequestStats?.overdue} overdue
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    <div className="h-11 w-11 rounded-xl bg-primary/10 flex items-center justify-center">
-                      <Shield className="h-5 w-5 text-primary" />
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+          </CardHeader>
+          <CardContent>
+            <EChart
+              option={submissionPendencyOption(a.pendencyTrend.labels, a.pendencyTrend.submitted, a.pendencyTrend.pendency)}
+              height={340}
+            />
+          </CardContent>
+        </Card>
 
         {/* ══════════════ Vendor Finance (merged Invoice Analytics) ══════════════ */}
         <div className="pt-4">
@@ -701,43 +658,6 @@ export default function StaffDashboard() {
               />
             </div>
 
-            {/* ── Cash motion ── */}
-            <Card>
-              <CardHeader className="pb-1">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Cash motion — billed vs settled, with the running balance owed
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <EChart
-                  option={cashMotionOption(a.months, a.invoicedByMonth, a.settledByMonth, a.runningOutstanding)}
-                  height={280}
-                />
-              </CardContent>
-            </Card>
-
-            {/* ── Pipeline ── */}
-            <Card>
-              <CardHeader className="pb-1 flex-row items-baseline justify-between space-y-0">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Payment pipeline — how far along the period's {fullINR(pipelineTotal)} is
-                </CardTitle>
-                {a.rejectedCount > 0 && (
-                  <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
-                    <TriangleAlert className="h-3 w-3 text-[#d03b3b]" />
-                    {a.rejectedCount} rejected · {compactINR(a.rejectedAmount)} (not shown)
-                  </span>
-                )}
-              </CardHeader>
-              <CardContent className="pt-0">
-                {pipelineTotal > 0 ? (
-                  <EChart option={pipelineOption(a.pipeline, pipelineTotal)} height={96} />
-                ) : (
-                  <p className="text-sm text-muted-foreground py-6 text-center">No invoices in this period</p>
-                )}
-              </CardContent>
-            </Card>
-
             {/* ── Aging + exposure ── */}
             <div className="grid lg:grid-cols-2 gap-4">
               <Card>
@@ -779,48 +699,6 @@ export default function StaffDashboard() {
               </Card>
             </div>
 
-            {/* ── Settlement mix + who got paid the most ── */}
-            <div className="grid lg:grid-cols-2 gap-4">
-              <Card>
-                <CardHeader className="pb-1">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    What settlements were made of — payout, advance and TDS
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <EChart
-                    option={compositionOption(a.months, a.compPayout, a.compAdvance, a.compTds)}
-                    height={Math.max(240, Math.min(12, a.paidRanking.length) * 30 + 60)}
-                  />
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-1">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Highest to lowest paid — ₹ settled per vendor
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {a.paidRanking.length > 0 ? (
-                    <EChart
-                      option={paidRankingOption(a.paidRanking)}
-                      height={Math.max(240, Math.min(12, a.paidRanking.length) * 30 + 60)}
-                    />
-                  ) : (
-                    <p className="text-sm text-muted-foreground py-10 text-center">No payments in this period</p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* ══════════════ Process intelligence (deep analysis) ══════════════ */}
-            <div className="pt-2">
-              <h2 className="text-base font-semibold">Process intelligence</h2>
-              <p className="text-sm text-muted-foreground">
-                How well the invoice-to-payment process itself is running — same filters apply
-              </p>
-            </div>
-
             {/* process health strip */}
             <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
               <MiniKpi
@@ -855,123 +733,24 @@ export default function StaffDashboard() {
               />
             </div>
 
-            {/* funnel + flow trend */}
-            <div className="grid lg:grid-cols-5 gap-4">
-              <Card className="lg:col-span-2">
-                <CardHeader className="pb-1">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Invoice lifecycle — where value drops off
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <EChart option={lifecycleFunnelOption(a.funnel)} height={230} />
-                  <p className="text-xs text-muted-foreground text-center">
-                    {a.funnel.inReview > 0 && `${a.funnel.inReview} invoice${a.funnel.inReview === 1 ? "" : "s"} still in review · `}
-                    approval and payment rates in the tooltip
-                  </p>
-                </CardContent>
-              </Card>
-              <Card className="lg:col-span-3">
-                <CardHeader className="pb-1">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Flow by {a.flowGranularity} — submissions and approvals above, money out below
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <EChart
-                    option={flowTrendOption(a.flowLabels, a.flowSubmitted, a.flowApproved, a.flowSettled)}
-                    height={290}
-                  />
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* vendor density map */}
+            {/* rejection analysis */}
             <Card>
               <CardHeader className="pb-1">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Vendor performance map — every column shaded against its own best
+                <CardTitle className="text-sm font-medium text-muted-foreground inline-flex items-center gap-1.5">
+                  <TriangleAlert className="h-3.5 w-3.5 text-[#d03b3b]" />
+                  Why invoices get rejected — {compactINR(a.rejectedAmount)} blocked
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {a.deepVendorRows.length > 0 ? (
-                  <EChart
-                    option={vendorDensityOption(a.deepVendorRows.slice(0, 12))}
-                    height={Math.max(220, Math.min(12, a.deepVendorRows.length) * 36 + 70)}
-                  />
+                {a.rejectionRows.length > 0 ? (
+                  <EChart option={rejectionOption(a.rejectionRows)} height={220} />
                 ) : (
-                  <p className="text-sm text-muted-foreground py-10 text-center">No invoices in this period</p>
+                  <p className="text-sm text-muted-foreground py-10 text-center">
+                    No rejections in this period 🎉
+                  </p>
                 )}
               </CardContent>
             </Card>
-
-            {/* quadrant + delay histogram */}
-            <div className="grid lg:grid-cols-2 gap-4">
-              <Card>
-                <CardHeader className="pb-1">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Exposure vs pay speed — top-right is "big and slow"
-                  </CardTitle>
-                  <p className="text-xs text-muted-foreground !mt-1">
-                    Dot size = money outstanding now · lines mark the medians
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  {a.quadrant.length >= 3 ? (
-                    <EChart option={quadrantOption(a.quadrant)} height={300} />
-                  ) : (
-                    <p className="text-sm text-muted-foreground py-10 text-center">
-                      Not enough fully paid invoices yet to compare vendors
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-1">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    How long payment takes — distribution of fully paid invoices
-                  </CardTitle>
-                  <p className="text-xs text-muted-foreground !mt-1">
-                    {a.processKpis.medianPayDays !== null && `Median ${a.processKpis.medianPayDays} days · `}
-                    hover a bar for the ₹ value in that band
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <EChart option={delayHistogramOption(a.delayHistogram)} height={300} />
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* rejection analysis + approval-speed trend */}
-            <div className="grid lg:grid-cols-2 gap-4">
-              <Card>
-                <CardHeader className="pb-1">
-                  <CardTitle className="text-sm font-medium text-muted-foreground inline-flex items-center gap-1.5">
-                    <TriangleAlert className="h-3.5 w-3.5 text-[#d03b3b]" />
-                    Why invoices get rejected — {compactINR(a.rejectedAmount)} blocked
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {a.rejectionRows.length > 0 ? (
-                    <EChart option={rejectionOption(a.rejectionRows)} height={220} />
-                  ) : (
-                    <p className="text-sm text-muted-foreground py-10 text-center">
-                      No rejections in this period 🎉
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-1">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Is approval getting faster? — avg days to approve, by {a.flowGranularity}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <EChart option={approveTrendOption(a.flowLabels, a.approveTrend)} height={220} />
-                </CardContent>
-              </Card>
-            </div>
           </>
         )}
       </div>
