@@ -143,9 +143,17 @@ Deno.serve(async (req) => {
               last_login_at: new Date().toISOString(),
             });
           } else {
+            // Re-point to whichever vendor record is now the best match —
+            // a rejected submission's re-signup creates a NEW vendor row,
+            // and this link must follow it or the vendor stays stuck
+            // "rejected" forever even after the new row is approved.
             await supabase
               .from("vendor_users")
-              .update({ last_login_at: new Date().toISOString() })
+              .update({
+                vendor_id: vendor.vendor_id,
+                tenant_id: vendor.tenant_id,
+                last_login_at: new Date().toISOString(),
+              })
               .eq("id", existingLink.id);
           }
         }
