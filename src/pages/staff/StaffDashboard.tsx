@@ -31,7 +31,8 @@ import {
   dumbbellOption,
   rejectionOption,
   paymentFlowOption,
-  submissionPendencyOption,
+  paymentFlowTrendOption,
+  FLOW_TREND_COLORS,
 } from "@/components/analytics/invoiceChartOptions";
 import { compactINR } from "@/lib/vizPalette";
 import { formatINR } from "@/lib/invoices";
@@ -328,10 +329,6 @@ export default function StaffDashboard() {
   const cashTotal = a.cashNeeded15.overdueAmount + a.cashNeeded15.dueSoonAmount;
   const overdueSharePct = cashTotal > 0 ? Math.round((a.cashNeeded15.overdueAmount / cashTotal) * 100) : 0;
 
-  // Backlog direction, for the trend chart's headline callout.
-  const backlogNow = a.pendencyTrend.pendency[a.pendencyTrend.pendency.length - 1] ?? 0;
-  const backlogWasAt = a.pendencyTrend.pendency[0] ?? 0;
-  const backlogDelta = backlogNow - backlogWasAt;
   const heatmapHeight = Math.max(160, a.agingRows.length * 38 + 80);
   const dumbbellHeight = Math.max(180, a.dumbbell.length * 42 + 70);
 
@@ -414,22 +411,32 @@ export default function StaffDashboard() {
           <Card className="lg:col-span-8">
             <CardHeader className="pb-1 flex-row items-start justify-between space-y-0">
               <div>
-                <CardTitle className="text-base font-semibold">Invoice Submissions & Backlog — last 12 weeks</CardTitle>
+                <CardTitle className="text-base font-semibold">PI, Advance Requests & Invoices — last 12 weeks</CardTitle>
                 <p className="text-xs text-muted-foreground !mt-1">
-                  New invoices submitted each week, against how many are still open awaiting a decision
+                  Weekly count submitted vs. approved, one color per document type
                 </p>
               </div>
-              <div className="text-right shrink-0">
-                <p className="text-2xl font-extrabold text-foreground leading-none">{backlogNow}</p>
-                <p className={`text-xs font-medium mt-1 ${backlogDelta > 0 ? "text-destructive" : backlogDelta < 0 ? "text-[hsl(var(--success))]" : "text-muted-foreground"}`}>
-                  {backlogDelta > 0 ? `▲ up ${backlogDelta}` : backlogDelta < 0 ? `▼ down ${Math.abs(backlogDelta)}` : "unchanged"} vs 12 weeks ago
-                </p>
+              <div className="flex items-center gap-3 shrink-0">
+                {flow.flowTrend.series.map((s) => (
+                  <span key={s.key} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: FLOW_TREND_COLORS[s.key] }} />
+                    {s.name}
+                  </span>
+                ))}
               </div>
             </CardHeader>
             <CardContent>
+              <div className="flex items-center gap-4 mb-1">
+                <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <span className="h-2.5 w-4 rounded-sm bg-primary/20 border border-primary/30" /> submitted
+                </span>
+                <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <span className="h-2.5 w-4 rounded-sm bg-primary/70" /> approved
+                </span>
+              </div>
               <EChart
-                option={submissionPendencyOption(a.pendencyTrend.labels, a.pendencyTrend.submitted, a.pendencyTrend.pendency)}
-                height={420}
+                option={paymentFlowTrendOption(flow.flowTrend.labels, flow.flowTrend.series)}
+                height={396}
               />
             </CardContent>
           </Card>
