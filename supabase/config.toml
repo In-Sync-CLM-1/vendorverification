@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.public-api]
 verify_jwt = false
+
+[functions.sync-rmpl-livecom-csbd]
+verify_jwt = false

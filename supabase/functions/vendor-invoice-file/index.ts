@@ -63,7 +63,9 @@ Deno.serve(async (req) => {
     const r2ObjectUrl = (key: string) =>
       `https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/r2/buckets/${bucket}/objects/${key}`;
 
-    // ===== POST: vendor uploads an invoice / PO file =====
+    // ===== POST: vendor uploads an invoice / PO file, or Livecom uploads one
+    // on a vendor's behalf (identified by an explicit vendor_id form field,
+    // since the caller has no vendor_users row of their own) =====
     if (req.method === "POST") {
       const { data: link } = await admin
         .from("vendor_users")
@@ -71,12 +73,50 @@ Deno.serve(async (req) => {
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (!link || link.is_active === false) {
-        return jsonResponse({ error: "Only vendor accounts can upload files" }, 403);
-      }
-
       const form = await req.formData();
       const file = form.get("file") as File | null;
+
+      let tenantId: string;
+      let vendorId: string;
+
+      if (link && link.is_active !== false) {
+        tenantId = link.tenant_id;
+        vendorId = link.vendor_id;
+      } else {
+        const targetVendorId = form.get("vendor_id") as string | null;
+        if (!targetVendorId) {
+          return jsonResponse({ error: "Only vendor accounts can upload files" }, 403);
+        }
+
+        const { data: staff } = await admin
+          .from("profiles")
+          .select("tenant_id, is_active")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        const { data: roleRow } = await admin
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .eq("role", "livecom_uploader")
+          .maybeSingle();
+
+        if (!staff || staff.is_active === false || !roleRow) {
+          return jsonResponse({ error: "Not authorized to upload on a vendor's behalf" }, 403);
+        }
+
+        const { data: vendor } = await admin
+          .from("vendors")
+          .select("id, tenant_id")
+          .eq("id", targetVendorId)
+          .maybeSingle();
+        if (!vendor || vendor.tenant_id !== staff.tenant_id) {
+          return jsonResponse({ error: "Vendor not found" }, 404);
+        }
+
+        tenantId = vendor.tenant_id;
+        vendorId = vendor.id;
+      }
+
       if (!file) {
         return jsonResponse({ error: "Missing file" }, 400);
       }
@@ -92,7 +132,7 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: "Invalid file type. Use PDF, JPG or PNG." }, 400);
       }
 
-      const key = `invoices/${link.tenant_id}/${link.vendor_id}/${Date.now()}_${crypto.randomUUID().slice(0, 8)}_${sanitizeFileName(fileName)}`;
+      const key = `invoices/${tenantId}/${vendorId}/${Date.now()}_${crypto.randomUUID().slice(0, 8)}_${sanitizeFileName(fileName)}`;
 
       const putResp = await fetch(r2ObjectUrl(key), {
         method: "PUT",

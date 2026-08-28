@@ -55,23 +55,42 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "invoice_id is required" }, 400);
     }
 
-    // Caller must be the vendor that owns this invoice.
+    // Caller must be either the vendor that owns this invoice, or Livecom
+    // staff who just filed it on that vendor's behalf.
     const { data: link } = await admin
       .from("vendor_users")
       .select("vendor_id")
       .eq("user_id", user.id)
       .maybeSingle();
-    if (!link) {
-      return jsonResponse({ error: "Only vendor accounts can trigger this" }, 403);
-    }
 
     const { data: invoice } = await admin
       .from("vendor_invoices")
       .select("id, invoice_number, invoice_amount, invoice_date, description, status, vendor_id, tenant_id")
       .eq("id", invoice_id)
       .maybeSingle();
-    if (!invoice || invoice.vendor_id !== link.vendor_id) {
+    if (!invoice) {
       return jsonResponse({ error: "Invoice not found" }, 404);
+    }
+
+    if (link) {
+      if (invoice.vendor_id !== link.vendor_id) {
+        return jsonResponse({ error: "Invoice not found" }, 404);
+      }
+    } else {
+      const { data: staff } = await admin
+        .from("profiles")
+        .select("tenant_id, is_active")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      const { data: roleRow } = await admin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "livecom_uploader")
+        .maybeSingle();
+      if (!staff || staff.is_active === false || !roleRow || staff.tenant_id !== invoice.tenant_id) {
+        return jsonResponse({ error: "Not authorized to trigger this" }, 403);
+      }
     }
 
     const { data: vendor } = await admin

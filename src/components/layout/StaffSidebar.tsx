@@ -25,6 +25,7 @@ import {
   Lock,
   HandCoins,
   ClipboardCheck,
+  FileUp,
 } from "lucide-react";
 import {
   Sidebar,
@@ -51,6 +52,16 @@ const EMAIL_NAME_MAP: Record<string, string> = {
 // position snapped back to the top on every click instead of staying where
 // the user left it.
 let savedScrollTop = 0;
+
+// Items that are pure write actions with no view-only equivalent — a
+// view-only account (see useUserRoles().isViewOnly) never sees these, since
+// RLS would refuse the underlying action anyway.
+const WRITE_ONLY_ITEMS = new Set([
+  "Match Payments",
+  "Bulk Invite",
+  "Bulk Import",
+  "Sensitive Info",
+]);
 
 const navSections = [
   {
@@ -92,7 +103,7 @@ const adminItems = [
 
 export function StaffSidebar() {
   const { signOut, user } = useAuth();
-  const { isAdmin, isPlatformAdmin } = useUserRoles();
+  const { isAdmin, isPlatformAdmin, isViewOnly, isLivecomUploader } = useUserRoles();
   const { tenant } = useTenant();
   const logo = useTenantLogo();
   const navigate = useNavigate();
@@ -180,14 +191,46 @@ export function StaffSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
+        {/* Independent of isViewOnly filtering below — a Livecom account can
+            be view-only for everything else and still get this one screen. */}
+        {isLivecomUploader && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Livecom</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    tooltip="Upload Invoice for Vendor"
+                    isActive={location.pathname === "/staff/livecom-upload"}
+                  >
+                    <NavLink
+                      to="/staff/livecom-upload"
+                      className="hover:bg-muted/50"
+                      activeClassName="bg-primary/10 text-primary font-medium"
+                    >
+                      <FileUp className="h-4 w-4" />
+                      <span>Upload Invoice for Vendor</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
         {(
           <>
-            {navSections.map((section) => (
+            {navSections.map((section) => {
+              const items = isViewOnly
+                ? section.items.filter((item) => !WRITE_ONLY_ITEMS.has(item.title))
+                : section.items;
+              if (items.length === 0) return null;
+              return (
               <SidebarGroup key={section.label}>
                 <SidebarGroupLabel>{section.label}</SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
-                    {section.items.map((item) => (
+                    {items.map((item) => (
                       <SidebarMenuItem key={item.title}>
                         <SidebarMenuButton asChild tooltip={item.title} isActive={location.pathname === item.url}>
                           <NavLink
@@ -204,7 +247,8 @@ export function StaffSidebar() {
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
-            ))}
+              );
+            })}
 
             {isAdmin && (
               <SidebarGroup>

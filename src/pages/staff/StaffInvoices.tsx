@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { StaffLayout } from "@/components/layout/StaffLayout";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRoles } from "@/hooks/useUserRoles";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +53,13 @@ type InvoiceWithVendor = VendorInvoice & {
   vendors: { company_name: string; vendor_code: string | null } | null;
 };
 
+interface ProjectAllocation {
+  id: string;
+  project_name: string;
+  project_number: string | null;
+  amount: number;
+}
+
 const TAB_FILTERS: Record<string, InvoiceStatus[] | undefined> = {
   all: undefined,
   submitted: ["submitted", "under_review"],
@@ -62,6 +70,7 @@ const TAB_FILTERS: Record<string, InvoiceStatus[] | undefined> = {
 
 export default function StaffInvoices() {
   const { user } = useAuth();
+  const { isViewOnly } = useUserRoles();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("all");
   const [search, setSearch] = useState("");
@@ -92,6 +101,33 @@ export default function StaffInvoices() {
       if (error) throw error;
       return (data || []) as InvoicePayment[];
     },
+  });
+
+  const { data: uploader } = useQuery({
+    queryKey: ["invoice-uploader", selected?.id, selected?.submitted_by],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("user_id", selected!.submitted_by!)
+        .maybeSingle();
+      return data?.full_name || null;
+    },
+    enabled: !!selected && selected.submission_source === "livecom_upload" && !!selected.submitted_by,
+  });
+
+  const { data: allocations = [] } = useQuery({
+    queryKey: ["invoice-project-allocations", selected?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vendor_invoice_project_allocations")
+        .select("id, project_name, project_number, amount")
+        .eq("invoice_id", selected!.id)
+        .order("amount", { ascending: false });
+      if (error) throw error;
+      return (data || []) as ProjectAllocation[];
+    },
+    enabled: !!selected,
   });
 
   const refetchAll = () => {
@@ -275,6 +311,11 @@ export default function StaffInvoices() {
                             <TableCell>
                               <p className="font-medium">{inv.vendors?.company_name || "—"}</p>
                               <p className="text-xs text-muted-foreground">{inv.vendors?.vendor_code}</p>
+                              {inv.submission_source === "livecom_upload" && (
+                                <Badge variant="outline" className="mt-1 bg-sky-100 text-sky-800 border-sky-200">
+                                  Livecom upload
+                                </Badge>
+                              )}
                             </TableCell>
                             <TableCell className="font-medium">{inv.invoice_number}</TableCell>
                             <TableCell className="whitespace-nowrap">
@@ -312,10 +353,27 @@ export default function StaffInvoices() {
               <DialogDescription>
                 {selected.vendors?.company_name} ({selected.vendors?.vendor_code}) ·{" "}
                 {new Date(selected.invoice_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                {selected.submission_source === "livecom_upload" && (
+                  <> · Uploaded by Livecom{uploader ? ` (${uploader})` : ""} on the vendor's behalf</>
+                )}
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4">
+              {allocations.length > 0 && (
+                <div className="rounded-lg border bg-muted/40 p-3 space-y-1.5">
+                  <p className="text-sm font-medium">Split across projects</p>
+                  {allocations.map((a) => (
+                    <div key={a.id} className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground truncate">
+                        {a.project_name}{a.project_number ? ` (${a.project_number})` : ""}
+                      </span>
+                      <span className="font-medium shrink-0 ml-2">{formatINR(Number(a.amount))}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                 <div>
                   <p className="text-muted-foreground text-xs">Invoice Amount</p>
@@ -367,6 +425,7 @@ export default function StaffInvoices() {
               </div>
 
               {/* Actions */}
+              {!isViewOnly && (
               <div className="border-t pt-4 space-y-3">
                 {["submitted", "under_review"].includes(selected.status) && (
                   <>
@@ -408,6 +467,7 @@ export default function StaffInvoices() {
                   </Button>
                 )}
               </div>
+              )}
             </div>
           </DialogContent>
         </Dialog>

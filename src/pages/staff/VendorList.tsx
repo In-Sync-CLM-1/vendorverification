@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { StaffLayout } from "@/components/layout/StaffLayout";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRoles } from "@/hooks/useUserRoles";
 import { useReferralCode } from "@/hooks/useReferralCode";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -88,6 +89,7 @@ const INV_STATUS_CONFIG: Record<InvitationStatus, { label: string; className: st
 export default function VendorList() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isViewOnly } = useUserRoles();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { referralCode, isLoading: referralLoading } = useReferralCode();
@@ -291,6 +293,7 @@ export default function VendorList() {
                 Deactivated
               </Label>
             </div>
+            {!isViewOnly && (
             <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
               <DialogTrigger asChild>
                 <Button>
@@ -377,6 +380,7 @@ export default function VendorList() {
                 </div>
               </DialogContent>
             </Dialog>
+            )}
           </div>
         </div>
 
