@@ -27,9 +27,10 @@ export const formatINR = (value: number | null | undefined) =>
     maximumFractionDigits: 2,
   }).format(value || 0);
 
-export async function uploadInvoiceFile(file: File): Promise<string> {
+export async function uploadInvoiceFile(file: File, vendorId?: string): Promise<string> {
   const formData = new FormData();
   formData.append("file", file);
+  if (vendorId) formData.append("vendor_id", vendorId);
   const { data, error } = await supabase.functions.invoke("vendor-invoice-file", {
     body: formData,
   });

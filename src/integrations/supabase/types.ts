@@ -1592,6 +1592,7 @@ export type Database = {
           reviewed_by: string | null
           rmpl_project_id: string | null
           status: Database["public"]["Enums"]["invoice_status"]
+          submission_source: Database["public"]["Enums"]["invoice_submission_source"]
           submitted_by: string | null
           tenant_id: string
           updated_at: string
@@ -1622,6 +1623,7 @@ export type Database = {
           reviewed_by?: string | null
           rmpl_project_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
+          submission_source?: Database["public"]["Enums"]["invoice_submission_source"]
           submitted_by?: string | null
           tenant_id: string
           updated_at?: string
@@ -1652,6 +1654,7 @@ export type Database = {
           reviewed_by?: string | null
           rmpl_project_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
+          submission_source?: Database["public"]["Enums"]["invoice_submission_source"]
           submitted_by?: string | null
           tenant_id?: string
           updated_at?: string
@@ -1677,6 +1680,63 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors_decrypted"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_invoice_project_allocations: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          invoice_id: string
+          project_name: string
+          project_number: string | null
+          project_owner_email: string | null
+          project_owner_name: string | null
+          project_owner_user_id: string | null
+          rmpl_project_id: string
+          tenant_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          invoice_id: string
+          project_name: string
+          project_number?: string | null
+          project_owner_email?: string | null
+          project_owner_name?: string | null
+          project_owner_user_id?: string | null
+          rmpl_project_id: string
+          tenant_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          invoice_id?: string
+          project_name?: string
+          project_number?: string | null
+          project_owner_email?: string | null
+          project_owner_name?: string | null
+          project_owner_user_id?: string | null
+          rmpl_project_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_invoice_project_allocations_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_invoice_project_allocations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -2699,6 +2759,8 @@ export type Database = {
         | "admin"
         | "platform_admin"
         | "accounts"
+        | "viewer"
+        | "livecom_uploader"
       billing_category:
         | "subscription_payment"
         | "free_trial_credit"
@@ -2731,6 +2793,7 @@ export type Database = {
         | "rejected"
         | "partially_paid"
         | "paid"
+      invoice_submission_source: "vendor" | "livecom_upload"
       pi_quotation_document_type: "proforma_invoice" | "quotation"
       pi_quotation_status: "submitted" | "approved" | "rejected"
       subscription_plan:
@@ -2897,6 +2960,8 @@ export const Constants = {
         "admin",
         "platform_admin",
         "accounts",
+        "viewer",
+        "livecom_uploader",
       ],
       billing_category: [
         "subscription_payment",
@@ -2934,6 +2999,7 @@ export const Constants = {
         "partially_paid",
         "paid",
       ],
+      invoice_submission_source: ["vendor", "livecom_upload"],
       pi_quotation_document_type: ["proforma_invoice", "quotation"],
       pi_quotation_status: ["submitted", "approved", "rejected"],
       subscription_plan: [

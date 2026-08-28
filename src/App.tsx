@@ -35,6 +35,7 @@ import StaffDetailChangeRequests from "./pages/staff/StaffDetailChangeRequests";
 import StaffAdvanceRequests from "./pages/staff/StaffAdvanceRequests";
 import ProjectOwnerApprovals from "./pages/staff/ProjectOwnerApprovals";
 import VendorSensitiveInfo from "./pages/staff/VendorSensitiveInfo";
+import LivecomInvoiceUpload from "./pages/staff/LivecomInvoiceUpload";
 
 // Admin Pages
 import AdminUserManagement from "./pages/admin/AdminUserManagement";
@@ -93,6 +94,7 @@ const App = () => (
             <Route path="/staff/advance-requests" element={<StaffAdvanceRequests />} />
             <Route path="/staff/pi-approvals" element={<ProjectOwnerApprovals />} />
             <Route path="/staff/sensitive-info" element={<VendorSensitiveInfo />} />
+            <Route path="/staff/livecom-upload" element={<LivecomInvoiceUpload />} />
             {/* Invoice Analytics was merged into the one Dashboard */}
             <Route path="/staff/invoice-analytics" element={<Navigate to="/staff/dashboard" replace />} />
             <Route path="/staff/bulk-import" element={<BulkImportVendors />} />
