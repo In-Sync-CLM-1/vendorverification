@@ -1,0 +1,1 @@
+rmpl-livecom-csbd-sync|sync-rmpl-livecom-csbd||30 2 * * *
