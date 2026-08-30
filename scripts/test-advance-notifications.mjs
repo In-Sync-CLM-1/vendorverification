@@ -53,10 +53,15 @@ async function sendEmail(subject, html) {
   console.log(`EMAIL "${subject}" ->`, res.status, res.ok ? "sent" : text.slice(0, 300));
 }
 
+// Redefine Marcom (467ce2a0-5df8-40a7-81d6-ccdc77b66ce9) is the only real
+// tenant using this app — its own WhatsApp sender number, not the seeded
+// "In-Sync" demo tenant's, is what real vendors/staff actually see.
+const REAL_TENANT_ID = "467ce2a0-5df8-40a7-81d6-ccdc77b66ce9";
+
 async function sendWhatsapp(templateName, params) {
   const [settings] = await sql(
     `SELECT exotel_sid, exotel_api_key, exotel_api_token, exotel_subdomain, waba_id, whatsapp_source_number
-       FROM public.whatsapp_settings WHERE is_active = true LIMIT 1;`
+       FROM public.whatsapp_settings WHERE tenant_id = '${REAL_TENANT_ID}' AND is_active = true LIMIT 1;`
   );
   const sub = settings.exotel_subdomain || "api.exotel.com";
   const auth = "Basic " + Buffer.from(`${settings.exotel_api_key}:${settings.exotel_api_token}`).toString("base64");
