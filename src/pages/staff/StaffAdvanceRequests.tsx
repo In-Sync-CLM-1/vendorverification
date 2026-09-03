@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { StaffLayout } from "@/components/layout/StaffLayout";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRoles } from "@/hooks/useUserRoles";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +17,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ProjectCombobox } from "@/components/shared/ProjectCombobox";
 import { AdvanceRequestCharts } from "@/components/advance/AdvanceRequestCharts";
 import { Loader2, HandCoins, Check, X, FileText } from "lucide-react";
 import { toast } from "sonner";
@@ -29,8 +29,9 @@ interface AdvanceRequest {
   activity_name: string;
   vendor_remarks: string | null;
   status: "pending" | "approved" | "rejected";
-  project_id: string | null;
   project_name: string | null;
+  project_owner_user_id: string | null;
+  project_owner_name: string | null;
   review_comments: string | null;
   created_at: string;
   proforma_invoice_file_key: string | null;
@@ -39,22 +40,33 @@ interface AdvanceRequest {
 
 export default function StaffAdvanceRequests() {
   const { user } = useAuth();
+  const { isAccounts, isAdmin } = useUserRoles();
   const queryClient = useQueryClient();
   const [comments, setComments] = useState<Record<string, string>>({});
-  const [projectChoice, setProjectChoice] = useState<Record<string, { id: string; name: string }>>({});
   const [actioningId, setActioningId] = useState<string | null>(null);
 
+  // Accounts and admins oversee every advance request for the organisation
+  // (they process the eventual payment/netting); everyone else only sees the
+  // ones routed to them as the Project Owner of the PI it's issued against.
   const { data: requests = [], isLoading } = useQuery({
-    queryKey: ["staff-advance-requests"],
+    queryKey: ["staff-advance-requests", user?.id, isAccounts],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("vendor_advance_requests")
         .select("*, vendors(company_name, vendor_code)")
         .order("created_at", { ascending: false });
+      if (!isAccounts) query = query.eq("project_owner_user_id", user!.id);
+      const { data, error } = await query;
       if (error) throw error;
       return (data || []) as AdvanceRequest[];
     },
+    enabled: !!user?.id,
   });
+
+  // Only the project owner the linked PI was approved by may decide, while
+  // still pending; admins keep an override. Accounts is here to watch and
+  // later process the money, not to approve.
+  const canDecide = (r: AdvanceRequest) => r.project_owner_user_id === user?.id || isAdmin;
 
   const pending = requests.filter((r) => r.status === "pending");
   const decided = requests.filter((r) => r.status !== "pending");
@@ -68,20 +80,12 @@ export default function StaffAdvanceRequests() {
   };
 
   const handleDecide = async (req: AdvanceRequest, approve: boolean) => {
-    const project = projectChoice[req.id];
-    if (approve && !project) {
-      toast.error("Assign this request to a project before approving");
-      return;
-    }
-
     setActioningId(req.id);
     try {
       const { error } = await supabase
         .from("vendor_advance_requests")
         .update({
           status: approve ? "approved" : "rejected",
-          project_id: approve ? project!.id : null,
-          project_name: approve ? project!.name : null,
           reviewed_by: user?.id || null,
           reviewed_at: new Date().toISOString(),
           review_comments: comments[req.id]?.trim() || null,
@@ -108,10 +112,9 @@ export default function StaffAdvanceRequests() {
         <div className="p-4 border-b bg-card">
           <h1 className="text-xl font-semibold">Vendor Advance Requests</h1>
           <p className="text-sm text-muted-foreground">
-            Advances are judged case by case — there's no fixed policy. Assign an approved
-            request to the correct RMPL project (only projects currently in execution are
-            shown); it will be adjusted against invoices for that vendor later, the same way
-            any other advance is netted off at settlement.
+            {isAccounts
+              ? "Every advance request submitted to your organisation. Approving one is the Project Owner's call — it will be adjusted against invoices for that vendor later, the same way any other advance is netted off at settlement."
+              : "Requests routed to you as the Project Owner of the PI/Quotation each advance is issued against. Approving one will be adjusted against invoices for that vendor later, the same way any other advance is netted off at settlement."}
           </p>
         </div>
 
@@ -127,7 +130,9 @@ export default function StaffAdvanceRequests() {
               ) : pending.length === 0 ? (
                 <div className="p-10 text-center space-y-2">
                   <HandCoins className="h-10 w-10 text-muted-foreground mx-auto" />
-                  <p className="font-medium">No pending requests</p>
+                  <p className="font-medium">
+                    {isAccounts ? "No pending requests" : "Nothing awaiting your approval"}
+                  </p>
                 </div>
               ) : (
                 <div className="divide-y">
@@ -140,6 +145,11 @@ export default function StaffAdvanceRequests() {
                             {req.vendors?.vendor_code} · requested{" "}
                             {new Date(req.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
                           </p>
+                          {req.project_owner_user_id !== user?.id && req.project_owner_name && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              Awaiting {req.project_owner_name}
+                            </p>
+                          )}
                         </div>
                         <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200">Pending</Badge>
                       </div>
@@ -150,7 +160,7 @@ export default function StaffAdvanceRequests() {
                           <span className="font-semibold">{formatINR(Number(req.amount))}</span>
                         </div>
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Activity</span>
+                          <span className="text-muted-foreground">Against</span>
                           <span className="font-medium">{req.activity_name}</span>
                         </div>
                       </div>
@@ -167,51 +177,45 @@ export default function StaffAdvanceRequests() {
                           className="h-7 text-xs"
                           onClick={() => handleViewPi(req.proforma_invoice_file_key!)}
                         >
-                          <FileText className="h-3.5 w-3.5 mr-1.5" /> View Proforma Invoice
+                          <FileText className="h-3.5 w-3.5 mr-1.5" /> View PI / Quotation
                         </Button>
                       )}
 
-                      <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">Assign to project (required to approve)</Label>
-                        <ProjectCombobox
-                          value={projectChoice[req.id]?.id || null}
-                          valueName={projectChoice[req.id]?.name}
-                          onChange={(project) => setProjectChoice((prev) => ({ ...prev, [req.id]: { id: project.id, name: project.project_name } }))}
-                          disabled={actioningId === req.id}
-                        />
-                      </div>
+                      {canDecide(req) && (
+                        <>
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`comment-${req.id}`} className="text-xs text-muted-foreground">
+                              Comment (shown to vendor if rejected)
+                            </Label>
+                            <Textarea
+                              id={`comment-${req.id}`}
+                              rows={2}
+                              value={comments[req.id] || ""}
+                              onChange={(e) => setComments((prev) => ({ ...prev, [req.id]: e.target.value }))}
+                              placeholder="Optional"
+                            />
+                          </div>
 
-                      <div className="space-y-1.5">
-                        <Label htmlFor={`comment-${req.id}`} className="text-xs text-muted-foreground">
-                          Comment (shown to vendor if rejected)
-                        </Label>
-                        <Textarea
-                          id={`comment-${req.id}`}
-                          rows={2}
-                          value={comments[req.id] || ""}
-                          onChange={(e) => setComments((prev) => ({ ...prev, [req.id]: e.target.value }))}
-                          placeholder="Optional"
-                        />
-                      </div>
-
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          disabled={actioningId === req.id}
-                          onClick={() => handleDecide(req, true)}
-                        >
-                          <Check className="h-4 w-4 mr-1" /> Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-destructive border-destructive"
-                          disabled={actioningId === req.id}
-                          onClick={() => handleDecide(req, false)}
-                        >
-                          <X className="h-4 w-4 mr-1" /> Reject
-                        </Button>
-                      </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              disabled={actioningId === req.id}
+                              onClick={() => handleDecide(req, true)}
+                            >
+                              <Check className="h-4 w-4 mr-1" /> Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-destructive border-destructive"
+                              disabled={actioningId === req.id}
+                              onClick={() => handleDecide(req, false)}
+                            >
+                              <X className="h-4 w-4 mr-1" /> Reject
+                            </Button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -230,7 +234,7 @@ export default function StaffAdvanceRequests() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Vendor</TableHead>
-                        <TableHead>Activity</TableHead>
+                        <TableHead>Against</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
                         <TableHead>Project</TableHead>
                         <TableHead>Status</TableHead>
