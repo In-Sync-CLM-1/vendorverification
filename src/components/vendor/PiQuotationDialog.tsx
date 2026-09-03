@@ -89,6 +89,7 @@ export function PiQuotationDialog({ open, onOpenChange, vendorId, onSubmitted }:
           project_owner_name: project.project_owner_name,
           project_owner_email: project.project_owner_email,
           document_date: extraction?.invoice_date || null,
+          document_number: extraction?.invoice_number || null,
           amount: extraction?.invoice_amount ?? null,
           ai_extracted_data: extraction ? { document: extraction } : null,
           ai_confidence_score: extraction?.overall_confidence ?? null,

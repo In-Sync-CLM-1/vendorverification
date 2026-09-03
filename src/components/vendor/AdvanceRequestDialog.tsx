@@ -28,8 +28,10 @@ interface PendingAdvanceRequest {
 interface ApprovedPi {
   id: string;
   document_type: "proforma_invoice" | "quotation";
+  document_number: string | null;
   project_name: string;
   amount: number | null;
+  created_at: string;
 }
 
 interface AdvanceRequestDialogProps {
@@ -58,7 +60,7 @@ export function AdvanceRequestDialog({ open, onOpenChange, vendorId, onSubmitted
     queryFn: async () => {
       const { data, error } = await supabase
         .from("vendor_pi_quotations")
-        .select("id, document_type, project_name, amount")
+        .select("id, document_type, document_number, project_name, amount, created_at")
         .eq("vendor_id", vendorId)
         .eq("status", "approved")
         .order("created_at", { ascending: false });
@@ -191,8 +193,10 @@ export function AdvanceRequestDialog({ open, onOpenChange, vendorId, onSubmitted
                 <SelectContent>
                   {approvedPis.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
-                      {p.document_type === "quotation" ? "Quotation" : "Proforma Invoice"} · {p.project_name}
+                      {p.document_type === "quotation" ? "Quotation" : "Proforma Invoice"}
+                      {p.document_number ? ` · #${p.document_number}` : ""} · {p.project_name}
                       {p.amount != null ? ` · ${formatINR(p.amount)}` : ""}
+                      {` · submitted ${new Date(p.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}`}
                     </SelectItem>
                   ))}
                 </SelectContent>

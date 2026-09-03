@@ -1749,6 +1749,7 @@ export type Database = {
           amount: number | null
           created_at: string
           document_date: string | null
+          document_number: string | null
           document_type: Database["public"]["Enums"]["pi_quotation_document_type"]
           file_key: string
           id: string
@@ -1775,6 +1776,7 @@ export type Database = {
           amount?: number | null
           created_at?: string
           document_date?: string | null
+          document_number?: string | null
           document_type: Database["public"]["Enums"]["pi_quotation_document_type"]
           file_key: string
           id?: string
@@ -1801,6 +1803,7 @@ export type Database = {
           amount?: number | null
           created_at?: string
           document_date?: string | null
+          document_number?: string | null
           document_type?: Database["public"]["Enums"]["pi_quotation_document_type"]
           file_key?: string
           id?: string
