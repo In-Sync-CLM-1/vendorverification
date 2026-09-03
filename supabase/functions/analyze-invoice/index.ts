@@ -10,7 +10,7 @@ const corsHeaders = {
 };
 
 const CLAUDE_VISION_MODEL = "claude-opus-4-8";
-const TEXT_MODEL = "llama-3.3-70b-versatile";
+const TEXT_MODEL = "openai/gpt-oss-120b";
 
 const SYSTEM_PROMPT = `You are reading a vendor invoice or purchase order for an Indian B2B accounts-payable system. Extract exactly the fields below from the document. If a field is not present or not legible, return null for its value and 0 for its confidence — never guess.
 
