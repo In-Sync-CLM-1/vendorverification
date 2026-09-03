@@ -160,7 +160,8 @@ export default function ProjectOwnerApprovals() {
                         <div>
                           <p className="font-medium">{s.vendors?.company_name}</p>
                           <p className="text-xs text-muted-foreground">
-                            {s.vendors?.vendor_code} · {s.project_number || s.project_name} · submitted{" "}
+                            {s.vendors?.vendor_code}
+                            {s.document_number ? ` · #${s.document_number}` : ""} · {s.project_number || s.project_name} · submitted{" "}
                             {new Date(s.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
                           </p>
                           {s.project_owner_user_id !== user?.id && s.project_owner_name && (
@@ -284,7 +285,7 @@ export default function ProjectOwnerApprovals() {
                                         id: s.id,
                                         vendor_id: s.vendor_id,
                                         amount: Number(s.amount || 0),
-                                        label: `${s.document_type === "quotation" ? "Quotation" : "Proforma Invoice"} · ${s.project_number || s.project_name}`,
+                                        label: `${s.document_type === "quotation" ? "Quotation" : "Proforma Invoice"}${s.document_number ? ` #${s.document_number}` : ""} · ${s.project_number || s.project_name}`,
                                       })
                                     }
                                   >

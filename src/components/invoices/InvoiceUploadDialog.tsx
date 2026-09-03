@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 interface OpenPiQuotation {
   id: string;
   document_type: "proforma_invoice" | "quotation";
+  document_number: string | null;
   amount: number | null;
   project_number: string | null;
   project_name: string | null;
@@ -97,7 +98,7 @@ export function InvoiceUploadDialog({ open, onOpenChange, vendorId, onUploaded, 
     queryFn: async () => {
       const { data, error } = await supabase
         .from("vendor_pi_quotations")
-        .select("id, document_type, amount, project_number, project_name, status, created_at")
+        .select("id, document_type, document_number, amount, project_number, project_name, status, created_at")
         .eq("vendor_id", vendorId)
         .in("status", ["submitted", "approved"])
         .order("created_at", { ascending: false });
@@ -289,8 +290,10 @@ export function InvoiceUploadDialog({ open, onOpenChange, vendorId, onUploaded, 
                 {openPis.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.document_type === "quotation" ? "Quotation" : "Proforma Invoice"}
+                    {p.document_number ? ` · #${p.document_number}` : ""}
                     {p.amount != null ? ` · ${formatINR(Number(p.amount))}` : ""}
                     {p.project_number ? ` · ${p.project_number}` : ""}
+                    {` · submitted ${new Date(p.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}`}
                   </SelectItem>
                 ))}
               </SelectContent>

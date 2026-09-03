@@ -166,13 +166,14 @@ export default function VendorPortalDashboard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("vendor_pi_quotations")
-        .select("id, document_type, project_name, amount, status, review_comments, file_key, created_at")
+        .select("id, document_type, document_number, project_name, amount, status, review_comments, file_key, created_at")
         .eq("vendor_id", vendor!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []) as Array<{
         id: string;
         document_type: "proforma_invoice" | "quotation";
+        document_number: string | null;
         project_name: string;
         amount: number | null;
         status: "submitted" | "approved" | "rejected";
@@ -620,7 +621,8 @@ export default function VendorPortalDashboard() {
                     <div key={r.id} className="flex items-center justify-between gap-3 text-sm border rounded-md px-3 py-2">
                       <div className="min-w-0">
                         <p className="font-medium truncate">
-                          {r.document_type === "quotation" ? "Quotation" : "Proforma Invoice"} · {r.project_name}
+                          {r.document_type === "quotation" ? "Quotation" : "Proforma Invoice"}
+                          {r.document_number ? ` #${r.document_number}` : ""} · {r.project_name}
                         </p>
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {r.amount != null ? formatINR(r.amount) : "Amount not detected"} · submitted{" "}
