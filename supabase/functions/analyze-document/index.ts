@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { extractText, getDocumentProxy } from "https://esm.sh/unpdf@0.12.1";
+import Anthropic from "https://esm.sh/@anthropic-ai/sdk@0.112.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -43,8 +44,12 @@ function maskFieldValue(fieldName: string, value: string): string {
   return value;
 }
 
-const VISION_MODEL = "meta-llama/llama-4-maverick-17b-128e-instruct";
-const TEXT_MODEL = "llama-3.3-70b-versatile";
+// Groq decommissioned every Llama model this used (both text and vision) — see
+// https://console.groq.com/docs/deprecations. Text now runs on Groq's own gpt-oss model;
+// vision has no Groq replacement at all, so images route to Claude instead (same provider
+// analyze-invoice already uses for its image path).
+const CLAUDE_VISION_MODEL = "claude-opus-4-8";
+const TEXT_MODEL = "openai/gpt-oss-120b";
 
 const SYSTEM_PROMPT = `You are a document analysis AI for an Indian vendor onboarding platform. You analyze uploaded documents (GST Certificates, PAN Cards, Cancelled Cheques, Trade Licenses, Certificates of Incorporation, etc.) and extract key information.
 
@@ -102,6 +107,12 @@ const ANALYSIS_TOOL = {
   },
 };
 
+const ANTHROPIC_ANALYSIS_TOOL = {
+  name: "document_analysis_result",
+  description: "Return the structured analysis results for the document",
+  input_schema: ANALYSIS_TOOL.function.parameters,
+};
+
 interface AnalysisResult {
   document_type: string;
   classification_confidence: number;
@@ -109,6 +120,29 @@ interface AnalysisResult {
   overall_confidence: number;
   tampering_score: number;
   tampering_indicators: string[];
+}
+
+function normalizeAnalysis(raw: Record<string, unknown>): AnalysisResult {
+  const toInt = (v: unknown): number => {
+    const n = typeof v === "number" ? v : parseInt(String(v ?? "0"), 10);
+    return Number.isFinite(n) ? n : 0;
+  };
+  return {
+    document_type: String(raw.document_type ?? ""),
+    classification_confidence: toInt(raw.classification_confidence),
+    extracted_fields: Array.isArray(raw.extracted_fields)
+      ? (raw.extracted_fields as { field_name?: unknown; value?: unknown; confidence?: unknown }[]).map((f) => ({
+          field_name: String(f.field_name ?? ""),
+          value: String(f.value ?? ""),
+          confidence: toInt(f.confidence),
+        }))
+      : [],
+    overall_confidence: toInt(raw.overall_confidence),
+    tampering_score: toInt(raw.tampering_score),
+    tampering_indicators: Array.isArray(raw.tampering_indicators)
+      ? (raw.tampering_indicators as unknown[]).map((s) => String(s))
+      : [],
+  };
 }
 
 async function callGroq(
@@ -149,29 +183,51 @@ async function callGroq(
 
   try {
     const raw = JSON.parse(toolCall.function.arguments);
-    const toInt = (v: unknown): number => {
-      const n = typeof v === "number" ? v : parseInt(String(v ?? "0"), 10);
-      return Number.isFinite(n) ? n : 0;
-    };
-    const parsed: AnalysisResult = {
-      document_type: String(raw.document_type ?? ""),
-      classification_confidence: toInt(raw.classification_confidence),
-      extracted_fields: Array.isArray(raw.extracted_fields)
-        ? raw.extracted_fields.map((f: { field_name?: unknown; value?: unknown; confidence?: unknown }) => ({
-            field_name: String(f.field_name ?? ""),
-            value: String(f.value ?? ""),
-            confidence: toInt(f.confidence),
-          }))
-        : [],
-      overall_confidence: toInt(raw.overall_confidence),
-      tampering_score: toInt(raw.tampering_score),
-      tampering_indicators: Array.isArray(raw.tampering_indicators)
-        ? raw.tampering_indicators.map((s: unknown) => String(s))
-        : [],
-    };
-    return { ok: true, result: parsed };
+    return { ok: true, result: normalizeAnalysis(raw) };
   } catch (e) {
     return { ok: false, status: 502, message: `Failed to parse tool arguments: ${(e as Error).message}` };
+  }
+}
+
+async function callClaudeVision(
+  apiKey: string,
+  mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+  base64Data: string,
+  fileName: string,
+): Promise<{ ok: true; result: AnalysisResult } | { ok: false; status: number; message: string }> {
+  const anthropic = new Anthropic({ apiKey });
+  try {
+    const response = await anthropic.messages.create({
+      model: CLAUDE_VISION_MODEL,
+      max_tokens: 4096,
+      system: SYSTEM_PROMPT,
+      tools: [ANTHROPIC_ANALYSIS_TOOL],
+      tool_choice: { type: "tool", name: "document_analysis_result" },
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: `Analyze this document. The file name is: ${fileName}. Extract all key fields, detect the document type, and assess tampering risk.` },
+            { type: "image", source: { type: "base64", media_type: mediaType, data: base64Data } },
+          ],
+        },
+      ],
+    });
+
+    const toolUse = response.content.find((b) => b.type === "tool_use") as
+      | { type: "tool_use"; input: Record<string, unknown> }
+      | undefined;
+    if (!toolUse) {
+      return { ok: false, status: 502, message: "Claude did not return tool call output" };
+    }
+    return { ok: true, result: normalizeAnalysis(toolUse.input) };
+  } catch (e) {
+    if (e instanceof Anthropic.APIError) {
+      console.error("Claude vision error:", e.status, e.message);
+      return { ok: false, status: e.status ?? 500, message: `${e.status}: ${e.message}` };
+    }
+    console.error("Claude vision error:", e);
+    return { ok: false, status: 500, message: (e as Error).message };
   }
 }
 
@@ -262,8 +318,11 @@ serve(async (req) => {
 
     const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
     if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not configured");
 
-    let aiCall: Awaited<ReturnType<typeof callGroq>>;
+    let aiCall: Awaited<ReturnType<typeof callGroq>> | Awaited<ReturnType<typeof callClaudeVision>>;
+    let usedModel: string = mimeType === "application/pdf" ? `groq:${TEXT_MODEL}` : `claude:${CLAUDE_VISION_MODEL}`;
 
     if (mimeType === "application/pdf") {
       // Extract text from the PDF, then send to Groq's text model
@@ -290,7 +349,7 @@ serve(async (req) => {
         { type: "text", text: `File name: ${doc.file_name}\n\nDocument text:\n${trimmed}` },
       ]);
     } else {
-      // Image path — Groq vision model wants a data URL
+      // Image path — Groq has no vision model available anymore, so this goes to Claude instead
       const bytes = new Uint8Array(arrayBuffer);
       let binary = "";
       const chunkSize = 0x8000;
@@ -304,19 +363,15 @@ serve(async (req) => {
         : mimeType === "image/gif" ? "image/gif"
         : mimeType === "image/webp" ? "image/webp"
         : "image/png";
-      const dataUrl = `data:${imageMime};base64,${base64}`;
 
-      aiCall = await callGroq(GROQ_API_KEY, VISION_MODEL, [
-        { type: "text", text: `Analyze this document. The file name is: ${doc.file_name}. Extract all key fields, detect the document type, and assess tampering risk.` },
-        { type: "image_url", image_url: { url: dataUrl } },
-      ]);
+      aiCall = await callClaudeVision(ANTHROPIC_API_KEY, imageMime, base64, doc.file_name);
     }
 
     if (!aiCall.ok) {
       const errorMsg = aiCall.status === 429
         ? "Rate limit exceeded, please try again later"
         : aiCall.status === 401 || aiCall.status === 403
-        ? "AI provider rejected the API key — please update GROQ_API_KEY"
+        ? "AI provider rejected the API key — please update GROQ_API_KEY / ANTHROPIC_API_KEY"
         : `AI analysis failed (${aiCall.message.slice(0, 200)})`;
 
       await supabase
@@ -355,7 +410,7 @@ serve(async (req) => {
         confidence_score: analysisResult.overall_confidence,
         tampering_indicators: analysisResult.tampering_indicators || [],
         tampering_score: analysisResult.tampering_score,
-        ai_model_version: mimeType === "application/pdf" ? `groq:${TEXT_MODEL}` : `groq:${VISION_MODEL}`,
+        ai_model_version: usedModel,
         analyzed_at: now,
         updated_at: now,
         error_message: null,
