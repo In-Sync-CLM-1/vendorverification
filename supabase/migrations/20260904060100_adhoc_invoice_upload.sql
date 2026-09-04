@@ -23,6 +23,9 @@ ALTER TABLE public.vendor_invoices
   ADD COLUMN IF NOT EXISTS adhoc_vendor_contact TEXT;
 
 ALTER TABLE public.vendor_invoices
+  DROP CONSTRAINT IF EXISTS vendor_invoices_adhoc_shape;
+
+ALTER TABLE public.vendor_invoices
   ADD CONSTRAINT vendor_invoices_adhoc_shape CHECK (
     (is_adhoc = false AND vendor_id IS NOT NULL AND adhoc_vendor_name IS NULL)
     OR
