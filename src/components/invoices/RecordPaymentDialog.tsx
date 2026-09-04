@@ -23,7 +23,7 @@ import { Loader2, IndianRupee } from "lucide-react";
 export interface PaymentTarget {
   kind: "invoice" | "pi_quotation";
   id: string;
-  vendor_id: string;
+  vendor_id: string | null;
   amount: number;
   label: string;
 }
@@ -76,18 +76,19 @@ export function RecordPaymentDialog({
 
   // How much approved advance this vendor still has available to net off,
   // across all their invoices — purely informational, doesn't gate entry.
+  // An adhoc (unverified) vendor has no vendors row, so no advance is possible.
   const { data: advanceAvailable } = useQuery({
     queryKey: ["vendor-advance-available", target.vendor_id],
     queryFn: async () => {
       const [{ data: approved }, { data: adjustedRows }] = await Promise.all([
-        supabase.from("vendor_advance_requests").select("amount").eq("vendor_id", target.vendor_id).eq("status", "approved"),
-        supabase.from("vendor_invoice_payments").select("advance_adjusted").eq("vendor_id", target.vendor_id),
+        supabase.from("vendor_advance_requests").select("amount").eq("vendor_id", target.vendor_id!).eq("status", "approved"),
+        supabase.from("vendor_invoice_payments").select("advance_adjusted").eq("vendor_id", target.vendor_id!),
       ]);
       const totalApproved = (approved || []).reduce((s, r) => s + Number(r.amount), 0);
       const totalAdjusted = (adjustedRows || []).reduce((s, r) => s + Number(r.advance_adjusted || 0), 0);
       return Math.max(totalApproved - totalAdjusted, 0);
     },
-    enabled: open,
+    enabled: open && !!target.vendor_id,
   });
 
   const suggestPayout = () => {
