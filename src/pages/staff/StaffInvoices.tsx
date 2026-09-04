@@ -113,7 +113,7 @@ export default function StaffInvoices() {
         .maybeSingle();
       return data?.full_name || null;
     },
-    enabled: !!selected && selected.submission_source === "livecom_upload" && !!selected.submitted_by,
+    enabled: !!selected && ["livecom_upload", "adhoc_upload"].includes(selected.submission_source) && !!selected.submitted_by,
   });
 
   const { data: allocations = [] } = useQuery({
@@ -151,6 +151,7 @@ export default function StaffInvoices() {
         inv.invoice_number.toLowerCase().includes(q) ||
         (inv.vendors?.company_name || "").toLowerCase().includes(q) ||
         (inv.vendors?.vendor_code || "").toLowerCase().includes(q) ||
+        (inv.adhoc_vendor_name || "").toLowerCase().includes(q) ||
         (inv.po_number || "").toLowerCase().includes(q)
       );
     });
@@ -309,8 +310,13 @@ export default function StaffInvoices() {
                         return (
                           <TableRow key={inv.id} className="cursor-pointer" onClick={() => setSelected(inv)}>
                             <TableCell>
-                              <p className="font-medium">{inv.vendors?.company_name || "—"}</p>
+                              <p className="font-medium">{inv.is_adhoc ? inv.adhoc_vendor_name : (inv.vendors?.company_name || "—")}</p>
                               <p className="text-xs text-muted-foreground">{inv.vendors?.vendor_code}</p>
+                              {inv.is_adhoc && (
+                                <Badge variant="outline" className="mt-1 bg-red-100 text-red-800 border-red-200">
+                                  Unverified vendor
+                                </Badge>
+                              )}
                               {inv.submission_source === "livecom_upload" && (
                                 <Badge variant="outline" className="mt-1 bg-sky-100 text-sky-800 border-sky-200">
                                   Livecom upload
@@ -349,12 +355,23 @@ export default function StaffInvoices() {
                 <Badge variant="outline" className={INVOICE_STATUS_META[selected.status].className}>
                   {INVOICE_STATUS_META[selected.status].label}
                 </Badge>
+                {selected.is_adhoc && (
+                  <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">
+                    Unverified vendor
+                  </Badge>
+                )}
               </DialogTitle>
               <DialogDescription>
-                {selected.vendors?.company_name} ({selected.vendors?.vendor_code}) ·{" "}
+                {selected.is_adhoc
+                  ? selected.adhoc_vendor_name
+                  : `${selected.vendors?.company_name} (${selected.vendors?.vendor_code})`}
+                {" "}·{" "}
                 {new Date(selected.invoice_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
                 {selected.submission_source === "livecom_upload" && (
                   <> · Uploaded by Livecom{uploader ? ` (${uploader})` : ""} on the vendor's behalf</>
+                )}
+                {selected.is_adhoc && (
+                  <> · Adhoc upload{uploader ? ` by ${uploader}` : ""}{selected.adhoc_vendor_contact ? ` · Contact: ${selected.adhoc_vendor_contact}` : ""}</>
                 )}
               </DialogDescription>
             </DialogHeader>

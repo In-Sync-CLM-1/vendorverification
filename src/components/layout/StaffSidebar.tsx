@@ -26,6 +26,7 @@ import {
   HandCoins,
   ClipboardCheck,
   FileUp,
+  FilePlus2,
 } from "lucide-react";
 import {
   Sidebar,
@@ -103,7 +104,7 @@ const adminItems = [
 
 export function StaffSidebar() {
   const { signOut, user } = useAuth();
-  const { isAdmin, isPlatformAdmin, isViewOnly, isLivecomUploader } = useUserRoles();
+  const { isAdmin, isPlatformAdmin, isViewOnly, isLivecomUploader, isAdhocInvoiceUploader } = useUserRoles();
   const { tenant } = useTenant();
   const logo = useTenantLogo();
   const navigate = useNavigate();
@@ -211,6 +212,34 @@ export function StaffSidebar() {
                     >
                       <FileUp className="h-4 w-4" />
                       <span>Upload Invoice for Vendor</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+        {/* Independent of isViewOnly filtering below, same reasoning as
+            isLivecomUploader — restricted to the two named individuals granted
+            this role, regardless of what else they can do. */}
+        {isAdhocInvoiceUploader && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Adhoc Purchases</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    tooltip="Adhoc Invoice Upload"
+                    isActive={location.pathname === "/staff/adhoc-invoice-upload"}
+                  >
+                    <NavLink
+                      to="/staff/adhoc-invoice-upload"
+                      className="hover:bg-muted/50"
+                      activeClassName="bg-primary/10 text-primary font-medium"
+                    >
+                      <FilePlus2 className="h-4 w-4" />
+                      <span>Adhoc Invoice Upload</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

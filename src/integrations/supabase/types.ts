@@ -1123,9 +1123,13 @@ export type Database = {
           amount: number
           created_at: string
           id: string
+          pi_quotation_id: string | null
           proforma_invoice_file_key: string | null
           project_id: string | null
           project_name: string | null
+          project_owner_email: string | null
+          project_owner_name: string | null
+          project_owner_user_id: string | null
           requested_by: string | null
           review_comments: string | null
           reviewed_at: string | null
@@ -1143,9 +1147,13 @@ export type Database = {
           amount: number
           created_at?: string
           id?: string
+          pi_quotation_id?: string | null
           proforma_invoice_file_key?: string | null
           project_id?: string | null
           project_name?: string | null
+          project_owner_email?: string | null
+          project_owner_name?: string | null
+          project_owner_user_id?: string | null
           requested_by?: string | null
           review_comments?: string | null
           reviewed_at?: string | null
@@ -1163,9 +1171,13 @@ export type Database = {
           amount?: number
           created_at?: string
           id?: string
+          pi_quotation_id?: string | null
           proforma_invoice_file_key?: string | null
           project_id?: string | null
           project_name?: string | null
+          project_owner_email?: string | null
+          project_owner_name?: string | null
+          project_owner_user_id?: string | null
           requested_by?: string | null
           review_comments?: string | null
           reviewed_at?: string | null
@@ -1176,6 +1188,13 @@ export type Database = {
           vendor_remarks?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "vendor_advance_requests_pi_quotation_id_fkey"
+            columns: ["pi_quotation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_pi_quotations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "vendor_advance_requests_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -1566,124 +1585,6 @@ export type Database = {
           },
         ]
       }
-      vendor_invoices: {
-        Row: {
-          ai_confidence_score: number | null
-          ai_extracted_data: Json | null
-          ai_model_version: string | null
-          created_at: string
-          description: string | null
-          due_date: string | null
-          gst_amount: number
-          id: string
-          invoice_amount: number
-          invoice_date: string
-          invoice_file_key: string
-          invoice_number: string
-          po_file_key: string | null
-          po_number: string | null
-          project_name: string | null
-          project_number: string | null
-          project_owner_email: string | null
-          project_owner_name: string | null
-          project_owner_user_id: string | null
-          rejection_reason: string | null
-          reviewed_at: string | null
-          reviewed_by: string | null
-          rmpl_project_id: string | null
-          status: Database["public"]["Enums"]["invoice_status"]
-          submission_source: Database["public"]["Enums"]["invoice_submission_source"]
-          submitted_by: string | null
-          tenant_id: string
-          updated_at: string
-          vendor_id: string
-        }
-        Insert: {
-          ai_confidence_score?: number | null
-          ai_extracted_data?: Json | null
-          ai_model_version?: string | null
-          created_at?: string
-          description?: string | null
-          due_date?: string | null
-          gst_amount?: number
-          id?: string
-          invoice_amount: number
-          invoice_date: string
-          invoice_file_key: string
-          invoice_number: string
-          po_file_key?: string | null
-          po_number?: string | null
-          project_name?: string | null
-          project_number?: string | null
-          project_owner_email?: string | null
-          project_owner_name?: string | null
-          project_owner_user_id?: string | null
-          rejection_reason?: string | null
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          rmpl_project_id?: string | null
-          status?: Database["public"]["Enums"]["invoice_status"]
-          submission_source?: Database["public"]["Enums"]["invoice_submission_source"]
-          submitted_by?: string | null
-          tenant_id: string
-          updated_at?: string
-          vendor_id: string
-        }
-        Update: {
-          ai_confidence_score?: number | null
-          ai_extracted_data?: Json | null
-          ai_model_version?: string | null
-          created_at?: string
-          description?: string | null
-          due_date?: string | null
-          gst_amount?: number
-          id?: string
-          invoice_amount?: number
-          invoice_date?: string
-          invoice_file_key?: string
-          invoice_number?: string
-          po_file_key?: string | null
-          po_number?: string | null
-          project_name?: string | null
-          project_number?: string | null
-          project_owner_email?: string | null
-          project_owner_name?: string | null
-          project_owner_user_id?: string | null
-          rejection_reason?: string | null
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          rmpl_project_id?: string | null
-          status?: Database["public"]["Enums"]["invoice_status"]
-          submission_source?: Database["public"]["Enums"]["invoice_submission_source"]
-          submitted_by?: string | null
-          tenant_id?: string
-          updated_at?: string
-          vendor_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "vendor_invoices_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "vendor_invoices_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "vendor_invoices_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors_decrypted"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       vendor_invoice_project_allocations: {
         Row: {
           amount: number
@@ -1737,6 +1638,133 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_invoices: {
+        Row: {
+          adhoc_vendor_contact: string | null
+          adhoc_vendor_name: string | null
+          ai_confidence_score: number | null
+          ai_extracted_data: Json | null
+          ai_model_version: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          gst_amount: number
+          id: string
+          invoice_amount: number
+          invoice_date: string
+          invoice_file_key: string
+          invoice_number: string
+          is_adhoc: boolean
+          po_file_key: string | null
+          po_number: string | null
+          project_name: string | null
+          project_number: string | null
+          project_owner_email: string | null
+          project_owner_name: string | null
+          project_owner_user_id: string | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rmpl_project_id: string | null
+          status: Database["public"]["Enums"]["invoice_status"]
+          submission_source: Database["public"]["Enums"]["invoice_submission_source"]
+          submitted_by: string | null
+          tenant_id: string
+          updated_at: string
+          vendor_id: string | null
+        }
+        Insert: {
+          adhoc_vendor_contact?: string | null
+          adhoc_vendor_name?: string | null
+          ai_confidence_score?: number | null
+          ai_extracted_data?: Json | null
+          ai_model_version?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          gst_amount?: number
+          id?: string
+          invoice_amount: number
+          invoice_date: string
+          invoice_file_key: string
+          invoice_number: string
+          is_adhoc?: boolean
+          po_file_key?: string | null
+          po_number?: string | null
+          project_name?: string | null
+          project_number?: string | null
+          project_owner_email?: string | null
+          project_owner_name?: string | null
+          project_owner_user_id?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rmpl_project_id?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          submission_source?: Database["public"]["Enums"]["invoice_submission_source"]
+          submitted_by?: string | null
+          tenant_id: string
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Update: {
+          adhoc_vendor_contact?: string | null
+          adhoc_vendor_name?: string | null
+          ai_confidence_score?: number | null
+          ai_extracted_data?: Json | null
+          ai_model_version?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          gst_amount?: number
+          id?: string
+          invoice_amount?: number
+          invoice_date?: string
+          invoice_file_key?: string
+          invoice_number?: string
+          is_adhoc?: boolean
+          po_file_key?: string | null
+          po_number?: string | null
+          project_name?: string | null
+          project_number?: string | null
+          project_owner_email?: string | null
+          project_owner_name?: string | null
+          project_owner_user_id?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rmpl_project_id?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          submission_source?: Database["public"]["Enums"]["invoice_submission_source"]
+          submitted_by?: string | null
+          tenant_id?: string
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_invoices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_invoices_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_invoices_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_decrypted"
             referencedColumns: ["id"]
           },
         ]
@@ -2740,6 +2768,12 @@ export type Database = {
       is_internal_staff: { Args: { _user_id: string }; Returns: boolean }
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       is_vendor_user: { Args: { _user_id: string }; Returns: boolean }
+      is_view_only: { Args: { _user_id: string }; Returns: boolean }
+      refresh_invoice_payment_status: {
+        Args: { p_invoice_id: string }
+        Returns: undefined
+      }
+      set_active_org: { Args: { p_org_id: string }; Returns: string }
       set_organization_active: {
         Args: { _active: boolean; _tenant_id: string }
         Returns: Json
@@ -2747,6 +2781,36 @@ export type Database = {
       settle_pi_into_invoice: {
         Args: { p_invoice_id: string; p_pi_quotation_id: string }
         Returns: undefined
+      }
+      submit_adhoc_invoice: {
+        Args: {
+          p_adhoc_vendor_contact: string
+          p_adhoc_vendor_name: string
+          p_description: string
+          p_gst_amount: number
+          p_invoice_amount: number
+          p_invoice_date: string
+          p_invoice_file_key: string
+          p_invoice_number: string
+          p_po_file_key: string
+          p_po_number: string
+        }
+        Returns: string
+      }
+      submit_livecom_invoice: {
+        Args: {
+          p_allocations: Json
+          p_description: string
+          p_gst_amount: number
+          p_invoice_amount: number
+          p_invoice_date: string
+          p_invoice_file_key: string
+          p_invoice_number: string
+          p_po_file_key: string
+          p_po_number: string
+          p_vendor_id: string
+        }
+        Returns: string
       }
       upsert_vault_secret: {
         Args: { secret_name: string; secret_value: string }
@@ -2764,6 +2828,7 @@ export type Database = {
         | "accounts"
         | "viewer"
         | "livecom_uploader"
+        | "adhoc_invoice_uploader"
       billing_category:
         | "subscription_payment"
         | "free_trial_credit"
@@ -2796,7 +2861,7 @@ export type Database = {
         | "rejected"
         | "partially_paid"
         | "paid"
-      invoice_submission_source: "vendor" | "livecom_upload"
+      invoice_submission_source: "vendor" | "livecom_upload" | "adhoc_upload"
       pi_quotation_document_type: "proforma_invoice" | "quotation"
       pi_quotation_status: "submitted" | "approved" | "rejected"
       subscription_plan:
@@ -2843,12 +2908,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2872,11 +2937,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2897,11 +2962,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2922,11 +2987,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2939,11 +3004,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2965,6 +3030,7 @@ export const Constants = {
         "accounts",
         "viewer",
         "livecom_uploader",
+        "adhoc_invoice_uploader",
       ],
       billing_category: [
         "subscription_payment",
@@ -3002,7 +3068,7 @@ export const Constants = {
         "partially_paid",
         "paid",
       ],
-      invoice_submission_source: ["vendor", "livecom_upload"],
+      invoice_submission_source: ["vendor", "livecom_upload", "adhoc_upload"],
       pi_quotation_document_type: ["proforma_invoice", "quotation"],
       pi_quotation_status: ["submitted", "approved", "rejected"],
       subscription_plan: [
