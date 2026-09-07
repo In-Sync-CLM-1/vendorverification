@@ -8,8 +8,16 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const VISION_MODEL = "meta-llama/llama-4-maverick-17b-128e-instruct";
-const TEXT_MODEL = "llama-3.3-70b-versatile";
+// Both retired by Groq (2026-09, confirmed live: 404 model_not_found on this
+// account) -- this function has no fallback provider at all, so every
+// statement upload (text, PDF, CSV, and image) was failing outright until
+// fixed. qwen/qwen3.6-27b confirmed live to support both vision AND
+// tool-calling together (the pattern this function uses) -- distinct from
+// the Responses-API json_schema format that's still broken on it elsewhere
+// (see rmpl's _shared/groq.ts). openai/gpt-oss-120b confirmed live +
+// tool-calling capable for the text path, same as the rest of this sweep.
+const VISION_MODEL = "qwen/qwen3.6-27b";
+const TEXT_MODEL = "openai/gpt-oss-120b";
 const MAX_LINES = 200;
 
 const SYSTEM_PROMPT = `You are reading a bank account statement (or a pasted list of payment references) for an Indian company's accounts-payable team, who need to match each OUTGOING payment to a vendor invoice.
