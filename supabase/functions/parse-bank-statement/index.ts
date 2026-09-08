@@ -104,24 +104,84 @@ async function callGroq(apiKey: string, model: string, userContent: unknown) {
 
   try {
     const raw = JSON.parse(toolCall.function.arguments);
-    const list = Array.isArray(raw.payments) ? raw.payments : [];
-    const payments: ParsedPayment[] = list
-      .map((p: any) => {
-        const amount = typeof p.amount === "number" ? p.amount : parseFloat(String(p.amount ?? "").replace(/[^0-9.]/g, ""));
-        return {
-          date: typeof p.date === "string" && p.date ? p.date : null,
-          amount: Number.isFinite(amount) ? amount : 0,
-          reference: typeof p.reference === "string" && p.reference ? p.reference : null,
-          narration: typeof p.narration === "string" && p.narration ? p.narration.trim() : null,
-        };
-      })
-      .filter((p: ParsedPayment) => p.amount > 0)
-      .slice(0, MAX_LINES);
-    return { ok: true as const, payments };
+    return { ok: true as const, payments: normalizePayments(raw.payments) };
   } catch (e) {
     console.error("Failed to parse tool arguments:", e);
     return { ok: false as const, status: 502 };
   }
+}
+
+function normalizePayments(list: unknown): ParsedPayment[] {
+  return (Array.isArray(list) ? list : [])
+    .map((p: any) => {
+      const amount = typeof p.amount === "number" ? p.amount : parseFloat(String(p.amount ?? "").replace(/[^0-9.]/g, ""));
+      return {
+        date: typeof p.date === "string" && p.date ? p.date : null,
+        amount: Number.isFinite(amount) ? amount : 0,
+        reference: typeof p.reference === "string" && p.reference ? p.reference : null,
+        narration: typeof p.narration === "string" && p.narration ? p.narration.trim() : null,
+      };
+    })
+    .filter((p: ParsedPayment) => p.amount > 0)
+    .slice(0, MAX_LINES);
+}
+
+// Fallback for when Groq is down, rate-limited, or over capacity (all
+// confirmed to happen live during this sweep). Same extraction contract via
+// Anthropic's tool_use, so callers don't need to know which provider answered.
+const CLAUDE_MODEL = "claude-haiku-4-5-20251001";
+const ANTHROPIC_TOOL = {
+  name: "statement_extraction_result",
+  description: EXTRACTION_TOOL.function.description,
+  input_schema: EXTRACTION_TOOL.function.parameters,
+};
+
+async function callClaude(apiKey: string, userContent: unknown) {
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: CLAUDE_MODEL,
+      max_tokens: 4096,
+      system: SYSTEM_PROMPT,
+      tools: [ANTHROPIC_TOOL],
+      tool_choice: { type: "tool", name: "statement_extraction_result" },
+      messages: [{ role: "user", content: userContent }],
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    console.error("Claude error:", response.status, text);
+    return { ok: false as const, status: response.status };
+  }
+
+  const data = await response.json();
+  const toolUse = data.content?.find((b: any) => b.type === "tool_use");
+  if (!toolUse?.input) {
+    return { ok: false as const, status: 502 };
+  }
+  return { ok: true as const, payments: normalizePayments(toolUse.input.payments) };
+}
+
+// Groq first (cheap, fast); Claude only if Groq fails for any reason
+// (down, rate-limited, over capacity -- all confirmed to happen live).
+async function callAI(
+  groqKey: string | undefined,
+  anthropicKey: string | undefined,
+  groqModel: string,
+  groqContent: unknown,
+  claudeContent: unknown,
+) {
+  if (groqKey) {
+    const result = await callGroq(groqKey, groqModel, groqContent);
+    if (result.ok) return result;
+    console.warn("Groq failed, falling back to Claude");
+  }
+  if (!anthropicKey) {
+    return { ok: false as const, status: 500 };
+  }
+  return callClaude(anthropicKey, claudeContent);
 }
 
 Deno.serve(async (req) => {
@@ -136,7 +196,8 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const groqApiKey = Deno.env.get("GROQ_API_KEY");
-    if (!groqApiKey) {
+    const anthropicApiKey = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!groqApiKey && !anthropicApiKey) {
       return jsonResponse({ success: false, error: "AI reader not configured" }, 500);
     }
 
@@ -158,12 +219,14 @@ Deno.serve(async (req) => {
     const fileBase64: string | undefined = body.file_base64;
     const mimeType: string | undefined = body.mime_type;
 
-    let aiCall: Awaited<ReturnType<typeof callGroq>>;
+    let aiCall: Awaited<ReturnType<typeof callAI>>;
 
     if (pastedText && pastedText.trim()) {
-      aiCall = await callGroq(groqApiKey, TEXT_MODEL, [
-        { type: "text", text: `Statement text:\n${pastedText.trim().slice(0, 30000)}` },
-      ]);
+      const textBlock = `Statement text:\n${pastedText.trim().slice(0, 30000)}`;
+      aiCall = await callAI(groqApiKey, anthropicApiKey, TEXT_MODEL,
+        [{ type: "text", text: textBlock }],
+        [{ type: "text", text: textBlock }],
+      );
     } else if (fileBase64 && mimeType) {
       if (mimeType === "application/pdf") {
         const binary = atob(fileBase64);
@@ -178,16 +241,31 @@ Deno.serve(async (req) => {
             error: "This PDF has no extractable text (looks like a scanned image). Try pasting the statement text instead.",
           }, 422);
         }
-        aiCall = await callGroq(groqApiKey, TEXT_MODEL, [{ type: "text", text: `Statement text:\n${trimmed}` }]);
+        const textBlock = `Statement text:\n${trimmed}`;
+        aiCall = await callAI(groqApiKey, anthropicApiKey, TEXT_MODEL,
+          [{ type: "text", text: textBlock }],
+          [{ type: "text", text: textBlock }],
+        );
       } else if (mimeType.startsWith("text/") || mimeType === "application/csv" || mimeType === "text/csv") {
         const binary = atob(fileBase64);
-        aiCall = await callGroq(groqApiKey, TEXT_MODEL, [{ type: "text", text: `Statement text:\n${binary.slice(0, 30000)}` }]);
+        const textBlock = `Statement text:\n${binary.slice(0, 30000)}`;
+        aiCall = await callAI(groqApiKey, anthropicApiKey, TEXT_MODEL,
+          [{ type: "text", text: textBlock }],
+          [{ type: "text", text: textBlock }],
+        );
       } else if (mimeType === "image/jpeg" || mimeType === "image/jpg" || mimeType === "image/png") {
         const dataUrl = `data:${mimeType};base64,${fileBase64}`;
-        aiCall = await callGroq(groqApiKey, VISION_MODEL, [
-          { type: "text", text: "Read this bank statement image and extract the outgoing payment lines." },
-          { type: "image_url", image_url: { url: dataUrl } },
-        ]);
+        const instruction = "Read this bank statement image and extract the outgoing payment lines.";
+        aiCall = await callAI(groqApiKey, anthropicApiKey, VISION_MODEL,
+          [
+            { type: "text", text: instruction },
+            { type: "image_url", image_url: { url: dataUrl } },
+          ],
+          [
+            { type: "text", text: instruction },
+            { type: "image", source: { type: "base64", media_type: mimeType, data: fileBase64 } },
+          ],
+        );
       } else {
         return jsonResponse({ success: false, error: "Unsupported file type. Use PDF, CSV, JPG or PNG, or paste the statement text." }, 400);
       }

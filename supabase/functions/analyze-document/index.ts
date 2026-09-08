@@ -44,12 +44,16 @@ function maskFieldValue(fieldName: string, value: string): string {
   return value;
 }
 
-// Groq decommissioned every Llama model this used (both text and vision) — see
-// https://console.groq.com/docs/deprecations. Text now runs on Groq's own gpt-oss model;
-// vision has no Groq replacement at all, so images route to Claude instead (same provider
-// analyze-invoice already uses for its image path).
+// Groq decommissioned every Llama model this used (both text and vision).
+// Text runs on Groq's own gpt-oss model. Vision was believed to have no Groq
+// replacement at all -- that was wrong (only checked the model list for
+// familiar names, didn't check each model's actual capabilities): confirmed
+// live 2026-09 that qwen/qwen3.6-27b IS vision-capable and active on this
+// account. Groq now tried first for images too (cheap -- image tokens are $0
+// -- and fast), Claude Opus vision as the fallback (was the sole model before).
 const CLAUDE_VISION_MODEL = "claude-opus-4-8";
 const TEXT_MODEL = "openai/gpt-oss-120b";
+const VISION_MODEL = "qwen/qwen3.6-27b";
 
 const SYSTEM_PROMPT = `You are a document analysis AI for an Indian vendor onboarding platform. You analyze uploaded documents (GST Certificates, PAN Cards, Cancelled Cheques, Trade Licenses, Certificates of Incorporation, etc.) and extract key information.
 
@@ -149,6 +153,7 @@ async function callGroq(
   apiKey: string,
   model: string,
   userContent: unknown,
+  maxTokens = 4096,
 ): Promise<{ ok: true; result: AnalysisResult } | { ok: false; status: number; message: string }> {
   const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
@@ -158,7 +163,7 @@ async function callGroq(
     },
     body: JSON.stringify({
       model,
-      max_tokens: 4096,
+      max_tokens: maxTokens,
       temperature: 0,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
@@ -229,6 +234,79 @@ async function callClaudeVision(
     console.error("Claude vision error:", e);
     return { ok: false, status: 500, message: (e as Error).message };
   }
+}
+
+// Groq first (cheap, fast); Claude Opus vision only if Groq fails for any
+// reason (down, rate-limited, over capacity, or this account's shared 1,000
+// output-tokens/minute ceiling on this model -- all confirmed to happen live
+// during this sweep). Only jpeg/png/webp are routed to Groq -- gif support on
+// qwen3.6 hasn't been verified, so it goes straight to Claude.
+async function callVision(
+  groqKey: string | undefined,
+  anthropicKey: string,
+  mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+  base64Data: string,
+  fileName: string,
+): Promise<{ result: Awaited<ReturnType<typeof callClaudeVision>>; usedModel: string }> {
+  if (groqKey && mediaType !== "image/gif") {
+    const groqResult = await callGroq(groqKey, VISION_MODEL, [
+      { type: "text", text: `Analyze this document. The file name is: ${fileName}. Extract all key fields, detect the document type, and assess tampering risk.` },
+      { type: "image_url", image_url: { url: `data:${mediaType};base64,${base64Data}` } },
+    ], 900);
+    if (groqResult.ok) return { result: groqResult, usedModel: `groq:${VISION_MODEL}` };
+    console.warn("Groq vision failed, falling back to Claude:", groqResult.message);
+  }
+  return { result: await callClaudeVision(anthropicKey, mediaType, base64Data, fileName), usedModel: `claude:${CLAUDE_VISION_MODEL}` };
+}
+
+// Text-only Claude fallback for the PDF-with-text-layer path -- that path had
+// NO fallback at all before this (same gap fixed the same way elsewhere in
+// this sweep): every text-layer PDF failed outright whenever Groq was down,
+// rate-limited, or over capacity.
+const CLAUDE_TEXT_MODEL = "claude-haiku-4-5-20251001";
+
+async function callClaudeText(
+  apiKey: string,
+  text: string,
+): Promise<{ ok: true; result: AnalysisResult } | { ok: false; status: number; message: string }> {
+  const anthropic = new Anthropic({ apiKey });
+  try {
+    const response = await anthropic.messages.create({
+      model: CLAUDE_TEXT_MODEL,
+      max_tokens: 4096,
+      system: SYSTEM_PROMPT,
+      tools: [ANTHROPIC_ANALYSIS_TOOL],
+      tool_choice: { type: "tool", name: "document_analysis_result" },
+      messages: [{ role: "user", content: [{ type: "text", text }] }],
+    });
+    const toolUse = response.content.find((b) => b.type === "tool_use") as
+      | { type: "tool_use"; input: Record<string, unknown> }
+      | undefined;
+    if (!toolUse) {
+      return { ok: false, status: 502, message: "Claude did not return tool call output" };
+    }
+    return { ok: true, result: normalizeAnalysis(toolUse.input) };
+  } catch (e) {
+    if (e instanceof Anthropic.APIError) {
+      console.error("Claude text error:", e.status, e.message);
+      return { ok: false, status: e.status ?? 500, message: `${e.status}: ${e.message}` };
+    }
+    console.error("Claude text error:", e);
+    return { ok: false, status: 500, message: (e as Error).message };
+  }
+}
+
+async function callTextAI(
+  groqKey: string | undefined,
+  anthropicKey: string,
+  text: string,
+): Promise<{ result: Awaited<ReturnType<typeof callClaudeText>>; usedModel: string }> {
+  if (groqKey) {
+    const groqResult = await callGroq(groqKey, TEXT_MODEL, [{ type: "text", text }]);
+    if (groqResult.ok) return { result: groqResult, usedModel: `groq:${TEXT_MODEL}` };
+    console.warn("Groq text failed, falling back to Claude:", groqResult.message);
+  }
+  return { result: await callClaudeText(anthropicKey, text), usedModel: `claude:${CLAUDE_TEXT_MODEL}` };
 }
 
 serve(async (req) => {
@@ -316,13 +394,14 @@ serve(async (req) => {
     const mimeType = contentType.split(";")[0].trim();
     const arrayBuffer = await fileResponse.arrayBuffer();
 
+    // Anthropic is the universal fallback for every path here, so it's the
+    // one truly required key; Groq is an optional cost/speed optimization.
     const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
-    if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY is not configured");
     const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
     if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not configured");
 
     let aiCall: Awaited<ReturnType<typeof callGroq>> | Awaited<ReturnType<typeof callClaudeVision>>;
-    let usedModel: string = mimeType === "application/pdf" ? `groq:${TEXT_MODEL}` : `claude:${CLAUDE_VISION_MODEL}`;
+    let usedModel: string;
 
     if (mimeType === "application/pdf") {
       // Extract text from the PDF, then send to Groq's text model
@@ -345,11 +424,10 @@ serve(async (req) => {
         );
       }
 
-      aiCall = await callGroq(GROQ_API_KEY, TEXT_MODEL, [
-        { type: "text", text: `File name: ${doc.file_name}\n\nDocument text:\n${trimmed}` },
-      ]);
+      const textAi = await callTextAI(GROQ_API_KEY, ANTHROPIC_API_KEY, `File name: ${doc.file_name}\n\nDocument text:\n${trimmed}`);
+      aiCall = textAi.result;
+      usedModel = textAi.usedModel;
     } else {
-      // Image path — Groq has no vision model available anymore, so this goes to Claude instead
       const bytes = new Uint8Array(arrayBuffer);
       let binary = "";
       const chunkSize = 0x8000;
@@ -364,7 +442,9 @@ serve(async (req) => {
         : mimeType === "image/webp" ? "image/webp"
         : "image/png";
 
-      aiCall = await callClaudeVision(ANTHROPIC_API_KEY, imageMime, base64, doc.file_name);
+      const vision = await callVision(GROQ_API_KEY, ANTHROPIC_API_KEY, imageMime, base64, doc.file_name);
+      aiCall = vision.result;
+      usedModel = vision.usedModel;
     }
 
     if (!aiCall.ok) {
