@@ -11,6 +11,9 @@ const corsHeaders = {
 
 const CLAUDE_VISION_MODEL = "claude-opus-4-8";
 const TEXT_MODEL = "openai/gpt-oss-120b";
+// Groq-first for images too, same as the rest of this sweep -- qwen/qwen3.6-27b
+// confirmed live vision+tool-calling capable, image tokens priced at $0.
+const VISION_MODEL = "qwen/qwen3.6-27b";
 
 const SYSTEM_PROMPT = `You are reading a vendor invoice or purchase order for an Indian B2B accounts-payable system. Extract exactly the fields below from the document. If a field is not present or not legible, return null for its value and 0 for its confidence — never guess.
 
@@ -128,13 +131,14 @@ async function callGroq(
   apiKey: string,
   model: string,
   userContent: unknown,
+  maxTokens = 1024,
 ): Promise<{ ok: true; result: ExtractionResult } | { ok: false; status: number; message: string }> {
   const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model,
-      max_tokens: 1024,
+      max_tokens: maxTokens,
       temperature: 0,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
@@ -204,6 +208,76 @@ async function callClaudeVision(
     console.error("Claude vision error:", e);
     return { ok: false, status: 500, message: (e as Error).message };
   }
+}
+
+// Groq first (cheap, fast); Claude Opus vision only if Groq fails for any
+// reason (down, rate-limited, over capacity, or this account's shared 1,000
+// output-tokens/minute ceiling on this model -- all confirmed to happen live
+// during this sweep).
+async function callVision(
+  groqKey: string | undefined,
+  anthropicKey: string,
+  mediaType: "image/jpeg" | "image/png",
+  base64Data: string,
+): Promise<{ result: Awaited<ReturnType<typeof callClaudeVision>>; usedModel: string }> {
+  if (groqKey) {
+    const groqResult = await callGroq(groqKey, VISION_MODEL, [
+      { type: "text", text: "Read this invoice/purchase order image and extract the fields." },
+      { type: "image_url", image_url: { url: `data:${mediaType};base64,${base64Data}` } },
+    ], 900);
+    if (groqResult.ok) return { result: groqResult, usedModel: `groq:${VISION_MODEL}` };
+    console.warn("Groq vision failed, falling back to Claude:", groqResult.message);
+  }
+  return { result: await callClaudeVision(anthropicKey, mediaType, base64Data), usedModel: `claude:${CLAUDE_VISION_MODEL}` };
+}
+
+// Text-only Claude fallback for the PDF-with-text-layer path -- that path had
+// NO fallback at all before this (same gap fixed the same way elsewhere in
+// this sweep).
+const CLAUDE_TEXT_MODEL = "claude-haiku-4-5-20251001";
+
+async function callClaudeText(
+  apiKey: string,
+  text: string,
+): Promise<{ ok: true; result: ExtractionResult } | { ok: false; status: number; message: string }> {
+  const anthropic = new Anthropic({ apiKey });
+  try {
+    const response = await anthropic.messages.create({
+      model: CLAUDE_TEXT_MODEL,
+      max_tokens: 1024,
+      system: SYSTEM_PROMPT,
+      tools: [ANTHROPIC_EXTRACTION_TOOL],
+      tool_choice: { type: "tool", name: "invoice_extraction_result" },
+      messages: [{ role: "user", content: [{ type: "text", text }] }],
+    });
+    const toolUse = response.content.find((b) => b.type === "tool_use") as
+      | { type: "tool_use"; input: Record<string, unknown> }
+      | undefined;
+    if (!toolUse) {
+      return { ok: false, status: 502, message: "Claude did not return tool call output" };
+    }
+    return { ok: true, result: normalizeExtraction(toolUse.input) };
+  } catch (e) {
+    if (e instanceof Anthropic.APIError) {
+      console.error("Claude text error:", e.status, e.message);
+      return { ok: false, status: e.status ?? 500, message: `${e.status}: ${e.message}` };
+    }
+    console.error("Claude text error:", e);
+    return { ok: false, status: 500, message: (e as Error).message };
+  }
+}
+
+async function callTextAI(
+  groqKey: string | undefined,
+  anthropicKey: string,
+  text: string,
+): Promise<{ result: Awaited<ReturnType<typeof callClaudeText>>; usedModel: string }> {
+  if (groqKey) {
+    const groqResult = await callGroq(groqKey, TEXT_MODEL, [{ type: "text", text }]);
+    if (groqResult.ok) return { result: groqResult, usedModel: `groq:${TEXT_MODEL}` };
+    console.warn("Groq text failed, falling back to Claude:", groqResult.message);
+  }
+  return { result: await callClaudeText(anthropicKey, text), usedModel: `claude:${CLAUDE_TEXT_MODEL}` };
 }
 
 const CRC_TABLE = (() => {
@@ -344,7 +418,9 @@ Deno.serve(async (req) => {
     if (!cfAccountId || !cfApiToken) {
       return jsonResponse({ success: false, error: "File storage not configured" }, 500);
     }
-    if (!groqApiKey || !anthropicApiKey) {
+    // Anthropic is the universal fallback for every path here, so it's the
+    // one truly required key; Groq is an optional cost/speed optimization.
+    if (!anthropicApiKey) {
       return jsonResponse({ success: false, error: "AI reader not configured" }, 500);
     }
 
@@ -385,7 +461,7 @@ Deno.serve(async (req) => {
     const arrayBuffer = await objResp.arrayBuffer();
 
     let aiCall: Awaited<ReturnType<typeof callGroq>> | Awaited<ReturnType<typeof callClaudeVision>>;
-    let usedModel: string = mimeType === "application/pdf" ? `groq:${TEXT_MODEL}` : `claude:${CLAUDE_VISION_MODEL}`;
+    let usedModel: string;
 
     if (mimeType === "application/pdf") {
       const pdf = await getDocumentProxy(new Uint8Array(arrayBuffer));
@@ -403,12 +479,13 @@ Deno.serve(async (req) => {
             error: "This PDF has no extractable text or image content. Please fill in the details manually.",
           }, 422);
         }
-        usedModel = `claude:${CLAUDE_VISION_MODEL}`;
-        aiCall = await callClaudeVision(anthropicApiKey, "image/png", imageBase64);
+        const vision = await callVision(groqApiKey, anthropicApiKey, "image/png", imageBase64);
+        aiCall = vision.result;
+        usedModel = vision.usedModel;
       } else {
-        aiCall = await callGroq(groqApiKey, TEXT_MODEL, [
-          { type: "text", text: `Document text:\n${trimmed}` },
-        ]);
+        const textAi = await callTextAI(groqApiKey, anthropicApiKey, `Document text:\n${trimmed}`);
+        aiCall = textAi.result;
+        usedModel = textAi.usedModel;
       }
     } else {
       const bytes = new Uint8Array(arrayBuffer);
@@ -421,7 +498,9 @@ Deno.serve(async (req) => {
       const imageMime: "image/jpeg" | "image/png" =
         mimeType === "image/jpeg" || mimeType === "image/jpg" ? "image/jpeg" : "image/png";
 
-      aiCall = await callClaudeVision(anthropicApiKey, imageMime, base64);
+      const vision = await callVision(groqApiKey, anthropicApiKey, imageMime, base64);
+      aiCall = vision.result;
+      usedModel = vision.usedModel;
     }
 
     if (!aiCall.ok) {
