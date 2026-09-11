@@ -93,14 +93,17 @@ Deno.serve(async (req) => {
           .select("tenant_id, is_active")
           .eq("user_id", user.id)
           .maybeSingle();
-        const { data: roleRow } = await admin
+        // livecom_uploader uploads an invoice/PO document on a vendor's
+        // behalf; accounts/admin issue an actual Purchase Order PDF on a
+        // vendor's behalf (see issue_purchase_order) -- same "on someone's
+        // behalf" shape, different role set.
+        const { data: roleRows } = await admin
           .from("user_roles")
           .select("role")
           .eq("user_id", user.id)
-          .eq("role", "livecom_uploader")
-          .maybeSingle();
+          .in("role", ["livecom_uploader", "accounts", "admin", "platform_admin"]);
 
-        if (!staff || staff.is_active === false || !roleRow) {
+        if (!staff || staff.is_active === false || !roleRows?.length) {
           return jsonResponse({ error: "Not authorized to upload on a vendor's behalf" }, 403);
         }
 
@@ -182,6 +185,13 @@ Deno.serve(async (req) => {
           .from("vendor_pi_quotations")
           .select("id, tenant_id, vendor_id")
           .eq("file_key", key)
+          .maybeSingle());
+      }
+      if (!invoice) {
+        ({ data: invoice } = await admin
+          .from("purchase_orders")
+          .select("id, tenant_id, vendor_id")
+          .eq("pdf_file_key", key)
           .maybeSingle());
       }
       if (!invoice) {

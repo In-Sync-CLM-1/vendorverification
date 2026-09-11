@@ -46,6 +46,7 @@ import {
   AlertTriangle,
   RefreshCw,
   HandCoins,
+  FileSignature,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -111,6 +112,20 @@ export default function VendorPortalDashboard() {
         .order("payment_date", { ascending: false });
       if (error) throw error;
       return (data || []) as InvoicePayment[];
+    },
+    enabled: !!vendor?.id,
+  });
+
+  const { data: purchaseOrders = [] } = useQuery({
+    queryKey: ["portal-purchase-orders", vendor?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("purchase_orders")
+        .select("id, po_number, po_date, project_name, project_number, grand_total, pdf_file_key, invoice_id")
+        .eq("vendor_id", vendor!.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data || []) as { id: string; po_number: string; po_date: string; project_name: string; project_number: string | null; grand_total: number; pdf_file_key: string | null; invoice_id: string | null }[];
     },
     enabled: !!vendor?.id,
   });
@@ -670,6 +685,52 @@ export default function VendorPortalDashboard() {
             created_at: r.created_at,
           }))}
         />
+
+        {purchaseOrders.length > 0 && (
+          <Card>
+            <CardContent className="p-0">
+              <div className="p-4 border-b">
+                <h2 className="font-semibold flex items-center gap-1.5">
+                  <FileSignature className="h-4 w-4" /> Your Purchase Orders
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  An invoice can only be submitted against one of these.
+                </p>
+              </div>
+              <div className="divide-y">
+                {purchaseOrders.map((po) => (
+                  <div key={po.id} className="p-3 flex items-center justify-between gap-3 flex-wrap">
+                    <div>
+                      <p className="text-sm font-medium">
+                        PO #{po.po_number}
+                        {po.invoice_id && (
+                          <span className="ml-2 text-xs font-normal text-muted-foreground">· invoiced</span>
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {po.project_number || po.project_name} ·{" "}
+                        {new Date(po.po_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-semibold">{formatINR(po.grand_total)}</span>
+                      {po.pdf_file_key && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => openInvoiceFile(po.pdf_file_key!).catch((err) => toast.error(err.message))}
+                        >
+                          <FileText className="h-3 w-3 mr-1" /> View
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Invoices and advance requests, one table, newest first */}
         <Card>

@@ -17,14 +17,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, ClipboardCheck, Check, X, FileText, IndianRupee } from "lucide-react";
+import { Loader2, ClipboardCheck, Check, X, FileText, IndianRupee, FileSignature } from "lucide-react";
 import { toast } from "sonner";
 import { formatINR, openInvoiceFile } from "@/lib/invoices";
 import { RecordPaymentDialog, PaymentTarget } from "@/components/invoices/RecordPaymentDialog";
+import { IssuePODialog } from "@/components/invoices/IssuePODialog";
 
 interface PiQuotation {
   id: string;
   document_type: "proforma_invoice" | "quotation";
+  document_number: string | null;
   file_key: string;
   project_name: string;
   project_number: string | null;
@@ -46,6 +48,7 @@ export default function ProjectOwnerApprovals() {
   const [comments, setComments] = useState<Record<string, string>>({});
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [payTarget, setPayTarget] = useState<PaymentTarget | null>(null);
+  const [poTargetId, setPoTargetId] = useState<string | null>(null);
 
   // Accounts and admins oversee the whole organisation's submissions, not just
   // the ones routed to them personally — filtering everyone to "mine" left a
@@ -91,6 +94,24 @@ export default function ProjectOwnerApprovals() {
     if (p.pi_quotation_id) acc[p.pi_quotation_id] = (acc[p.pi_quotation_id] || 0) + Number(p.total_settled || 0);
     return acc;
   }, {});
+
+  // One PO per PI at most (enforced in the DB) -- a simple id -> po_number map
+  // is enough to know whether "Issue PO" or "View PO" should show.
+  const { data: purchaseOrders = [] } = useQuery({
+    queryKey: ["pi-quotation-purchase-orders", submissions.map((s) => s.id).join(",")],
+    queryFn: async () => {
+      const ids = submissions.map((s) => s.id);
+      if (ids.length === 0) return [];
+      const { data, error } = await supabase
+        .from("purchase_orders")
+        .select("id, pi_quotation_id, po_number, pdf_file_key")
+        .in("pi_quotation_id", ids);
+      if (error) throw error;
+      return (data || []) as { id: string; pi_quotation_id: string | null; po_number: string; pdf_file_key: string | null }[];
+    },
+    enabled: submissions.length > 0,
+  });
+  const poByPi = new Map(purchaseOrders.filter((p) => p.pi_quotation_id).map((p) => [p.pi_quotation_id as string, p]));
 
   const pending = submissions.filter((s) => s.status === "submitted");
   const decided = submissions.filter((s) => s.status !== "submitted");
@@ -274,6 +295,31 @@ export default function ProjectOwnerApprovals() {
                                     {formatINR(settledByPi[s.id])} paid
                                   </span>
                                 )}
+                                {poByPi.has(s.id) ? (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-xs"
+                                    onClick={() => {
+                                      const po = poByPi.get(s.id)!;
+                                      if (po.pdf_file_key) handleView(po.pdf_file_key);
+                                      else toast.error("PO issued, but the document is still being generated — try again shortly");
+                                    }}
+                                  >
+                                    <FileSignature className="h-3 w-3 mr-1" /> PO #{poByPi.get(s.id)!.po_number}
+                                  </Button>
+                                ) : (
+                                  isAccounts && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-7 text-xs"
+                                      onClick={() => setPoTargetId(s.id)}
+                                    >
+                                      <FileSignature className="h-3 w-3 mr-1" /> Issue PO
+                                    </Button>
+                                  )
+                                )}
                                 {isAccounts && (
                                   <Button
                                     size="sm"
@@ -318,6 +364,30 @@ export default function ProjectOwnerApprovals() {
           }}
         />
       )}
+
+      {poTargetId && (() => {
+        const s = submissions.find((x) => x.id === poTargetId);
+        if (!s) return null;
+        return (
+          <IssuePODialog
+            open={!!poTargetId}
+            onOpenChange={(o) => !o && setPoTargetId(null)}
+            target={{
+              id: s.id,
+              vendor_id: s.vendor_id,
+              vendorName: s.vendors?.company_name || "Vendor",
+              projectName: s.project_name,
+              projectNumber: s.project_number,
+              amount: s.amount,
+              documentType: s.document_type,
+            }}
+            onIssued={() => {
+              setPoTargetId(null);
+              queryClient.invalidateQueries({ queryKey: ["pi-quotation-purchase-orders"] });
+            }}
+          />
+        );
+      })()}
     </StaffLayout>
   );
 }
