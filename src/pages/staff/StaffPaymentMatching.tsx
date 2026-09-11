@@ -84,6 +84,8 @@ export default function StaffPaymentMatching() {
   const [parsing, setParsing] = useState(false);
   const [rows, setRows] = useState<MatchRow[]>([]);
   const [recording, setRecording] = useState(false);
+  const [search, setSearch] = useState("");
+  const [showUnmatched, setShowUnmatched] = useState(true);
 
   const { data: invoices = [] } = useQuery({
     queryKey: ["outstanding-invoices"],
@@ -132,7 +134,7 @@ export default function StaffPaymentMatching() {
         for (let i = 0; i < bytes.length; i += chunkSize) {
           binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunkSize)));
         }
-        body = { file_base64: btoa(binary), mime_type: file.type };
+        body = { file_base64: btoa(binary), mime_type: file.type, file_name: file.name };
       } else {
         body = { text: pastedText };
       }
@@ -154,6 +156,12 @@ export default function StaffPaymentMatching() {
         include: true,
       }));
       setRows(newRows);
+      setSearch("");
+      // Tally ledger uploads can return hundreds of lines (a full year's
+      // vouchers); most won't match an outstanding invoice (payroll, old
+      // settled dues, interest). Default to showing only matched lines so
+      // the table stays usable — staff can still reveal the rest.
+      setShowUnmatched(newRows.length <= 50);
       toast.success(`Found ${newRows.length} payment line${newRows.length === 1 ? "" : "s"}`);
     } catch (err: any) {
       toast.error(err.message || "Failed to parse statement");
@@ -163,6 +171,18 @@ export default function StaffPaymentMatching() {
   };
 
   const matchedCount = rows.filter((r) => r.include && r.matchedInvoiceId).length;
+
+  const visibleRows = useMemo(() => {
+    return rows.filter((r) => {
+      if (!showUnmatched && !r.matchedInvoiceId) return false;
+      if (search.trim()) {
+        const q = search.trim().toLowerCase();
+        const hay = `${r.narration || ""} ${r.reference || ""} ${r.amount}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [rows, showUnmatched, search]);
 
   const handleRecordAll = async () => {
     const toRecord = rows.filter((r) => r.include && r.matchedInvoiceId);
@@ -223,10 +243,10 @@ export default function StaffPaymentMatching() {
     <StaffLayout title="Match Payments">
       <div className="flex-1 overflow-auto">
         <div className="p-4 border-b bg-card">
-          <h1 className="text-xl font-semibold">Match Payments from Bank Statement</h1>
+          <h1 className="text-xl font-semibold">Match Payments</h1>
           <p className="text-sm text-muted-foreground">
-            Paste your bank statement text or upload a statement file — the outgoing payment lines
-            are matched to approved invoices for you to confirm and record in one go.
+            Paste statement text, or upload a bank statement or a Tally-exported ledger (.xlsx) — the
+            outgoing payment lines are matched to approved invoices for you to confirm and record in one go.
           </p>
         </div>
 
@@ -247,7 +267,7 @@ export default function StaffPaymentMatching() {
                 <div className="flex items-center gap-2">
                   <Input
                     type="file"
-                    accept=".pdf,.csv,.jpg,.jpeg,.png"
+                    accept=".pdf,.csv,.jpg,.jpeg,.png,.xlsx,.xls"
                     className="max-w-xs"
                     onChange={(e) => {
                       const f = e.target.files?.[0] || null;
@@ -271,6 +291,23 @@ export default function StaffPaymentMatching() {
           {rows.length > 0 && (
             <Card>
               <CardContent className="p-0">
+                {rows.length > 20 && (
+                  <div className="p-3 border-b flex flex-wrap items-center gap-3">
+                    <Input
+                      placeholder="Search narration, reference or amount…"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="max-w-xs h-8 text-sm"
+                    />
+                    <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Checkbox checked={showUnmatched} onCheckedChange={(v) => setShowUnmatched(v === true)} />
+                      Show unmatched lines
+                    </label>
+                    <span className="text-xs text-muted-foreground ml-auto">
+                      Showing {visibleRows.length} of {rows.length} lines
+                    </span>
+                  </div>
+                )}
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -284,7 +321,7 @@ export default function StaffPaymentMatching() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {rows.map((row) => (
+                      {visibleRows.map((row) => (
                         <TableRow key={row.id}>
                           <TableCell>
                             <Checkbox
