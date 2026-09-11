@@ -616,38 +616,54 @@ export default function StaffDashboard() {
           </Card>
         ) : (
           <>
-            {/* ── KPI row ── */}
-            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-              <StatTile
-                label={`Invoiced · ${range.label.toLowerCase()}`}
-                value={compactINR(a.kpis.invoicedInRange)}
-                deltaPct={pctDelta(a.kpis.invoicedInRange, a.kpis.invoicedPrev)}
-                spark={a.sparkInvoiced}
-              />
-              <StatTile
-                label={`Settled · ${range.label.toLowerCase()}`}
-                value={compactINR(a.kpis.settledInRange)}
-                deltaPct={pctDelta(a.kpis.settledInRange, a.kpis.settledPrev)}
-                spark={a.sparkSettled}
-              />
-              <StatTile
-                label="Outstanding today"
-                value={compactINR(a.kpis.outstandingNow)}
-                deltaPct={pctDelta(a.kpis.outstandingNow, a.kpis.outstandingPrevMonth)}
-                deltaLabel="vs a month ago"
-                upIsGood={false}
-                spark={a.sparkOutstanding}
-              />
-              <StatTile
-                label="Avg days to pay"
-                value={a.kpis.avgDaysToPay === null ? "—" : `${a.kpis.avgDaysToPay}d`}
-                deltaPct={null}
-                sub={
-                  a.kpis.paidCount > 0
-                    ? `across ${a.kpis.paidCount} invoice${a.kpis.paidCount === 1 ? "" : "s"} fully paid`
-                    : "no invoices fully paid in this period"
-                }
-              />
+            {/* ── KPI row: two groups, split by time basis so adjacent cards never
+                 mix a period total with a live balance without saying so ── */}
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                  This period · {range.label}
+                </p>
+                <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+                  <StatTile
+                    label={`Invoiced · ${range.label.toLowerCase()}`}
+                    value={compactINR(a.kpis.invoicedInRange)}
+                    deltaPct={pctDelta(a.kpis.invoicedInRange, a.kpis.invoicedPrev)}
+                    spark={a.sparkInvoiced}
+                  />
+                  <StatTile
+                    label={`Settled · ${range.label.toLowerCase()}`}
+                    value={compactINR(a.kpis.settledInRange)}
+                    deltaPct={pctDelta(a.kpis.settledInRange, a.kpis.settledPrev)}
+                    spark={a.sparkSettled}
+                  />
+                  <StatTile
+                    label="Avg days to pay"
+                    value={a.kpis.avgDaysToPay === null ? "—" : `${a.kpis.avgDaysToPay}d`}
+                    deltaPct={null}
+                    sub={
+                      a.kpis.paidCount > 0
+                        ? `${a.kpis.paidCount} invoice${a.kpis.paidCount === 1 ? "" : "s"} fully paid ${range.label.toLowerCase()}`
+                        : `no invoices fully paid ${range.label.toLowerCase()}`
+                    }
+                  />
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                  Right now · as of today
+                </p>
+                <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+                  <StatTile
+                    label="Outstanding"
+                    caption="All unpaid invoices, any date — not limited to the period above"
+                    value={compactINR(a.kpis.outstandingNow)}
+                    deltaPct={pctDelta(a.kpis.outstandingNow, a.kpis.outstandingPrevMonth)}
+                    deltaLabel="vs a month ago"
+                    upIsGood={false}
+                    spark={a.sparkOutstanding}
+                  />
+                </div>
+              </div>
             </div>
 
             {/* ── Aging + exposure ── */}
