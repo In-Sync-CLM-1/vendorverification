@@ -1644,8 +1644,6 @@ export type Database = {
       }
       vendor_invoices: {
         Row: {
-          adhoc_vendor_contact: string | null
-          adhoc_vendor_name: string | null
           ai_confidence_score: number | null
           ai_extracted_data: Json | null
           ai_model_version: string | null
@@ -1658,7 +1656,6 @@ export type Database = {
           invoice_date: string
           invoice_file_key: string
           invoice_number: string
-          is_adhoc: boolean
           po_file_key: string | null
           po_number: string | null
           project_name: string | null
@@ -1675,11 +1672,9 @@ export type Database = {
           submitted_by: string | null
           tenant_id: string
           updated_at: string
-          vendor_id: string | null
+          vendor_id: string
         }
         Insert: {
-          adhoc_vendor_contact?: string | null
-          adhoc_vendor_name?: string | null
           ai_confidence_score?: number | null
           ai_extracted_data?: Json | null
           ai_model_version?: string | null
@@ -1692,7 +1687,6 @@ export type Database = {
           invoice_date: string
           invoice_file_key: string
           invoice_number: string
-          is_adhoc?: boolean
           po_file_key?: string | null
           po_number?: string | null
           project_name?: string | null
@@ -1709,11 +1703,9 @@ export type Database = {
           submitted_by?: string | null
           tenant_id: string
           updated_at?: string
-          vendor_id?: string | null
+          vendor_id: string
         }
         Update: {
-          adhoc_vendor_contact?: string | null
-          adhoc_vendor_name?: string | null
           ai_confidence_score?: number | null
           ai_extracted_data?: Json | null
           ai_model_version?: string | null
@@ -1726,7 +1718,6 @@ export type Database = {
           invoice_date?: string
           invoice_file_key?: string
           invoice_number?: string
-          is_adhoc?: boolean
           po_file_key?: string | null
           po_number?: string | null
           project_name?: string | null
@@ -1743,7 +1734,7 @@ export type Database = {
           submitted_by?: string | null
           tenant_id?: string
           updated_at?: string
-          vendor_id?: string | null
+          vendor_id?: string
         }
         Relationships: [
           {
@@ -2781,21 +2772,6 @@ export type Database = {
       settle_pi_into_invoice: {
         Args: { p_invoice_id: string; p_pi_quotation_id: string }
         Returns: undefined
-      }
-      submit_adhoc_invoice: {
-        Args: {
-          p_adhoc_vendor_contact: string
-          p_adhoc_vendor_name: string
-          p_description: string
-          p_gst_amount: number
-          p_invoice_amount: number
-          p_invoice_date: string
-          p_invoice_file_key: string
-          p_invoice_number: string
-          p_po_file_key: string
-          p_po_number: string
-        }
-        Returns: string
       }
       submit_livecom_invoice: {
         Args: {
