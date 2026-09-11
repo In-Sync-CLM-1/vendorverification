@@ -13,6 +13,10 @@ interface StatTileProps {
   upIsGood?: boolean;
   spark?: number[];
   sub?: string;
+  /** Always visible, unlike `sub` (which is hidden once a delta shows) --
+   * use this to name the number's time basis when it differs from its
+   * neighbours, so no two adjacent cards leave that to guesswork. */
+  caption?: string;
 }
 
 function Sparkline({ data }: { data: number[] }) {
@@ -39,7 +43,7 @@ function Sparkline({ data }: { data: number[] }) {
   );
 }
 
-export function StatTile({ label, value, deltaPct, deltaLabel = "vs previous period", upIsGood = true, spark, sub }: StatTileProps) {
+export function StatTile({ label, value, deltaPct, deltaLabel = "vs previous period", upIsGood = true, spark, sub, caption }: StatTileProps) {
   const showDelta = deltaPct !== null && deltaPct !== undefined && Number.isFinite(deltaPct);
   const up = (deltaPct || 0) >= 0;
   const good = up === upIsGood;
@@ -47,6 +51,7 @@ export function StatTile({ label, value, deltaPct, deltaLabel = "vs previous per
     <Card>
       <CardContent className="p-4">
         <p className="text-xs text-muted-foreground mb-1.5">{label}</p>
+        {caption && <p className="text-[11px] text-muted-foreground/80 -mt-1 mb-1.5">{caption}</p>}
         <div className="flex items-end justify-between gap-2">
           <p className="text-2xl font-semibold leading-none tracking-tight">{value}</p>
           {spark && spark.some((v) => v > 0) && <Sparkline data={spark} />}
