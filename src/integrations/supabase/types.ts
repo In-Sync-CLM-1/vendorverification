@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       api_keys: {
@@ -960,6 +985,132 @@ export type Database = {
           },
         ]
       }
+      purchase_orders: {
+        Row: {
+          created_at: string
+          description: string
+          grand_total: number
+          hsn_sac: string | null
+          id: string
+          invoice_id: string | null
+          issued_by: string
+          issuer_address: string | null
+          issuer_gstin: string | null
+          issuer_name: string
+          pdf_file_key: string | null
+          pi_quotation_id: string | null
+          place_of_supply: string
+          po_date: string
+          po_number: string
+          project_name: string
+          project_number: string | null
+          tax_amount: number
+          tax_rate: number
+          tax_type: string
+          taxable_amount: number
+          tenant_id: string
+          vendor_address: string | null
+          vendor_gstin: string | null
+          vendor_id: string
+          vendor_name: string
+          vendor_pan: string | null
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          grand_total: number
+          hsn_sac?: string | null
+          id?: string
+          invoice_id?: string | null
+          issued_by: string
+          issuer_address?: string | null
+          issuer_gstin?: string | null
+          issuer_name: string
+          pdf_file_key?: string | null
+          pi_quotation_id?: string | null
+          place_of_supply: string
+          po_date?: string
+          po_number: string
+          project_name: string
+          project_number?: string | null
+          tax_amount?: number
+          tax_rate?: number
+          tax_type?: string
+          taxable_amount: number
+          tenant_id: string
+          vendor_address?: string | null
+          vendor_gstin?: string | null
+          vendor_id: string
+          vendor_name: string
+          vendor_pan?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          grand_total?: number
+          hsn_sac?: string | null
+          id?: string
+          invoice_id?: string | null
+          issued_by?: string
+          issuer_address?: string | null
+          issuer_gstin?: string | null
+          issuer_name?: string
+          pdf_file_key?: string | null
+          pi_quotation_id?: string | null
+          place_of_supply?: string
+          po_date?: string
+          po_number?: string
+          project_name?: string
+          project_number?: string | null
+          tax_amount?: number
+          tax_rate?: number
+          tax_type?: string
+          taxable_amount?: number
+          tenant_id?: string
+          vendor_address?: string | null
+          vendor_gstin?: string | null
+          vendor_id?: string
+          vendor_name?: string
+          vendor_pan?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_orders_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_pi_quotation_id_fkey"
+            columns: ["pi_quotation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_pi_quotations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_decrypted"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_referral_codes: {
         Row: {
           created_at: string
@@ -1025,14 +1176,20 @@ export type Database = {
       tenants: {
         Row: {
           accent_color: string | null
+          billing_address: string | null
+          cin: string | null
+          contact_email: string | null
+          contact_phone: string | null
           created_at: string
           dpo_email: string | null
+          gstin: string | null
           id: string
           is_active: boolean
           logo_url: string | null
           name: string
           notification_from_email: string | null
           notification_from_name: string | null
+          pan: string | null
           primary_color: string | null
           privacy_policy_url: string | null
           short_name: string
@@ -1044,14 +1201,20 @@ export type Database = {
         }
         Insert: {
           accent_color?: string | null
+          billing_address?: string | null
+          cin?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
           created_at?: string
           dpo_email?: string | null
+          gstin?: string | null
           id?: string
           is_active?: boolean
           logo_url?: string | null
           name: string
           notification_from_email?: string | null
           notification_from_name?: string | null
+          pan?: string | null
           primary_color?: string | null
           privacy_policy_url?: string | null
           short_name: string
@@ -1063,14 +1226,20 @@ export type Database = {
         }
         Update: {
           accent_color?: string | null
+          billing_address?: string | null
+          cin?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
           created_at?: string
           dpo_email?: string | null
+          gstin?: string | null
           id?: string
           is_active?: boolean
           logo_url?: string | null
           name?: string
           notification_from_email?: string | null
           notification_from_name?: string | null
+          pan?: string | null
           primary_color?: string | null
           privacy_policy_url?: string | null
           short_name?: string
@@ -2697,6 +2866,10 @@ export type Database = {
       }
     }
     Functions: {
+      attach_purchase_order_pdf: {
+        Args: { p_pdf_file_key: string; p_po_id: string }
+        Returns: undefined
+      }
       can_staff_access_vendor: {
         Args: { _user_id: string; _vendor_id: string }
         Returns: boolean
@@ -2760,6 +2933,53 @@ export type Database = {
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       is_vendor_user: { Args: { _user_id: string }; Returns: boolean }
       is_view_only: { Args: { _user_id: string }; Returns: boolean }
+      issue_purchase_order: {
+        Args: {
+          p_description: string
+          p_hsn_sac: string
+          p_pi_quotation_id: string
+          p_place_of_supply: string
+          p_po_date?: string
+          p_tax_rate: number
+          p_tax_type: string
+          p_taxable_amount: number
+        }
+        Returns: {
+          created_at: string
+          description: string
+          grand_total: number
+          hsn_sac: string | null
+          id: string
+          invoice_id: string | null
+          issued_by: string
+          issuer_address: string | null
+          issuer_gstin: string | null
+          issuer_name: string
+          pdf_file_key: string | null
+          pi_quotation_id: string | null
+          place_of_supply: string
+          po_date: string
+          po_number: string
+          project_name: string
+          project_number: string | null
+          tax_amount: number
+          tax_rate: number
+          tax_type: string
+          taxable_amount: number
+          tenant_id: string
+          vendor_address: string | null
+          vendor_gstin: string | null
+          vendor_id: string
+          vendor_name: string
+          vendor_pan: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "purchase_orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       refresh_invoice_payment_status: {
         Args: { p_invoice_id: string }
         Returns: undefined
@@ -2994,6 +3214,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       advance_request_status: ["pending", "approved", "rejected"],
