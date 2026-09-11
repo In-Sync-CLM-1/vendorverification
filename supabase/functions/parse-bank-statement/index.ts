@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { extractText, getDocumentProxy } from "https://esm.sh/unpdf@0.12.1";
+import * as XLSX from "https://esm.sh/xlsx@0.18.5";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,6 +20,11 @@ const corsHeaders = {
 const VISION_MODEL = "qwen/qwen3.6-27b";
 const TEXT_MODEL = "openai/gpt-oss-120b";
 const MAX_LINES = 200;
+// Tally ledger exports are read column-by-column in code (reliable, no
+// row-count ceiling) rather than through the AI, so this cap is generous —
+// a full financial year's bank book runs into the hundreds of Payment
+// vouchers, well past what an AI extraction call could return anyway.
+const TALLY_MAX_LINES = 2000;
 
 const SYSTEM_PROMPT = `You are reading a bank account statement (or a pasted list of payment references) for an Indian company's accounts-payable team, who need to match each OUTGOING payment to a vendor invoice.
 
@@ -29,6 +35,8 @@ For each outgoing payment line, extract:
 - amount: the debit amount only (numeric, no currency symbol or commas)
 - reference: the UTR / reference number / transaction ID printed on that line, if any
 - narration: the payee name / description text exactly as printed, trimmed
+
+Some statements are instead exported from Tally (an Indian accounting system) as a ledger "Book": columns Date, Particulars, Vch Type, Vch No., Debit, Credit. In a Tally bank-ledger export a "Payment" voucher (money paid out) has its amount in the CREDIT column, not Debit — the opposite of a normal bank download — so decide direction from the Vch Type column, never from column position. Ignore "Receipt" vouchers (money in). When Particulars reads "(as per details)", the real payee names and their individual amounts are listed on the rows directly below (each with its own Debit-column figure) — extract each of those as its own separate payment line, not one combined line.
 
 Return at most ${MAX_LINES} lines. If you cannot confidently identify amount for a line, skip it entirely — never invent a number. Always call the statement_extraction_result tool.`;
 
@@ -126,6 +134,126 @@ function normalizePayments(list: unknown): ParsedPayment[] {
     .slice(0, MAX_LINES);
 }
 
+// Tally exports its bank ledger "Book" as a fixed table: Date, Particulars
+// (Dr/Cr marker + name split across two cells), Vch Type, Vch No., Debit,
+// Credit. This layout is machine-generated and rigid, so it's read directly
+// rather than through the AI — deterministic, handles a full year's worth of
+// vouchers (hundreds of rows) with no token/output-length ceiling, and can't
+// hallucinate an amount. AI is only used as a fallback if a sheet doesn't
+// match this expected shape (see xlsx handling below).
+interface TallyHeader {
+  rowIndex: number;
+  dateCol: number;
+  vchTypeCol: number;
+  vchNoCol: number;
+  debitCol: number;
+  creditCol: number;
+}
+
+function findTallyHeader(rows: unknown[][]): TallyHeader | null {
+  for (let i = 0; i < Math.min(rows.length, 30); i++) {
+    const row = rows[i];
+    if (!row) continue;
+    const norm = row.map((c) => (typeof c === "string" ? c.trim().toLowerCase() : null));
+    const dateCol = norm.findIndex((c) => c === "date");
+    const vchTypeCol = norm.findIndex((c) => c === "vch type");
+    const debitCol = norm.findIndex((c) => c === "debit");
+    const creditCol = norm.findIndex((c) => c === "credit");
+    if (dateCol !== -1 && vchTypeCol !== -1 && debitCol !== -1 && creditCol !== -1) {
+      const vchNoCol = norm.findIndex((c) => c != null && c.startsWith("vch no"));
+      return { rowIndex: i, dateCol, vchTypeCol, vchNoCol: vchNoCol === -1 ? vchTypeCol + 1 : vchNoCol, debitCol, creditCol };
+    }
+  }
+  return null;
+}
+
+function tallyDateToISO(v: unknown): string | null {
+  if (v instanceof Date && !isNaN(v.getTime())) return v.toISOString().slice(0, 10);
+  return null;
+}
+
+function tallyNum(v: unknown): number | null {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim()) {
+    const n = parseFloat(v.replace(/[^0-9.-]/g, ""));
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+// The Particulars text sits between the Date and Vch Type columns, offset by
+// one cell from a Dr/Cr marker cell -- pick the first non-empty string in
+// that range that isn't the marker itself, so exact column offsets don't
+// need to be hardcoded.
+function tallyParticulars(row: unknown[], dateCol: number, vchTypeCol: number): string | null {
+  for (let c = dateCol + 1; c < vchTypeCol; c++) {
+    const v = row[c];
+    if (typeof v === "string") {
+      const t = v.trim();
+      if (t && t !== "Dr" && t !== "Cr") return t;
+    }
+  }
+  return null;
+}
+
+function extractTallyPayments(rows: unknown[][], header: TallyHeader): ParsedPayment[] {
+  const { rowIndex, dateCol, vchTypeCol, vchNoCol, debitCol, creditCol } = header;
+  const out: ParsedPayment[] = [];
+  let currentDate: string | null = null;
+  let currentVchNo: string | null = null;
+  let currentIsPayment = false;
+  let currentIsBreakup = false;
+
+  for (let i = rowIndex + 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row) continue;
+
+    const rowDate = tallyDateToISO(row[dateCol]);
+    const isNewVoucher = rowDate !== null;
+    const particulars = tallyParticulars(row, dateCol, vchTypeCol);
+
+    if (isNewVoucher) {
+      const vchTypeCell = row[vchTypeCol];
+      const vchNoCell = row[vchNoCol];
+      currentDate = rowDate;
+      currentVchNo = typeof vchNoCell === "string" ? vchNoCell.trim() : (vchNoCell != null ? String(vchNoCell).trim() : null);
+      currentIsPayment = typeof vchTypeCell === "string" && vchTypeCell.trim() === "Payment";
+      currentIsBreakup = currentIsPayment && (particulars || "").toLowerCase().trim() === "(as per details)";
+
+      if (currentIsPayment && !currentIsBreakup) {
+        const credit = tallyNum(row[creditCol]);
+        if (credit && credit > 0) {
+          out.push({ date: currentDate, amount: credit, reference: currentVchNo, narration: particulars });
+        }
+      }
+    } else if (currentIsPayment && currentIsBreakup) {
+      // Sub-row under a multi-party payment voucher (e.g. a payroll run) --
+      // its own debit-column figure is that one payee's share of the total.
+      const debit = tallyNum(row[debitCol]);
+      if (debit && debit > 0 && particulars) {
+        out.push({ date: currentDate, amount: debit, reference: currentVchNo, narration: particulars });
+      }
+    }
+  }
+
+  return out.slice(0, TALLY_MAX_LINES);
+}
+
+function xlsxSheetsToRows(bytes: Uint8Array): { sheetName: string; rows: unknown[][] }[] {
+  const workbook = XLSX.read(bytes, { type: "array", cellDates: true });
+  return workbook.SheetNames.map((sheetName) => ({
+    sheetName,
+    rows: XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, raw: true, defval: null }) as unknown[][],
+  }));
+}
+
+function xlsxSheetsToCsvText(bytes: Uint8Array): string {
+  const workbook = XLSX.read(bytes, { type: "array", cellDates: true });
+  return workbook.SheetNames
+    .map((name) => `Sheet: ${name}\n${XLSX.utils.sheet_to_csv(workbook.Sheets[name])}`)
+    .join("\n\n");
+}
+
 // Fallback for when Groq is down, rate-limited, or over capacity (all
 // confirmed to happen live during this sweep). Same extraction contract via
 // Anthropic's tool_use, so callers don't need to know which provider answered.
@@ -218,10 +346,54 @@ Deno.serve(async (req) => {
     const pastedText: string | undefined = body.text;
     const fileBase64: string | undefined = body.file_base64;
     const mimeType: string | undefined = body.mime_type;
+    const fileName: string | undefined = body.file_name;
 
     let aiCall: Awaited<ReturnType<typeof callAI>>;
 
-    if (pastedText && pastedText.trim()) {
+    const isXlsx = !!fileBase64 && (
+      mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+      mimeType === "application/vnd.ms-excel" ||
+      /\.xlsx$|\.xls$/i.test(fileName || "")
+    );
+
+    if (isXlsx) {
+      const binary = atob(fileBase64!);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
+      let tallyPayments: ParsedPayment[] = [];
+      try {
+        const sheets = xlsxSheetsToRows(bytes);
+        for (const { rows } of sheets) {
+          const header = findTallyHeader(rows);
+          if (header) tallyPayments = tallyPayments.concat(extractTallyPayments(rows, header));
+        }
+      } catch (e) {
+        console.error("xlsx parse failed:", e);
+      }
+
+      if (tallyPayments.length > 0) {
+        return jsonResponse({ success: true, payments: tallyPayments.slice(0, TALLY_MAX_LINES) });
+      }
+
+      // Doesn't match Tally's ledger layout (or came back empty) -- fall back
+      // to reading it as generic tabular text through the AI, same as a CSV.
+      let csvText = "";
+      try {
+        csvText = xlsxSheetsToCsvText(bytes);
+      } catch (e) {
+        return jsonResponse({ success: false, error: "Could not read this spreadsheet" }, 422);
+      }
+      const trimmed = csvText.trim().slice(0, 30000);
+      if (!trimmed) {
+        return jsonResponse({ success: false, error: "This spreadsheet appears to be empty" }, 422);
+      }
+      const textBlock = `Statement text:\n${trimmed}`;
+      aiCall = await callAI(groqApiKey, anthropicApiKey, TEXT_MODEL,
+        [{ type: "text", text: textBlock }],
+        [{ type: "text", text: textBlock }],
+      );
+    } else if (pastedText && pastedText.trim()) {
       const textBlock = `Statement text:\n${pastedText.trim().slice(0, 30000)}`;
       aiCall = await callAI(groqApiKey, anthropicApiKey, TEXT_MODEL,
         [{ type: "text", text: textBlock }],
