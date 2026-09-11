@@ -92,6 +92,30 @@ export function useInvoiceAnalytics(range: AnalyticsRange, vendorFilter: string)
         ? 0
         : Math.max(0, Number(inv.invoice_amount) - (settledByInvoice.get(inv.id) || 0));
 
+    // Same per-invoice clamped snapshot as outstandingOf/outstandingNow, but
+    // only counting invoices raised and payments made by a given cutoff date
+    // -- used for "vs a month ago" so both sides of the comparison are the
+    // same kind of number. (The old comparison used a monthly net-flow
+    // running total instead, which can drift from the real clamped balance
+    // whenever a payment lands in a different month than its invoice, or a
+    // vendor is ever overpaid on one invoice while underpaid on another --
+    // that drift was producing wildly wrong "vs a month ago" percentages.)
+    const outstandingAsOf = (cutoffIso: string) => {
+      const settledAsOf = new Map<string, number>();
+      for (const p of vPayments) {
+        if (p.payment_date <= cutoffIso) {
+          settledAsOf.set(p.invoice_id, (settledAsOf.get(p.invoice_id) || 0) + paymentSettled(p));
+        }
+      }
+      let total = 0;
+      for (const i of vInvoices) {
+        if (i.status === "paid" || i.status === "rejected") continue;
+        if (i.invoice_date > cutoffIso) continue;
+        total += Math.max(0, Number(i.invoice_amount) - (settledAsOf.get(i.id) || 0));
+      }
+      return total;
+    };
+
     // ── date scope (flow metrics) ──
     const localDay = (d: Date) =>
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -140,6 +164,8 @@ export function useInvoiceAnalytics(range: AnalyticsRange, vendorFilter: string)
     const invoicedInRange = rangeInvoices.filter((i) => i.status !== "rejected").reduce((s, i) => s + Number(i.invoice_amount), 0);
     const settledInRange = rangePayments.reduce((s, p) => s + paymentSettled(p), 0);
     const outstandingNow = vInvoices.reduce((s, i) => s + outstandingOf(i), 0);
+    const oneMonthAgoIso = localDay(new Date(today.getFullYear(), today.getMonth() - 1, today.getDate()));
+    const outstandingPrevMonth = outstandingAsOf(oneMonthAgoIso);
 
     let invoicedPrev: number | null = null, settledPrev: number | null = null;
     if (range.from && range.to) {
@@ -543,7 +569,7 @@ export function useInvoiceAnalytics(range: AnalyticsRange, vendorFilter: string)
         invoicedInRange, invoicedPrev,
         settledInRange, settledPrev,
         outstandingNow,
-        outstandingPrevMonth: sparkOutstanding[10] ?? null,
+        outstandingPrevMonth,
         avgDaysToPay, paidCount: paidInRange.length,
       },
       sparkInvoiced, sparkSettled, sparkOutstanding,
