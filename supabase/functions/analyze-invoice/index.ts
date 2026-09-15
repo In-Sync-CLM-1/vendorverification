@@ -433,21 +433,44 @@ Deno.serve(async (req) => {
       return jsonResponse({ success: false, error: "Not signed in" }, 401);
     }
 
+    const { file_key } = await req.json();
+    if (!file_key || typeof file_key !== "string" || !file_key.startsWith("invoices/")) {
+      return jsonResponse({ success: false, error: "file_key is required" }, 400);
+    }
+    // file_key shape: invoices/{tenant_id}/{vendor_id}/... -- same convention
+    // vendor-invoice-file writes it in, used here instead of a DB lookup
+    // because the invoice row doesn't exist yet at parse time.
+    const [, keyTenantId, keyVendorId] = file_key.split("/");
+
     const { data: link } = await admin
       .from("vendor_users")
       .select("vendor_id, tenant_id, is_active")
       .eq("user_id", user.id)
       .maybeSingle();
-    if (!link || link.is_active === false) {
-      return jsonResponse({ success: false, error: "Only vendor accounts can use this" }, 403);
+
+    let authorized = !!link && link.is_active !== false
+      && link.tenant_id === keyTenantId && link.vendor_id === keyVendorId;
+
+    // Not a vendor upload -- allow the same staff roles vendor-invoice-file
+    // already lets file an invoice/PO on a vendor's behalf (Livecom upload,
+    // accounts/admin issuing a PO), scoped to their own tenant.
+    if (!authorized) {
+      const { data: staff } = await admin
+        .from("profiles")
+        .select("tenant_id, is_active")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (staff && staff.is_active !== false && staff.tenant_id === keyTenantId) {
+        const { data: roleRows } = await admin
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .in("role", ["livecom_uploader", "accounts", "admin", "platform_admin"]);
+        authorized = !!roleRows?.length;
+      }
     }
 
-    const { file_key } = await req.json();
-    if (!file_key || typeof file_key !== "string") {
-      return jsonResponse({ success: false, error: "file_key is required" }, 400);
-    }
-    const expectedPrefix = `invoices/${link.tenant_id}/${link.vendor_id}/`;
-    if (!file_key.startsWith(expectedPrefix)) {
+    if (!authorized) {
       return jsonResponse({ success: false, error: "Not authorized for this file" }, 403);
     }
 
