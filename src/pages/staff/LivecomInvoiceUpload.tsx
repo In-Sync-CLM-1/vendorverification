@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/table";
 import { VendorCombobox, VendorOption } from "@/components/shared/VendorCombobox";
 import { ProjectCombobox, RmplProject } from "@/components/shared/ProjectCombobox";
-import { uploadInvoiceFile, formatINR, INVOICE_STATUS_META, InvoiceStatus } from "@/lib/invoices";
+import { uploadInvoiceFile, analyzeInvoiceFile, formatINR, INVOICE_STATUS_META, InvoiceStatus } from "@/lib/invoices";
 import { toast } from "sonner";
 import { Loader2, Upload, Trash2, Plus, FileUp } from "lucide-react";
 
@@ -107,6 +107,18 @@ export default function LivecomInvoiceUpload() {
     try {
       const key = await uploadInvoiceFile(file, vendor.id);
       setInvoiceFileKey(key);
+      try {
+        const result = await analyzeInvoiceFile(key);
+        if (result.invoice_number) setInvoiceNumber(result.invoice_number);
+        if (result.invoice_date) setInvoiceDate(result.invoice_date);
+        if (result.invoice_amount != null) setAmount(String(result.invoice_amount));
+        if (result.gst_amount != null) setGstAmount(String(result.gst_amount));
+        if (result.description) setDescription(result.description);
+        if (result.po_number) setPoNumber(result.po_number);
+        toast.success("Invoice read — please review the fields below");
+      } catch (err: any) {
+        toast.error(err.message || "Could not read this file automatically — please fill in the details below");
+      }
     } catch (err: any) {
       toast.error(err.message || "Upload failed. Please try again.");
     } finally {
