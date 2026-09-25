@@ -19,6 +19,7 @@ export interface PurchaseOrder {
   issuer_gstin: string | null;
   project_number: string | null;
   project_name: string;
+  project_manager: string | null;
   place_of_supply: string;
   description: string;
   hsn_sac: string | null;
@@ -177,7 +178,15 @@ export function renderPurchaseOrderPdf(po: PurchaseOrder): Blob {
   doc.text("Place Of Supply :", margin, y);
   doc.setFont("helvetica", "normal");
   doc.text(po.place_of_supply, margin + 100, y);
-  y += 24;
+  y += 14;
+  if (po.project_manager) {
+    doc.setFont("helvetica", "bold");
+    doc.text("Project Manager :", margin, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(po.project_manager, margin + 100, y);
+    y += 14;
+  }
+  y += 10;
 
   // Item table
   const tableX = margin;

@@ -1003,6 +1003,7 @@ export type Database = {
           po_date: string
           po_number: string
           project_name: string
+          project_manager: string | null
           project_number: string | null
           tax_amount: number
           tax_rate: number
@@ -1032,6 +1033,7 @@ export type Database = {
           po_date?: string
           po_number: string
           project_name: string
+          project_manager?: string | null
           project_number?: string | null
           tax_amount?: number
           tax_rate?: number
@@ -1061,6 +1063,7 @@ export type Database = {
           po_date?: string
           po_number?: string
           project_name?: string
+          project_manager?: string | null
           project_number?: string | null
           tax_amount?: number
           tax_rate?: number
