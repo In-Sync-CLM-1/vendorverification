@@ -123,8 +123,9 @@ export function renderPurchaseOrderPdf(po: PurchaseOrder): Blob {
   doc.setFont("helvetica", "bold");
   doc.text("Vendor :", margin, y);
   doc.setFont("helvetica", "normal");
-  doc.text(po.vendor_name, margin + 55, y);
-  let vy = y + 14;
+  const vendorNameLines = doc.splitTextToSize(po.vendor_name, colWidth - 55);
+  doc.text(vendorNameLines, margin + 55, y);
+  let vy = y + vendorNameLines.length * 12 + 2;
   doc.setFont("helvetica", "bold");
   doc.text("Address:", margin, vy);
   doc.setFont("helvetica", "normal");
