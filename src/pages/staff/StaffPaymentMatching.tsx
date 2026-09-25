@@ -4,7 +4,6 @@ import { StaffLayout } from "@/components/layout/StaffLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -79,7 +78,6 @@ function bestMatch(line: ParsedLine, candidates: OutstandingInvoice[]): string |
 
 export default function StaffPaymentMatching() {
   const queryClient = useQueryClient();
-  const [pastedText, setPastedText] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [parsing, setParsing] = useState(false);
   const [rows, setRows] = useState<MatchRow[]>([]);
@@ -119,25 +117,20 @@ export default function StaffPaymentMatching() {
   }, [invoices, payments]);
 
   const handleParse = async () => {
-    if (!pastedText.trim() && !file) {
-      toast.error("Paste the statement text or choose a file");
+    if (!file) {
+      toast.error("Choose a Tally-exported bank ledger (.xlsx) file");
       return;
     }
     setParsing(true);
     try {
-      let body: Record<string, unknown>;
-      if (file) {
-        const buf = await file.arrayBuffer();
-        const bytes = new Uint8Array(buf);
-        let binary = "";
-        const chunkSize = 0x8000;
-        for (let i = 0; i < bytes.length; i += chunkSize) {
-          binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunkSize)));
-        }
-        body = { file_base64: btoa(binary), mime_type: file.type, file_name: file.name };
-      } else {
-        body = { text: pastedText };
+      const buf = await file.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let binary = "";
+      const chunkSize = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunkSize)));
       }
+      const body = { file_base64: btoa(binary), mime_type: file.type, file_name: file.name };
 
       const { data, error } = await supabase.functions.invoke("parse-bank-statement", { body });
       if (error) throw new Error("Could not read this statement");
@@ -245,39 +238,25 @@ export default function StaffPaymentMatching() {
         <div className="p-4 border-b bg-card">
           <h1 className="text-xl font-semibold">Match Payments</h1>
           <p className="text-sm text-muted-foreground">
-            Paste statement text, or upload a bank statement or a Tally-exported ledger (.xlsx) — the
-            outgoing payment lines are matched to approved invoices for you to confirm and record in one go.
+            Upload a Tally-exported bank ledger (.xlsx) — the outgoing payment lines are matched to
+            approved invoices for you to confirm and record in one go.
           </p>
         </div>
 
         <div className="p-4 space-y-4">
           <Card>
             <CardContent className="p-4 space-y-3">
-              <Textarea
-                placeholder="Paste bank statement rows here (date, amount, UTR/reference, narration)…"
-                rows={5}
-                value={pastedText}
-                onChange={(e) => {
-                  setPastedText(e.target.value);
-                  if (e.target.value) setFile(null);
-                }}
-                disabled={!!file}
-              />
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
                   <Input
                     type="file"
-                    accept=".pdf,.csv,.jpg,.jpeg,.png,.xlsx,.xls"
+                    accept=".xlsx,.xls"
                     className="max-w-xs"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0] || null;
-                      setFile(f);
-                      if (f) setPastedText("");
-                    }}
+                    onChange={(e) => setFile(e.target.files?.[0] || null)}
                   />
                   {file && <Badge variant="outline"><Upload className="h-3 w-3 mr-1" />{file.name}</Badge>}
                 </div>
-                <Button onClick={handleParse} disabled={parsing}>
+                <Button onClick={handleParse} disabled={parsing || !file}>
                   {parsing ? (
                     <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Reading…</>
                   ) : (
