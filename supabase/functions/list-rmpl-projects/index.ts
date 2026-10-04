@@ -94,15 +94,14 @@ Deno.serve(async (req) => {
     // has more projects than one read can return (PostgREST caps a read at
     // 1,000), so the picker never loads the whole list: it sends what the user
     // typed and gets the matches back. `ids` resolves a saved selection. With
-    // neither, the 50 most recently created come back, plus the standing
-    // internal-billing project.
+    // neither, nothing is fetched.
     const body = await req.json().catch(() => ({})) as { search?: string; ids?: string[] };
     const ids = (body.ids ?? []).filter((v) => /^[0-9a-f-]{36}$/i.test(v)).slice(0, 200);
     const term = String(body.search ?? "").replace(/[,()"*%\\]/g, " ").trim();
     const params = new URLSearchParams({
       select: "id,project_name,project_number,project_owner",
       order: "project_name.asc",
-      limit: "50",
+      limit: "20",
     });
     if (ids.length > 0) {
       params.set("id", `in.(${ids.join(",")})`);
@@ -110,7 +109,7 @@ Deno.serve(async (req) => {
     } else if (term) {
       params.set("or", `(project_name.ilike.*${term}*,project_number.ilike.*${term}*)`);
     } else {
-      params.set("or", `(project_number.in.(${ALWAYS_INCLUDED_PROJECT_NUMBERS.join(",")}),created_at.gte.${new Date(Date.now() - 180 * 864e5).toISOString()})`);
+      return jsonResponse({ projects: [] });
     }
 
     const rmplRes = await fetch(`${rmplUrl}/rest/v1/projects?${params.toString()}`, {

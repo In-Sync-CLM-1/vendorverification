@@ -47,12 +47,12 @@ export function ProjectCombobox({ value, valueName, onChange, disabled }: Projec
       if (error) throw new Error("Could not load projects from RMPL");
       return (data?.projects || []) as RmplProject[];
     },
-    enabled: open,
+    enabled: open && term.length > 0,
     staleTime: 60_000,
     placeholderData: keepPreviousData,
   });
 
-  const filtered = projects; // matched by name or number on the server
+  const filtered = search.trim() ? projects : []; // searched server-side; nothing shown until typing
   const selectedName = projects.find((p) => p.id === value)?.project_name || valueName;
 
   return (
@@ -81,7 +81,7 @@ export function ProjectCombobox({ value, valueName, onChange, disabled }: Projec
               <CommandEmpty>Could not load projects from RMPL.</CommandEmpty>
             ) : (
               <>
-                <CommandEmpty>No matching project.</CommandEmpty>
+                <CommandEmpty>{search.trim() ? "No matching project." : "Type a project name or number to search."}</CommandEmpty>
                 <CommandGroup>
                   {filtered.map((p) => (
                     <CommandItem
