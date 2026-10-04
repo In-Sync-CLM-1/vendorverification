@@ -71,9 +71,9 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Only staff or vendor users can view the project list" }, 403);
     }
 
-    // Projects in execution, plus a small allow-list of standing projects that
-    // never reach that status but still get billed against — RMPL-26-999
-    // ("RMPL Internal") is the catch-all every internal billing is raised on.
+    // A small allow-list of standing projects that are always offered —
+    // RMPL-26-999 ("RMPL Internal") is the catch-all every internal billing is
+    // raised on.
     const ALWAYS_INCLUDED_PROJECT_NUMBERS = ["RMPL-26-999"];
 
     // Every project must be able to accept a PI — that's the business process.
@@ -90,12 +90,28 @@ Deno.serve(async (req) => {
 
     const { data: callerTenantId } = await admin.rpc("get_user_tenant_id", { _user_id: user.id });
 
+    // Every RMPL project can be billed against, whatever its status, but RMPL
+    // has more projects than one read can return (PostgREST caps a read at
+    // 1,000), so the picker never loads the whole list: it sends what the user
+    // typed and gets the matches back. `ids` resolves a saved selection. With
+    // neither, the 50 most recently created come back, plus the standing
+    // internal-billing project.
+    const body = await req.json().catch(() => ({})) as { search?: string; ids?: string[] };
+    const ids = (body.ids ?? []).filter((v) => /^[0-9a-f-]{36}$/i.test(v)).slice(0, 200);
+    const term = String(body.search ?? "").replace(/[,()"*%\\]/g, " ").trim();
     const params = new URLSearchParams({
       select: "id,project_name,project_number,project_owner",
-      or: `(status.eq.execution,project_number.in.(${ALWAYS_INCLUDED_PROJECT_NUMBERS.join(",")}))`,
       order: "project_name.asc",
-      limit: "200",
+      limit: "50",
     });
+    if (ids.length > 0) {
+      params.set("id", `in.(${ids.join(",")})`);
+      params.set("limit", "200");
+    } else if (term) {
+      params.set("or", `(project_name.ilike.*${term}*,project_number.ilike.*${term}*)`);
+    } else {
+      params.set("or", `(project_number.in.(${ALWAYS_INCLUDED_PROJECT_NUMBERS.join(",")}),created_at.gte.${new Date(Date.now() - 180 * 864e5).toISOString()})`);
+    }
 
     const rmplRes = await fetch(`${rmplUrl}/rest/v1/projects?${params.toString()}`, {
       headers: {
