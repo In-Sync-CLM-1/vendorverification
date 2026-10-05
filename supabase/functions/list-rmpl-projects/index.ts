@@ -147,7 +147,23 @@ Deno.serve(async (req) => {
     // holds a masked value, so comparing against that column matches nobody and
     // every project would come back with no owner.
     const ownerEmails = [...new Set(owners.map((o) => o.email).filter((e): e is string => !!e))];
-    const lookupEmails = [...new Set([...ownerEmails, defaultApproverEmail].filter((e): e is string => !!e))];
+    // Approval can be moved to someone else for a given owner (e.g. an owner who
+    // has left) without touching who owns the project in RMPL.
+    const { data: overrideRows } = await admin
+      .from("pi_approver_overrides")
+      .select("owner_email, approver_email")
+      .eq("tenant_id", callerTenantId ?? "");
+    const approverOverride = new Map(
+      (overrideRows ?? []).map((r: { owner_email: string; approver_email: string }) => [
+        r.owner_email.toLowerCase(),
+        r.approver_email.toLowerCase(),
+      ]),
+    );
+    const lookupEmails = [
+      ...new Set(
+        [...ownerEmails, ...approverOverride.values(), defaultApproverEmail].filter((e): e is string => !!e),
+      ),
+    ];
     let localMatches: LocalStaffMatch[] = [];
     if (lookupEmails.length > 0) {
       const { data, error: matchError } = await admin.rpc("find_staff_by_emails", {
@@ -183,7 +199,9 @@ Deno.serve(async (req) => {
 
       // The project's own owner approves whenever they have an account here;
       // otherwise it goes to Accounts so the vendor is never blocked.
-      const approver = isInternalBilling ? defaultApprover : ownerMatch ?? defaultApprover;
+      const overrideEmail = ownerEmail ? approverOverride.get(ownerEmail.toLowerCase()) : undefined;
+      const overrideMatch = overrideEmail ? localByEmail.get(overrideEmail) ?? null : null;
+      const approver = isInternalBilling ? defaultApprover : overrideMatch ?? ownerMatch ?? defaultApprover;
 
       return {
         id: p.id,
