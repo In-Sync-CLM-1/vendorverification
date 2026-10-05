@@ -20,6 +20,7 @@ export interface PurchaseOrder {
   project_number: string | null;
   project_name: string;
   project_manager: string | null;
+  additional_payment_terms?: string | null;
   place_of_supply: string;
   description: string;
   hsn_sac: string | null;
@@ -253,6 +254,13 @@ export function renderPurchaseOrderPdf(po: PurchaseOrder): Blob {
     doc.text(lines, margin + 16, y);
     y += lines.length * 10 + 4;
   });
+  // Extra payment terms entered at issue time sit after the standard list;
+  // the standard terms above are never replaced.
+  if (po.additional_payment_terms) {
+    const lines = doc.splitTextToSize(`Additional payment terms: ${po.additional_payment_terms}`, pageWidth - margin * 2 - 16);
+    doc.text(lines, margin + 16, y);
+    y += lines.length * 10 + 4;
+  }
 
   y += 10;
   doc.setFont("helvetica", "bold");
@@ -279,6 +287,7 @@ interface IssuePoInput {
   tax_rate: number;
   po_date: string;
   vendor_id: string;
+  additional_payment_terms?: string;
 }
 
 /** Calls issue_purchase_order, renders the PDF from the returned row, uploads it, and attaches the key. */
@@ -295,6 +304,13 @@ export async function issuePurchaseOrder(input: IssuePoInput): Promise<PurchaseO
   });
   if (error) throw new Error(error.message);
   const po = data as PurchaseOrder;
+
+  const extraTerms = (input.additional_payment_terms || "").trim();
+  if (extraTerms) {
+    const { error: termsError } = await supabase.rpc("set_po_additional_terms", { p_po_id: po.id, p_terms: extraTerms });
+    if (termsError) throw new Error(`PO ${po.po_number} was issued but the additional payment terms could not be saved: ${termsError.message}`);
+    po.additional_payment_terms = extraTerms;
+  }
 
   try {
     const blob = renderPurchaseOrderPdf(po);
