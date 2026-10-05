@@ -44,6 +44,7 @@ export function IssuePODialog({ open, onOpenChange, target, onIssued }: IssuePOD
   const [taxType, setTaxType] = useState<"igst" | "cgst_sgst" | "none">("igst");
   const [taxRate, setTaxRate] = useState("18");
   const [poDate, setPoDate] = useState(new Date().toISOString().slice(0, 10));
+  const [additionalTerms, setAdditionalTerms] = useState("");
   const [saving, setSaving] = useState(false);
 
   const { data: gstInfo } = useQuery({
@@ -62,6 +63,7 @@ export function IssuePODialog({ open, onOpenChange, target, onIssued }: IssuePOD
     setHsnSac("");
     setPlaceOfSupply("");
     setPoDate(new Date().toISOString().slice(0, 10));
+    setAdditionalTerms("");
     setTaxRate("18");
     // The PI's own amount is treated as grand-total-inclusive, same convention
     // as everywhere else this app captures an "amount" from AI extraction --
@@ -101,6 +103,7 @@ export function IssuePODialog({ open, onOpenChange, target, onIssued }: IssuePOD
         tax_rate: rate,
         po_date: poDate,
         vendor_id: target.vendor_id,
+        additional_payment_terms: additionalTerms,
       });
       toast.success("Purchase Order issued");
       onOpenChange(false);
@@ -134,6 +137,12 @@ export function IssuePODialog({ open, onOpenChange, target, onIssued }: IssuePOD
           <div className="space-y-1.5">
             <Label htmlFor="po-desc">Description *</Label>
             <Textarea id="po-desc" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Towards Event Setup Charges for..." />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="po-terms">Additional payment terms (optional)</Label>
+            <Textarea id="po-terms" rows={2} value={additionalTerms} onChange={(e) => setAdditionalTerms(e.target.value)} placeholder="e.g. 50% advance, balance within 15 days of the Invoice" />
+            <p className="text-xs text-muted-foreground">Printed after the standard terms, which stay unchanged.</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
