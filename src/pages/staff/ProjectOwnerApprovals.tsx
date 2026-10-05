@@ -380,6 +380,7 @@ export default function ProjectOwnerApprovals() {
               projectNumber: s.project_number,
               amount: s.amount,
               documentType: s.document_type,
+              fileKey: s.file_key,
             }}
             onIssued={() => {
               setPoTargetId(null);

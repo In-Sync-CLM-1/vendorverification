@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { formatINR } from "@/lib/invoices";
+import { formatINR, openInvoiceFile } from "@/lib/invoices";
 import { issuePurchaseOrder, inferTaxType } from "@/lib/purchaseOrders";
 import { Loader2, FileText } from "lucide-react";
 
@@ -27,6 +27,7 @@ interface IssuePOTarget {
   projectNumber: string | null;
   amount: number | null;
   documentType: "proforma_invoice" | "quotation";
+  fileKey?: string | null; // the approved PI/quotation document
 }
 
 interface IssuePODialogProps {
@@ -126,6 +127,22 @@ export function IssuePODialog({ open, onOpenChange, target, onIssued }: IssuePOD
             {target.vendorName} · {target.projectNumber || target.projectName}
             {target.amount != null && <> · approved at {formatINR(target.amount)}</>}
           </DialogDescription>
+          {target.fileKey && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-fit"
+              onClick={() =>
+                openInvoiceFile(target.fileKey!).catch((err) =>
+                  toast.error(err instanceof Error ? err.message : "Could not open the file"),
+                )
+              }
+            >
+              <FileText className="h-3.5 w-3.5 mr-1.5" />
+              View {target.documentType === "quotation" ? "Quotation" : "PI"}
+            </Button>
+          )}
         </DialogHeader>
 
         <div className="grid gap-4 py-2">
