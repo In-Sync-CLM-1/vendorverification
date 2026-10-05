@@ -44,6 +44,14 @@ interface LocalStaffMatch {
 // generated key, the match result stored as `project_owner_user_id` is the
 // local person's *auth* user id (profiles.user_id) — that's what RLS
 // policies compare against auth.uid().
+// Company domains the same Redefine employee can appear under.
+const GROUP_DOMAINS = ["redefine.in", "redefinemarcom.in", "asrmedia.in"];
+function emailVariants(email: string): string[] {
+  const [local, domain] = email.toLowerCase().split("@");
+  if (!local || !GROUP_DOMAINS.includes(domain)) return [email.toLowerCase()];
+  return GROUP_DOMAINS.map((d) => `${local}@${d}`);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -147,7 +155,15 @@ Deno.serve(async (req) => {
     // holds a masked value, so comparing against that column matches nobody and
     // every project would come back with no owner.
     const ownerEmails = [...new Set(owners.map((o) => o.email).filter((e): e is string => !!e))];
-    const lookupEmails = [...new Set([...ownerEmails, defaultApproverEmail].filter((e): e is string => !!e))];
+    // The same Redefine person is recorded under different company domains in
+    // RMPL and here (e.g. name@redefine.in vs name@redefinemarcom.in), so an
+    // exact-address match found almost nobody and every PI fell back to the
+    // default approver. Look up the same name across the group's domains too.
+    const lookupEmails = [
+      ...new Set(
+        [...ownerEmails.flatMap(emailVariants), defaultApproverEmail].filter((e): e is string => !!e).map((e) => e.toLowerCase()),
+      ),
+    ];
     let localMatches: LocalStaffMatch[] = [];
     if (lookupEmails.length > 0) {
       const { data, error: matchError } = await admin.rpc("find_staff_by_emails", {
@@ -166,6 +182,19 @@ Deno.serve(async (req) => {
         .map((m) => [m.matched_email.toLowerCase(), m])
     );
 
+    // Exact address wins; otherwise the same name on another group domain, but
+    // only when it points to exactly one person (never guess between two).
+    const resolveOwner = (email: string): LocalStaffMatch | null => {
+      const exact = localByEmail.get(email.toLowerCase());
+      if (exact) return exact;
+      const found = new Map<string, LocalStaffMatch>();
+      for (const v of emailVariants(email)) {
+        const m = localByEmail.get(v.toLowerCase());
+        if (m) found.set(m.user_id, m);
+      }
+      return found.size === 1 ? [...found.values()][0] : null;
+    };
+
     const defaultApprover = defaultApproverEmail
       ? localByEmail.get(defaultApproverEmail.toLowerCase()) ?? null
       : null;
@@ -179,7 +208,7 @@ Deno.serve(async (req) => {
 
       const owner = p.project_owner ? ownerById.get(p.project_owner) : null;
       const ownerEmail = owner?.email ?? null;
-      const ownerMatch = ownerEmail ? localByEmail.get(ownerEmail.toLowerCase()) ?? null : null;
+      const ownerMatch = ownerEmail ? resolveOwner(ownerEmail) : null;
 
       // The project's own owner approves whenever they have an account here;
       // otherwise it goes to Accounts so the vendor is never blocked.
