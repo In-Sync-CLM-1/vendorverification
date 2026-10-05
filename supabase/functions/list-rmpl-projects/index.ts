@@ -139,6 +139,36 @@ Deno.serve(async (req) => {
     }
     const ownerById = new Map(owners.map((o) => [o.id, o]));
 
+    // Owners in a team that has a standing fallback approver (e.g. DemandCOM)
+    // whose own portal login is missing go to that approver, not to Accounts.
+    // Teams are matched by name pattern, never exact name (team names get
+    // renamed).
+    const ownerTeams = new Map<string, string[]>();
+    if (ownerIds.length > 0) {
+      const tmParams = new URLSearchParams({
+        select: "user_id,teams(name)",
+        is_active: "eq.true",
+        user_id: `in.(${ownerIds.join(",")})`,
+      });
+      const tmRes = await fetch(`${rmplUrl}/rest/v1/team_members?${tmParams.toString()}`, {
+        headers: { apikey: rmplKey, Authorization: `Bearer ${rmplKey}` },
+      });
+      if (tmRes.ok) {
+        for (const r of (await tmRes.json()) as { user_id: string; teams: { name: string } | null }[]) {
+          if (!r.teams?.name) continue;
+          ownerTeams.set(r.user_id, [...(ownerTeams.get(r.user_id) ?? []), r.teams.name.toLowerCase()]);
+        }
+      }
+    }
+    const { data: teamFallbackRows } = await admin
+      .from("pi_team_fallback_approvers")
+      .select("team_pattern, approver_email")
+      .eq("tenant_id", callerTenantId ?? "");
+    const teamFallbacks = (teamFallbackRows ?? []).map((r: { team_pattern: string; approver_email: string }) => ({
+      pattern: r.team_pattern.toLowerCase(),
+      email: r.approver_email.toLowerCase(),
+    }));
+
     // Match each project owner's email into this app's own profiles so a
     // PI/Quotation (or advance request) can be routed to that person.
     // profiles.id here is its own generated key, distinct from the auth
@@ -161,7 +191,9 @@ Deno.serve(async (req) => {
     );
     const lookupEmails = [
       ...new Set(
-        [...ownerEmails, ...approverOverride.values(), defaultApproverEmail].filter((e): e is string => !!e),
+        [...ownerEmails, ...approverOverride.values(), ...teamFallbacks.map((f) => f.email), defaultApproverEmail].filter(
+          (e): e is string => !!e,
+        ),
       ),
     ];
     let localMatches: LocalStaffMatch[] = [];
@@ -201,7 +233,13 @@ Deno.serve(async (req) => {
       // otherwise it goes to Accounts so the vendor is never blocked.
       const overrideEmail = ownerEmail ? approverOverride.get(ownerEmail.toLowerCase()) : undefined;
       const overrideMatch = overrideEmail ? localByEmail.get(overrideEmail) ?? null : null;
-      const approver = isInternalBilling ? defaultApprover : overrideMatch ?? ownerMatch ?? defaultApprover;
+      const teamFallbackEmail = p.project_owner
+        ? teamFallbacks.find((f) => (ownerTeams.get(p.project_owner as string) ?? []).some((t) => t.includes(f.pattern)))?.email
+        : undefined;
+      const teamFallbackMatch = teamFallbackEmail ? localByEmail.get(teamFallbackEmail) ?? null : null;
+      const approver = isInternalBilling
+        ? defaultApprover
+        : overrideMatch ?? ownerMatch ?? teamFallbackMatch ?? defaultApprover;
 
       return {
         id: p.id,
