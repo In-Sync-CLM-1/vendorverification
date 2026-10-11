@@ -45,6 +45,7 @@ import BillingPage from "./pages/admin/BillingPage";
 
 // Platform-admin Pages
 import PlatformDashboard from "./pages/platform/PlatformDashboard";
+import { LedgerAccessTrail } from "@/lib/LedgerAccessTrail";
 
 const queryClient = new QueryClient();
 
@@ -69,6 +70,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <LedgerAccessTrail />
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<RootRoute />} />
