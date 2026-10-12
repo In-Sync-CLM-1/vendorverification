@@ -998,6 +998,9 @@ export type Database = {
           issuer_gstin: string | null
           issuer_name: string
           pdf_file_key: string | null
+          pi_document_number: string | null
+          pi_document_type: string | null
+          pi_file_key: string | null
           pi_quotation_id: string | null
           place_of_supply: string
           po_date: string
@@ -1028,6 +1031,9 @@ export type Database = {
           issuer_gstin?: string | null
           issuer_name: string
           pdf_file_key?: string | null
+          pi_document_number?: string | null
+          pi_document_type?: string | null
+          pi_file_key?: string | null
           pi_quotation_id?: string | null
           place_of_supply: string
           po_date?: string
@@ -1058,6 +1064,9 @@ export type Database = {
           issuer_gstin?: string | null
           issuer_name?: string
           pdf_file_key?: string | null
+          pi_document_number?: string | null
+          pi_document_type?: string | null
+          pi_file_key?: string | null
           pi_quotation_id?: string | null
           place_of_supply?: string
           po_date?: string
