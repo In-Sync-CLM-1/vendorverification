@@ -49,6 +49,7 @@ import {
   FileSignature,
 } from "lucide-react";
 import { toast } from "sonner";
+import { UrlTabs } from "@/components/UrlTabs";
 
 // The deep link from a "please re-upload" email/WhatsApp points at
 // /vendor/portal/dashboard?reupload=<document_id>. If the vendor isn't
@@ -475,7 +476,7 @@ export default function VendorPortalDashboard() {
           ))}
         </div>
 
-        <Tabs defaultValue="overview">
+        <UrlTabs param="vendorportaldashboard_tab" defaultValue="overview">
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="documents">
@@ -913,7 +914,7 @@ export default function VendorPortalDashboard() {
           </CardContent>
         </Card>
         </TabsContent>
-        </Tabs>
+        </UrlTabs>
       </main>
 
       <InvoiceUploadDialog

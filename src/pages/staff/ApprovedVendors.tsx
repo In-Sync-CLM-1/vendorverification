@@ -29,6 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { useUrlState } from "@/hooks/useUrlState";
 
 type VendorRow = {
   id: string;
@@ -46,7 +47,7 @@ const ApprovedVendors = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlState("q", "");
   const [showDeactivated, setShowDeactivated] = useState(false);
   const [confirmVendor, setConfirmVendor] = useState<VendorRow | null>(null);
   const [confirmAction, setConfirmAction] = useState<"deactivate" | "reactivate">("deactivate");

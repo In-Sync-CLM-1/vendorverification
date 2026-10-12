@@ -16,11 +16,12 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useUrlState } from "@/hooks/useUrlState";
 
 export default function FraudAlertsDashboard() {
   const navigate = useNavigate();
   const { isAdmin } = useUserRoles();
-  const [activeTab, setActiveTab] = useState<string>("pending");
+  const [activeTab, setActiveTab] = useUrlState<string>("tab", "pending");
   const [selectedAlert, setSelectedAlert] = useState<FraudAlert | null>(null);
 
   const { alerts, stats, isLoading } = useFraudAlerts({

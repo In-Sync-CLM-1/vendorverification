@@ -159,7 +159,7 @@ export default function VendorReviewDetail() {
         vendorId: vendor.id,
         newStatus: nextStatus as any,
       });
-      navigate("/staff/queue");
+      (window.history.state?.idx > 0 ? navigate(-1) : navigate("/staff/queue"));
     } finally {
       setActionLoading(null);
     }
@@ -175,7 +175,7 @@ export default function VendorReviewDetail() {
         comments: rejectReason,
       });
       setShowRejectDialog(false);
-      navigate("/staff/queue");
+      (window.history.state?.idx > 0 ? navigate(-1) : navigate("/staff/queue"));
     } finally {
       setActionLoading(null);
     }
@@ -550,7 +550,7 @@ export default function VendorReviewDetail() {
                     comments: sendBackReason,
                   });
                   setShowSendBackDialog(false);
-                  navigate("/staff/queue");
+                  (window.history.state?.idx > 0 ? navigate(-1) : navigate("/staff/queue"));
                 } finally {
                   setActionLoading(null);
                 }

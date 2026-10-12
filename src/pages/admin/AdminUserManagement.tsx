@@ -20,6 +20,7 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
+import { useUrlState } from "@/hooks/useUrlState";
 
 interface StaffUser {
   id: string;
@@ -43,7 +44,7 @@ export default function AdminUserManagement() {
   const { isAdmin } = useUserRoles();
   const queryClient = useQueryClient();
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlState("q", "");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [deletingUser, setDeletingUser] = useState<StaffUser | null>(null);

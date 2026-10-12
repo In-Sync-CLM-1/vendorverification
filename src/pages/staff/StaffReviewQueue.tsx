@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { StaffLayout } from "@/components/layout/StaffLayout";
 import { useUserRoles } from "@/hooks/useUserRoles";
@@ -16,6 +15,7 @@ import {
   AlertTriangle
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useUrlState } from "@/hooks/useUrlState";
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "Draft",
@@ -40,8 +40,8 @@ export default function StaffReviewQueue() {
   const { isAdmin, isMaker, isApprover, isLoading: rolesLoading } = useUserRoles();
   const isReviewer = isMaker;
   const { data: vendors, isLoading: vendorsLoading } = useStaffVendorQueue();
-  const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState("pending_review");
+  const [search, setSearch] = useUrlState("q", "");
+  const [activeTab, setActiveTab] = useUrlState("tab", "pending_review");
 
   if (rolesLoading) {
     return (
