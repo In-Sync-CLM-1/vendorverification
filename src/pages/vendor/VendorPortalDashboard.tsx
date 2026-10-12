@@ -121,11 +121,11 @@ export default function VendorPortalDashboard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("purchase_orders")
-        .select("id, po_number, po_date, project_name, project_number, grand_total, pdf_file_key, invoice_id")
+        .select("id, po_number, po_date, project_name, project_number, grand_total, pdf_file_key, pi_file_key, pi_document_type, invoice_id")
         .eq("vendor_id", vendor!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data || []) as { id: string; po_number: string; po_date: string; project_name: string; project_number: string | null; grand_total: number; pdf_file_key: string | null; invoice_id: string | null }[];
+      return (data || []) as { id: string; po_number: string; po_date: string; project_name: string; project_number: string | null; grand_total: number; pdf_file_key: string | null; pi_file_key: string | null; pi_document_type: string | null; invoice_id: string | null }[];
     },
     enabled: !!vendor?.id,
   });
@@ -721,7 +721,17 @@ export default function VendorPortalDashboard() {
                           className="h-7 text-xs"
                           onClick={() => openInvoiceFile(po.pdf_file_key!).catch((err) => toast.error(err.message))}
                         >
-                          <FileText className="h-3 w-3 mr-1" /> View
+                          <FileText className="h-3 w-3 mr-1" /> View PO
+                        </Button>
+                      )}
+                      {po.pi_file_key && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => openInvoiceFile(po.pi_file_key!).catch((err) => toast.error(err.message))}
+                        >
+                          <FileText className="h-3 w-3 mr-1" /> View {po.pi_document_type === "quotation" ? "Quotation" : "PI"}
                         </Button>
                       )}
                     </div>

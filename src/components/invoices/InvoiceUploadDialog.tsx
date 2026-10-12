@@ -16,8 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { uploadInvoiceFile, analyzeInvoiceFile, InvoiceExtraction, LOW_CONFIDENCE, formatINR } from "@/lib/invoices";
-import { Loader2, Upload, Sparkles, TriangleAlert, HandCoins, FileCheck } from "lucide-react";
+import { uploadInvoiceFile, analyzeInvoiceFile, openInvoiceFile, InvoiceExtraction, LOW_CONFIDENCE, formatINR } from "@/lib/invoices";
+import { Loader2, Upload, Sparkles, TriangleAlert, HandCoins, FileCheck, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AvailablePurchaseOrder {
@@ -26,6 +26,7 @@ interface AvailablePurchaseOrder {
   pi_quotation_id: string;
   grand_total: number;
   pdf_file_key: string | null;
+  pi_file_key: string | null;
   created_at: string;
   vendor_pi_quotations: {
     document_type: "proforma_invoice" | "quotation";
@@ -100,7 +101,7 @@ export function InvoiceUploadDialog({ open, onOpenChange, vendorId, onUploaded, 
     queryFn: async () => {
       const { data, error } = await supabase
         .from("purchase_orders")
-        .select("id, po_number, pi_quotation_id, grand_total, pdf_file_key, created_at, vendor_pi_quotations(document_type, document_number, amount, project_number, project_name)")
+        .select("id, po_number, pi_quotation_id, grand_total, pdf_file_key, pi_file_key, created_at, vendor_pi_quotations(document_type, document_number, amount, project_number, project_name)")
         .eq("vendor_id", vendorId)
         .is("invoice_id", null)
         .not("pi_quotation_id", "is", null)
@@ -117,6 +118,9 @@ export function InvoiceUploadDialog({ open, onOpenChange, vendorId, onUploaded, 
 
   const selectedPo = availablePOs.find((p) => p.id === selectedPoId) || null;
   const selectedPi = selectedPo?.vendor_pi_quotations || null;
+
+  const viewFile = (key: string) =>
+    openInvoiceFile(key).catch((err) => toast.error(err instanceof Error ? err.message : "Could not open the file"));
 
   const reset = () => {
     setSelectedPoId(null);
@@ -288,6 +292,18 @@ export function InvoiceUploadDialog({ open, onOpenChange, vendorId, onUploaded, 
             </Select>
             {selectedPo && (
               <>
+                <div className="flex flex-wrap gap-2">
+                  {selectedPo.pdf_file_key && (
+                    <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => viewFile(selectedPo.pdf_file_key!)}>
+                      <FileText className="h-3 w-3 mr-1" /> View PO
+                    </Button>
+                  )}
+                  {selectedPo.pi_file_key && (
+                    <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => viewFile(selectedPo.pi_file_key!)}>
+                      <FileText className="h-3 w-3 mr-1" /> View {selectedPi?.document_type === "quotation" ? "Quotation" : "PI"}
+                    </Button>
+                  )}
+                </div>
                 <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
                   <TriangleAlert className="h-3 w-3" />
                   The {selectedPi?.document_type === "quotation" ? "quotation" : "proforma invoice"} behind
