@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { DateRange } from "react-day-picker";
 import {
   format,
@@ -7,6 +7,8 @@ import {
   endOfMonth,
   subMonths,
   startOfQuarter,
+  parseISO,
+  isValid,
 } from "date-fns";
 import { Calendar as CalendarIcon, Check, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +16,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { useUrlState } from "@/hooks/useUrlState";
 
 export interface AnalyticsRange {
   from: Date | null; // null = all time
@@ -32,6 +35,50 @@ export function defaultAnalyticsRange(): AnalyticsRange {
   return { from: subDays(now, 179), to: now, label: "Last 6 months" };
 }
 
+const now = () => new Date();
+
+const PRESETS: { label: string; make: () => AnalyticsRange }[] = [
+  { label: "Last 30 days", make: () => ({ from: subDays(now(), 29), to: now(), label: "Last 30 days" }) },
+  { label: "Last 90 days", make: () => ({ from: subDays(now(), 89), to: now(), label: "Last 90 days" }) },
+  { label: "Last 6 months", make: () => ({ from: subDays(now(), 179), to: now(), label: "Last 6 months" }) },
+  { label: "This month", make: () => ({ from: startOfMonth(now()), to: now(), label: "This month" }) },
+  {
+    label: "Last month",
+    make: () => {
+      const lm = subMonths(now(), 1);
+      return { from: startOfMonth(lm), to: endOfMonth(lm), label: "Last month" };
+    },
+  },
+  { label: "This quarter", make: () => ({ from: startOfQuarter(now()), to: now(), label: "This quarter" }) },
+  { label: "This financial year", make: () => ({ from: fyStart(now()), to: now(), label: "This FY" }) },
+  { label: "All time", make: () => ({ from: null, to: null, label: "All time" }) },
+];
+
+/**
+ * URL-backed analytics range (?range=Last 30 days, or ?range=custom~2026-01-01~2026-02-01),
+ * so the chosen period survives Back and refresh.
+ */
+export function useUrlAnalyticsRange(): [AnalyticsRange, (r: AnalyticsRange) => void] {
+  const [key, setKey] = useUrlState("range", defaultAnalyticsRange().label);
+  const range = useMemo<AnalyticsRange>(() => {
+    const preset = PRESETS.map((p) => p.make()).find((r) => r.label === key);
+    if (preset) return preset;
+    if (key.startsWith("custom~")) {
+      const [, f, t] = key.split("~");
+      const from = parseISO(f);
+      const to = parseISO(t);
+      if (isValid(from) && isValid(to)) return { from, to, label: "Custom" };
+    }
+    return defaultAnalyticsRange();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  const setRange = (r: AnalyticsRange) => {
+    if (PRESETS.some((p) => p.make().label === r.label)) setKey(r.label);
+    else if (r.from && r.to) setKey("custom~" + format(r.from, "yyyy-MM-dd") + "~" + format(r.to, "yyyy-MM-dd"));
+  };
+  return [range, setRange];
+}
+
 interface Props {
   value: AnalyticsRange;
   onChange: (r: AnalyticsRange) => void;
@@ -42,23 +89,7 @@ export function AnalyticsDateFilter({ value, onChange }: Props) {
   const [showCalendar, setShowCalendar] = useState(false);
   const [draft, setDraft] = useState<DateRange | undefined>();
 
-  const now = () => new Date();
-  const presets: { label: string; make: () => AnalyticsRange }[] = [
-    { label: "Last 30 days", make: () => ({ from: subDays(now(), 29), to: now(), label: "Last 30 days" }) },
-    { label: "Last 90 days", make: () => ({ from: subDays(now(), 89), to: now(), label: "Last 90 days" }) },
-    { label: "Last 6 months", make: () => ({ from: subDays(now(), 179), to: now(), label: "Last 6 months" }) },
-    { label: "This month", make: () => ({ from: startOfMonth(now()), to: now(), label: "This month" }) },
-    {
-      label: "Last month",
-      make: () => {
-        const lm = subMonths(now(), 1);
-        return { from: startOfMonth(lm), to: endOfMonth(lm), label: "Last month" };
-      },
-    },
-    { label: "This quarter", make: () => ({ from: startOfQuarter(now()), to: now(), label: "This quarter" }) },
-    { label: "This financial year", make: () => ({ from: fyStart(now()), to: now(), label: "This FY" }) },
-    { label: "All time", make: () => ({ from: null, to: null, label: "All time" }) },
-  ];
+  const presets = PRESETS;
 
   const display =
     value.from && value.to

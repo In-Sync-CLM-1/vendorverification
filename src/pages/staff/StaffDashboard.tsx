@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { StaffLayout } from "@/components/layout/StaffLayout";
@@ -24,7 +24,7 @@ import { StatTile } from "@/components/analytics/StatTile";
 import {
   AnalyticsDateFilter,
   AnalyticsRange,
-  defaultAnalyticsRange,
+  useUrlAnalyticsRange,
 } from "@/components/analytics/AnalyticsDateFilter";
 import {
   agingHeatmapOption,
@@ -54,6 +54,7 @@ import {
   FileBarChart2,
   Wallet,
 } from "lucide-react";
+import { useUrlState } from "@/hooks/useUrlState";
 
 const pctDelta = (cur: number, prev: number | null): number | null =>
   prev === null || prev <= 0 ? null : ((cur - prev) / prev) * 100;
@@ -79,8 +80,8 @@ export default function StaffDashboard() {
   // Shared filter for the whole Vendor Finance section below (combined
   // payment-flow graphic + the invoice analytics that used to live on their
   // own page) — one filter row, one dashboard.
-  const [range, setRange] = useState<AnalyticsRange>(defaultAnalyticsRange);
-  const [vendorFilter, setVendorFilter] = useState("all");
+  const [range, setRange] = useUrlAnalyticsRange();
+  const [vendorFilter, setVendorFilter] = useUrlState("vendor", "all");
   const flow = useVendorPaymentFlow(range, vendorFilter);
   const a = useInvoiceAnalytics(range, vendorFilter);
 

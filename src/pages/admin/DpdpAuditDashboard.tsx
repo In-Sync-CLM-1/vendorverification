@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { StaffLayout } from "@/components/layout/StaffLayout";
@@ -23,6 +23,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { format } from "date-fns";
+import { useUrlState } from "@/hooks/useUrlState";
 
 interface AuditLog {
   id: string;
@@ -41,11 +42,11 @@ interface ProfileMap {
 export default function DpdpAuditDashboard() {
   const { isAdmin } = useUserRoles();
 
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [filterUser, setFilterUser] = useState("all");
-  const [filterTable, setFilterTable] = useState("all");
-  const [filterPurpose, setFilterPurpose] = useState("all");
+  const [dateFrom, setDateFrom] = useUrlState("from", "");
+  const [dateTo, setDateTo] = useUrlState("to", "");
+  const [filterUser, setFilterUser] = useUrlState("user", "all");
+  const [filterTable, setFilterTable] = useUrlState("table", "all");
+  const [filterPurpose, setFilterPurpose] = useUrlState("purpose", "all");
 
   // Fetch audit logs
   const { data: logs = [], isLoading } = useQuery({

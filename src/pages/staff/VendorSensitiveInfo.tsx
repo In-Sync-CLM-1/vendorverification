@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Search, Eye, EyeOff, ShieldAlert, X } from "lucide-react";
+import { useUrlState } from "@/hooks/useUrlState";
 
 type VendorMatch = {
   id: string;
@@ -71,7 +72,7 @@ const SENSITIVE_FIELDS: {
 ];
 
 const VendorSensitiveInfo = () => {
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlState("q", "");
   const [selected, setSelected] = useState<VendorMatch | null>(null);
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});

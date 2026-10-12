@@ -37,6 +37,7 @@ import { DataRequestsPanel } from "@/components/admin/DataRequestsPanel";
 import { BreachNotificationPanel } from "@/components/admin/BreachNotificationPanel";
 import { WebhooksPanel } from "@/components/admin/WebhooksPanel";
 import { ApiKeysPanel } from "@/components/admin/ApiKeysPanel";
+import { useUrlState } from "@/hooks/useUrlState";
 
 export default function AdminSettings() {
   const { isAdmin } = useUserRoles();
@@ -57,7 +58,7 @@ export default function AdminSettings() {
     enabled: !!user,
   });
 
-  const [activeTab, setActiveTab] = useState("categories");
+  const [activeTab, setActiveTab] = useUrlState("tab", "categories");
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
   const [showDocTypeDialog, setShowDocTypeDialog] = useState(false);
   const [editingCategory, setEditingCategory] = useState<any>(null);

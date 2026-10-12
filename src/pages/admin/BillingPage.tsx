@@ -24,6 +24,7 @@ import {
   Zap,
   Tag,
 } from "lucide-react";
+import { UrlTabs } from "@/components/UrlTabs";
 
 declare global {
   interface Window {
@@ -226,7 +227,7 @@ export default function BillingPage() {
   return (
     <StaffLayout title="Billing & Subscription">
       <div className="flex-1 overflow-auto">
-        <Tabs defaultValue="overview" className="flex-1 flex flex-col">
+        <UrlTabs param="billingpage_tab" defaultValue="overview" className="flex-1 flex flex-col">
           <TabsList className="w-full justify-start px-4 h-auto py-2 bg-card border-b rounded-none">
             <TabsTrigger value="overview" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <CreditCard className="h-3.5 w-3.5 mr-1.5" />
@@ -394,7 +395,7 @@ export default function BillingPage() {
               )}
             </div>
           </TabsContent>
-        </Tabs>
+        </UrlTabs>
       </div>
 
       {/* Upgrade Dialog */}

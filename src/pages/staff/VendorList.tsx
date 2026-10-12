@@ -53,6 +53,7 @@ import { toast as sonnerToast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
 import { Switch } from "@/components/ui/switch";
 import { z } from "zod";
+import { useUrlState } from "@/hooks/useUrlState";
 
 const inviteSchema = z.object({
   company_name: z.string().trim().min(1, "Company name is required").max(200),
@@ -94,11 +95,11 @@ export default function VendorList() {
   const queryClient = useQueryClient();
   const { referralCode, isLoading: referralLoading } = useReferralCode();
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlState("q", "");
   const [showDeactivated, setShowDeactivated] = useState(false);
   const [confirmVendor, setConfirmVendor] = useState<VendorRow | null>(null);
   const [confirmAction, setConfirmAction] = useState<"deactivate" | "reactivate">("deactivate");
-  const [activeTab, setActiveTab] = useState("vendors");
+  const [activeTab, setActiveTab] = useUrlState("tab", "vendors");
 
   // Invite form state
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -106,7 +107,7 @@ export default function VendorList() {
   const [companyName, setCompanyName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
-  const [categoryId, setCategoryId] = useState("");
+  const [categoryId, setCategoryId] = useUrlState("cat", "");
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [invitations, setInvitations] = useState<any[]>([]);
   const [loadingInvitations, setLoadingInvitations] = useState(true);

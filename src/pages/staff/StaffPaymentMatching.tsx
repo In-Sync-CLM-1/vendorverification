@@ -25,6 +25,7 @@ import {
 import { formatINR, paymentSettled, VendorInvoice, InvoicePayment } from "@/lib/invoices";
 import { Loader2, Landmark, Sparkles, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { useUrlState } from "@/hooks/useUrlState";
 
 type OutstandingInvoice = VendorInvoice & {
   vendors: { company_name: string; vendor_code: string | null } | null;
@@ -82,7 +83,7 @@ export default function StaffPaymentMatching() {
   const [parsing, setParsing] = useState(false);
   const [rows, setRows] = useState<MatchRow[]>([]);
   const [recording, setRecording] = useState(false);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlState("q", "");
   const [showUnmatched, setShowUnmatched] = useState(true);
 
   const { data: invoices = [] } = useQuery({

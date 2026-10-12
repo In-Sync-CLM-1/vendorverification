@@ -29,6 +29,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { z } from "zod";
+import { useUrlState } from "@/hooks/useUrlState";
 
 const inviteSchema = z.object({
   company_name: z.string().trim().min(1, "Company name is required").max(200),
@@ -60,13 +61,13 @@ export default function StaffInviteVendor() {
   const [loadingInvitations, setLoadingInvitations] = useState(true);
   const [sending, setSending] = useState(false);
   const [referralOpen, setReferralOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("send");
-  const [statusFilter, setStatusFilter] = useState<InvitationStatus | "all">("all");
+  const [activeTab, setActiveTab] = useUrlState("tab", "send");
+  const [statusFilter, setStatusFilter] = useUrlState<InvitationStatus | "all">("status", "all");
 
   const [companyName, setCompanyName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
-  const [categoryId, setCategoryId] = useState("");
+  const [categoryId, setCategoryId] = useUrlState("cat", "");
 
   useEffect(() => {
     loadCategories();

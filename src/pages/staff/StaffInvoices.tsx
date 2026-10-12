@@ -48,6 +48,7 @@ import {
   FileText,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useUrlState } from "@/hooks/useUrlState";
 
 type InvoiceWithVendor = VendorInvoice & {
   vendors: { company_name: string; vendor_code: string | null } | null;
@@ -72,8 +73,8 @@ export default function StaffInvoices() {
   const { user } = useAuth();
   const { isViewOnly } = useUserRoles();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState("all");
-  const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useUrlState("tab", "all");
+  const [search, setSearch] = useUrlState("q", "");
   const [selected, setSelected] = useState<InvoiceWithVendor | null>(null);
   const [payOpen, setPayOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");

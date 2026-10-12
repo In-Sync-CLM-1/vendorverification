@@ -47,6 +47,7 @@ import {
   PLATFORM_DEFAULT_TENANT,
   type OrgRow,
 } from "@/hooks/usePlatformDashboard";
+import { useUrlState } from "@/hooks/useUrlState";
 
 interface Props {
   orgs: OrgRow[];
@@ -88,7 +89,7 @@ function statusBadgeVariant(status: string | null, isActive: boolean): {
 export function PlatformOrgsTable({ orgs, ownTenantId }: Props) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlState("orgq", "");
 
   const [deleteTarget, setDeleteTarget] = useState<OrgRow | null>(null);
   const [deleteSlug, setDeleteSlug] = useState("");
