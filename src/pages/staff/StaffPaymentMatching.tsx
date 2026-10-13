@@ -92,6 +92,7 @@ export default function StaffPaymentMatching() {
       const { data, error } = await supabase
         .from("vendor_invoices")
         .select("*, vendors(company_name, vendor_code)")
+        .eq("doc_stage", "invoice")
         .in("status", ["approved", "partially_paid"])
         .order("created_at", { ascending: false });
       if (error) throw error;

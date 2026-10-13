@@ -86,6 +86,7 @@ export default function StaffInvoices() {
       const { data, error } = await supabase
         .from("vendor_invoices")
         .select("*, vendors(company_name, vendor_code)")
+        .eq("doc_stage", "invoice")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []) as InvoiceWithVendor[];

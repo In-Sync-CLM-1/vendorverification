@@ -131,7 +131,7 @@ export default function StaffDashboard() {
       const [piRes, advanceRes, invoiceRes, paymentsRes] = await Promise.all([
         supabase.from("vendor_pi_quotations").select("status"),
         supabase.from("vendor_advance_requests").select("status, amount"),
-        supabase.from("vendor_invoices").select("id, status, invoice_amount"),
+        supabase.from("vendor_invoices").select("id, status, invoice_amount").eq("doc_stage", "invoice"),
         supabase.from("vendor_invoice_payments").select("invoice_id, total_settled"),
       ]);
       if (piRes.error) throw piRes.error;
