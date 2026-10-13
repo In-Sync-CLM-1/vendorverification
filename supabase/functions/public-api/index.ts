@@ -139,6 +139,7 @@ Deno.serve(async (req) => {
           "invoice_number, invoice_date, invoice_amount, gst_amount, description, po_number, status, rejection_reason, reviewed_at, created_at, vendors(company_name, trade_name, vendor_code), vendor_invoice_payments(payment_date, advance_adjusted, gst_amount, tds_amount, payout_amount, total_settled, utr_reference, remarks, is_full_settlement)"
         )
         .eq("tenant_id", tenantId)
+        .eq("doc_stage", "invoice")
         .order("created_at", { ascending: false });
 
       if (listErr) {
@@ -190,6 +191,7 @@ Deno.serve(async (req) => {
           "id, vendor_id, invoice_number, invoice_date, invoice_amount, gst_amount, po_number, status, rejection_reason, reviewed_at, created_at, vendors(company_name, vendor_code)"
         )
         .eq("tenant_id", tenantId)
+        .eq("doc_stage", "invoice")
         .order("invoice_date", { ascending: true });
       if (invErr) return jsonErr("query_failed", invErr.message, 500, requestId);
 

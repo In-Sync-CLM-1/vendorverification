@@ -72,6 +72,7 @@ export default function LivecomInvoiceUpload() {
       const { data, error } = await supabase
         .from("vendor_invoices")
         .select("id, invoice_number, invoice_amount, status, created_at, vendors(company_name)")
+        .eq("doc_stage", "invoice")
         .eq("submission_source", "livecom_upload")
         .eq("submitted_by", user!.id)
         .order("created_at", { ascending: false })

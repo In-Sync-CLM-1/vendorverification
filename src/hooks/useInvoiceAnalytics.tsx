@@ -55,6 +55,7 @@ export function useInvoiceAnalytics(range: AnalyticsRange, vendorFilter: string)
       const { data, error } = await supabase
         .from("vendor_invoices")
         .select("*, vendors(company_name, vendor_code)")
+        .eq("doc_stage", "invoice")
         .order("invoice_date", { ascending: true });
       if (error) throw error;
       return (data || []) as InvoiceWithVendor[];

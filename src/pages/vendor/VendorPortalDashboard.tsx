@@ -97,6 +97,7 @@ export default function VendorPortalDashboard() {
       const { data, error } = await supabase
         .from("vendor_invoices")
         .select("*")
+        .eq("doc_stage", "invoice")
         .eq("vendor_id", vendor!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;

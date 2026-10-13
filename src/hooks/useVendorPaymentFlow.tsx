@@ -62,7 +62,8 @@ export function useVendorPaymentFlow(range: AnalyticsRange, vendorFilter: string
     queryFn: async () => {
       const { data, error } = await supabase
         .from("vendor_invoices")
-        .select("id, vendor_id, status, invoice_amount, invoice_date, vendors(company_name)");
+        .select("id, vendor_id, status, invoice_amount, invoice_date, vendors(company_name)")
+        .eq("doc_stage", "invoice");
       if (error) throw error;
       return data || [];
     },
