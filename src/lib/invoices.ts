@@ -76,7 +76,7 @@ export async function analyzeInvoiceFile(fileKey: string): Promise<InvoiceExtrac
 
 export const LOW_CONFIDENCE = 60;
 
-export async function openInvoiceFile(key: string) {
+async function fetchInvoiceFileBlob(key: string) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("Not signed in");
   const resp = await fetch(
@@ -89,9 +89,23 @@ export async function openInvoiceFile(key: string) {
     }
   );
   if (!resp.ok) throw new Error("Could not open the file");
-  const blob = await resp.blob();
+  return resp.blob();
+}
+
+export async function openInvoiceFile(key: string) {
+  const blob = await fetchInvoiceFileBlob(key);
   const url = URL.createObjectURL(blob);
   window.open(url, "_blank");
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+export async function downloadInvoiceFile(key: string, filename: string) {
+  const blob = await fetchInvoiceFileBlob(key);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
