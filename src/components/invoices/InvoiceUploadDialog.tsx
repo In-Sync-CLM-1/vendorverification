@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { uploadInvoiceFile, analyzeInvoiceFile, openInvoiceFile, InvoiceExtraction, LOW_CONFIDENCE, formatINR } from "@/lib/invoices";
+import { uploadInvoiceFile, analyzeInvoiceFile, openInvoiceFile, InvoiceExtraction, LOW_CONFIDENCE, formatINR, paymentSettled } from "@/lib/invoices";
 import { Loader2, Upload, Sparkles, TriangleAlert, HandCoins, FileCheck, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -110,6 +110,24 @@ export function InvoiceUploadDialog({ open, onOpenChange, vendorId, onUploaded, 
       return (data || []) as unknown as AvailablePurchaseOrder[];
     },
     enabled: open && !!vendorId,
+  });
+
+  // Payments already settled against the PI behind the selected PO -- the
+  // vendor sees what was paid and what TDS was deducted before submitting.
+  const selectedPiId = availablePOs.find((p) => p.id === selectedPoId)?.pi_quotation_id ?? null;
+  const { data: settledPayments = [] } = useQuery({
+    queryKey: ["vendor-po-settled-payments", vendorId, selectedPiId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vendor_invoice_payments")
+        .select("id, payment_date, payout_amount, tds_amount, advance_adjusted, utr_reference")
+        .eq("vendor_id", vendorId)
+        .eq("pi_quotation_id", selectedPiId!)
+        .order("payment_date", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: open && !!selectedPiId,
   });
 
   useEffect(() => {
@@ -309,6 +327,24 @@ export function InvoiceUploadDialog({ open, onOpenChange, vendorId, onUploaded, 
                   The {selectedPi?.document_type === "quotation" ? "quotation" : "proforma invoice"} behind
                   this PO will be removed once the invoice is submitted.
                 </p>
+                {settledPayments.length > 0 && (
+                  <div className="rounded-md border bg-background p-2 space-y-1 text-xs">
+                    <p className="font-medium">Already settled against this PO</p>
+                    {settledPayments.map((p) => (
+                      <div key={p.id} className="flex justify-between gap-2 text-muted-foreground">
+                        <span>{new Date(p.payment_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}{p.utr_reference ? ` · ${p.utr_reference}` : ""}</span>
+                        <span>Paid {formatINR(Number(p.payout_amount))} · TDS {formatINR(Number(p.tds_amount))}{Number(p.advance_adjusted) > 0 ? ` · Advance adjusted ${formatINR(Number(p.advance_adjusted))}` : ""}</span>
+                      </div>
+                    ))}
+                    <div className="flex justify-between gap-2 font-medium border-t pt-1">
+                      <span>Total settled</span>
+                      <span>
+                        {formatINR(settledPayments.reduce((t, p) => t + paymentSettled(p), 0))}
+                        {" "}(TDS {formatINR(settledPayments.reduce((t, p) => t + Number(p.tds_amount || 0), 0))})
+                      </span>
+                    </div>
+                  </div>
+                )}
                 {parseFloat(amount) > Number(selectedPo.grand_total) + 1 && (
                   <p className="text-xs text-destructive flex items-center gap-1.5">
                     <TriangleAlert className="h-3 w-3" />
