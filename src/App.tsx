@@ -30,10 +30,10 @@ import BulkImportVendors from "./pages/staff/BulkImportVendors";
 import BulkInviteVendors from "./pages/staff/BulkInviteVendors";
 import FraudAlertsDashboard from "./pages/staff/FraudAlertsDashboard";
 import StaffInvoices from "./pages/staff/StaffInvoices";
+import StaffAdvanceRequests from "./pages/staff/StaffAdvanceRequests";
+import StaffVendorPayments from "./pages/staff/StaffVendorPayments";
 import StaffPaymentMatching from "./pages/staff/StaffPaymentMatching";
 import StaffDetailChangeRequests from "./pages/staff/StaffDetailChangeRequests";
-import StaffAdvanceRequests from "./pages/staff/StaffAdvanceRequests";
-import ProjectOwnerApprovals from "./pages/staff/ProjectOwnerApprovals";
 import VendorSensitiveInfo from "./pages/staff/VendorSensitiveInfo";
 import LivecomInvoiceUpload from "./pages/staff/LivecomInvoiceUpload";
 
@@ -93,8 +93,11 @@ const App = () => (
             <Route path="/staff/invoices" element={<StaffInvoices />} />
             <Route path="/staff/payment-matching" element={<StaffPaymentMatching />} />
             <Route path="/staff/change-requests" element={<StaffDetailChangeRequests />} />
+            {/* PI approvals, advances and invoices are one table now */}
+            <Route path="/staff/vendor-payments" element={<StaffVendorPayments />} />
+            {/* Earlier standalone advance requests (not tied to a PI) stay decidable here */}
             <Route path="/staff/advance-requests" element={<StaffAdvanceRequests />} />
-            <Route path="/staff/pi-approvals" element={<ProjectOwnerApprovals />} />
+            <Route path="/staff/pi-approvals" element={<Navigate to="/staff/vendor-payments" replace />} />
             <Route path="/staff/sensitive-info" element={<VendorSensitiveInfo />} />
             <Route path="/staff/livecom-upload" element={<LivecomInvoiceUpload />} />
             {/* Invoice Analytics was merged into the one Dashboard */}

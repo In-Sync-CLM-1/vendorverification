@@ -128,36 +128,50 @@ export default function StaffDashboard() {
   const { data: financeStats } = useQuery({
     queryKey: ["dashboard-finance-stats"],
     queryFn: async () => {
-      const [piRes, advanceRes, invoiceRes, paymentsRes] = await Promise.all([
-        supabase.from("vendor_pi_quotations").select("status"),
-        supabase.from("vendor_advance_requests").select("status, amount"),
-        supabase.from("vendor_invoices").select("id, status, invoice_amount").eq("doc_stage", "invoice"),
+      const [piRes, advanceRes, invoiceRes, paymentsRes, creditRes] = await Promise.all([
+        supabase.from("vendor_invoices").select("status").in("doc_stage", ["proforma_invoice", "quotation"]),
+        supabase.from("vendor_invoices").select("adv_amount").eq("adv_status", "requested"),
+        supabase.from("vendor_invoices").select("id, status, invoice_amount, adv_status, adv_paid_amount").eq("doc_stage", "invoice"),
         supabase.from("vendor_invoice_payments").select("invoice_id, total_settled"),
+        supabase.from("vendor_invoices").select("credit_for_invoice_id, invoice_amount").eq("doc_stage", "credit_note"),
       ]);
       if (piRes.error) throw piRes.error;
       if (advanceRes.error) throw advanceRes.error;
       if (invoiceRes.error) throw invoiceRes.error;
       if (paymentsRes.error) throw paymentsRes.error;
+      if (creditRes.error) throw creditRes.error;
 
       const settledByInvoice = new Map<string, number>();
       for (const p of paymentsRes.data || []) {
         settledByInvoice.set(
-          p.invoice_id,
-          (settledByInvoice.get(p.invoice_id) || 0) + Number(p.total_settled || 0)
+          p.invoice_id as string,
+          (settledByInvoice.get(p.invoice_id as string) || 0) + Number(p.total_settled || 0)
         );
+      }
+      const creditedByInvoice = new Map<string, number>();
+      for (const c of creditRes.data || []) {
+        const id = c.credit_for_invoice_id as string;
+        creditedByInvoice.set(id, (creditedByInvoice.get(id) || 0) + Number(c.invoice_amount || 0));
       }
 
       const pendingPi = (piRes.data || []).filter((r) => r.status === "submitted").length;
-      const pendingAdvance = (advanceRes.data || []).filter((r) => r.status === "pending");
-      const pendingAdvanceValue = pendingAdvance.reduce((s, r) => s + Number(r.amount || 0), 0);
-      const invoicesToReview = (invoiceRes.data || []).filter((r) =>
-        ["submitted", "under_review"].includes(r.status)
-      ).length;
+      const pendingAdvance = advanceRes.data || [];
+      const pendingAdvanceValue = pendingAdvance.reduce((s, r) => s + Number(r.adv_amount || 0), 0);
+      // The PI is the only approval now: every open invoice is simply waiting to be paid.
+      const invoicesToReview = 0;
       const invoicesToPay = (invoiceRes.data || []).filter((r) =>
-        ["approved", "partially_paid"].includes(r.status)
+        ["submitted", "under_review", "approved", "partially_paid"].includes(r.status)
       );
       const invoicesToPayValue = invoicesToPay.reduce(
-        (s, r) => s + Number(r.invoice_amount) - (settledByInvoice.get(r.id) || 0),
+        (s, r) =>
+          s +
+          Math.max(
+            Number(r.invoice_amount) -
+              (creditedByInvoice.get(r.id) || 0) -
+              (settledByInvoice.get(r.id) || 0) -
+              (r.adv_status === "paid" ? Number(r.adv_paid_amount || 0) : 0),
+            0
+          ),
         0
       );
 
@@ -212,9 +226,9 @@ export default function StaffDashboard() {
     returnedToMaker > 0 && { label: `${returnedToMaker} vendor${returnedToMaker > 1 ? "s" : ""} returned by approver for re-review`, action: "/staff/queue", color: "text-orange-600", icon: AlertTriangle },
     (docStats?.expiring ?? 0) > 0 && { label: `${docStats?.expiring} document${(docStats?.expiring ?? 0) > 1 ? "s" : ""} expiring in 30 days`, action: "/staff/vendors", color: "text-destructive", icon: AlertTriangle },
     (dataRequestStats?.overdue ?? 0) > 0 && isAdmin && { label: `${dataRequestStats?.overdue} overdue data request${(dataRequestStats?.overdue ?? 0) > 1 ? "s" : ""}`, action: "/admin/dpdp-audit", color: "text-destructive", icon: Shield },
-    (financeStats?.pendingPi ?? 0) > 0 && { label: `${financeStats?.pendingPi} PI/Quotation${(financeStats?.pendingPi ?? 0) > 1 ? "s" : ""} awaiting approval`, action: "/staff/pi-approvals", color: "text-accent", icon: ClipboardCheck },
-    (financeStats?.pendingAdvanceCount ?? 0) > 0 && { label: `${financeStats?.pendingAdvanceCount} advance request${(financeStats?.pendingAdvanceCount ?? 0) > 1 ? "s" : ""} awaiting a decision`, action: "/staff/advance-requests", color: "text-amber-600", icon: HandCoins },
-    (financeStats?.invoicesToReview ?? 0) > 0 && { label: `${financeStats?.invoicesToReview} invoice${(financeStats?.invoicesToReview ?? 0) > 1 ? "s" : ""} awaiting review`, action: "/staff/invoices", color: "text-primary", icon: ReceiptIndianRupee },
+    (financeStats?.pendingPi ?? 0) > 0 && { label: `${financeStats?.pendingPi} PI/Quotation${(financeStats?.pendingPi ?? 0) > 1 ? "s" : ""} awaiting approval`, action: "/staff/vendor-payments", color: "text-accent", icon: ClipboardCheck },
+    (financeStats?.pendingAdvanceCount ?? 0) > 0 && { label: `${financeStats?.pendingAdvanceCount} advance request${(financeStats?.pendingAdvanceCount ?? 0) > 1 ? "s" : ""} awaiting a decision`, action: "/staff/vendor-payments", color: "text-amber-600", icon: HandCoins },
+    (financeStats?.invoicesToReview ?? 0) > 0 && { label: `${financeStats?.invoicesToReview} invoice${(financeStats?.invoicesToReview ?? 0) > 1 ? "s" : ""} awaiting review`, action: "/staff/vendor-payments", color: "text-primary", icon: ReceiptIndianRupee },
   ].filter(Boolean) as { label: string; action: string; color: string; icon: typeof Clock }[];
 
   const firstName = profile?.full_name?.split(" ")[0] || "there";
@@ -508,7 +522,7 @@ export default function StaffDashboard() {
             </button>
 
             <button
-              onClick={() => navigate("/staff/invoices")}
+              onClick={() => navigate("/staff/vendor-payments")}
               className="text-left rounded-xl border border-border bg-card p-3 hover:shadow-md transition-all"
             >
               <div className="flex items-center justify-between">

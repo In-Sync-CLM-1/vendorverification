@@ -12,33 +12,77 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
+      activity_ledger: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          details: Json
+          entity_id: string | null
+          entity_label: string | null
+          entity_type: string
+          event_type: string
+          field_name: string | null
+          id: string
+          is_backfill: boolean
+          module: string
+          new_value: string | null
+          occurred_at: string
+          old_value: string | null
+          revision: number
+          seq: number
+          source_id: string
+          source_table: string
+          txid: unknown
+          visibility: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          details?: Json
+          entity_id?: string | null
+          entity_label?: string | null
+          entity_type: string
+          event_type: string
+          field_name?: string | null
+          id?: string
+          is_backfill?: boolean
+          module: string
+          new_value?: string | null
+          occurred_at: string
+          old_value?: string | null
+          revision?: number
+          seq?: never
+          source_id: string
+          source_table: string
+          txid?: unknown
+          visibility?: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          details?: Json
+          entity_id?: string | null
+          entity_label?: string | null
+          entity_type?: string
+          event_type?: string
+          field_name?: string | null
+          id?: string
+          is_backfill?: boolean
+          module?: string
+          new_value?: string | null
+          occurred_at?: string
+          old_value?: string | null
+          revision?: number
+          seq?: never
+          source_id?: string
+          source_table?: string
+          txid?: unknown
+          visibility?: string
+        }
+        Relationships: []
+      }
       api_keys: {
         Row: {
           created_at: string | null
@@ -661,6 +705,126 @@ export type Database = {
           },
         ]
       }
+      ledger_anchors: {
+        Row: {
+          anchored_at: string
+          block_hash: string
+          block_no: number
+          destinations: Json
+          id: string
+        }
+        Insert: {
+          anchored_at?: string
+          block_hash: string
+          block_no: number
+          destinations?: Json
+          id?: string
+        }
+        Update: {
+          anchored_at?: string
+          block_hash?: string
+          block_no?: number
+          destinations?: Json
+          id?: string
+        }
+        Relationships: []
+      }
+      ledger_blocks: {
+        Row: {
+          block_hash: string
+          block_no: number
+          entry_count: number
+          first_seq: number | null
+          from_xid: unknown
+          last_seq: number | null
+          prev_hash: string
+          rows_hash: string
+          sealed_at: string
+          up_to_xid: unknown
+        }
+        Insert: {
+          block_hash: string
+          block_no: number
+          entry_count: number
+          first_seq?: number | null
+          from_xid: unknown
+          last_seq?: number | null
+          prev_hash: string
+          rows_hash: string
+          sealed_at?: string
+          up_to_xid: unknown
+        }
+        Update: {
+          block_hash?: string
+          block_no?: number
+          entry_count?: number
+          first_seq?: number | null
+          from_xid?: unknown
+          last_seq?: number | null
+          prev_hash?: string
+          rows_hash?: string
+          sealed_at?: string
+          up_to_xid?: unknown
+        }
+        Relationships: []
+      }
+      ledger_excluded_tables: {
+        Row: {
+          reason: string
+          table_name: string
+        }
+        Insert: {
+          reason: string
+          table_name: string
+        }
+        Update: {
+          reason?: string
+          table_name?: string
+        }
+        Relationships: []
+      }
+      ledger_tracking_started: {
+        Row: {
+          kind: string
+          note: string | null
+          started_at: string
+        }
+        Insert: {
+          kind: string
+          note?: string | null
+          started_at: string
+        }
+        Update: {
+          kind?: string
+          note?: string | null
+          started_at?: string
+        }
+        Relationships: []
+      }
+      ledger_verifications: {
+        Row: {
+          blocks_checked: number
+          detail: Json
+          id: string
+          ok: boolean
+          verified_at: string
+        }
+        Insert: {
+          blocks_checked?: number
+          detail?: Json
+          id?: string
+          ok: boolean
+          verified_at?: string
+        }
+        Update: {
+          blocks_checked?: number
+          detail?: Json
+          id?: string
+          ok?: boolean
+          verified_at?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -838,6 +1002,48 @@ export type Database = {
         }
         Relationships: []
       }
+      pi_approver_overrides: {
+        Row: {
+          approver_email: string
+          created_at: string
+          owner_email: string
+          tenant_id: string
+        }
+        Insert: {
+          approver_email: string
+          created_at?: string
+          owner_email: string
+          tenant_id: string
+        }
+        Update: {
+          approver_email?: string
+          created_at?: string
+          owner_email?: string
+          tenant_id?: string
+        }
+        Relationships: []
+      }
+      pi_team_fallback_approvers: {
+        Row: {
+          approver_email: string
+          created_at: string
+          team_pattern: string
+          tenant_id: string
+        }
+        Insert: {
+          approver_email: string
+          created_at?: string
+          team_pattern: string
+          tenant_id: string
+        }
+        Update: {
+          approver_email?: string
+          created_at?: string
+          team_pattern?: string
+          tenant_id?: string
+        }
+        Relationships: []
+      }
       pii_access_log: {
         Row: {
           accessed_at: string
@@ -872,6 +1078,32 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "pii_access_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      po_number_start: {
+        Row: {
+          fy_label: string
+          start_number: number
+          tenant_id: string
+        }
+        Insert: {
+          fy_label: string
+          start_number: number
+          tenant_id: string
+        }
+        Update: {
+          fy_label?: string
+          start_number?: number
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "po_number_start_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -987,6 +1219,7 @@ export type Database = {
       }
       purchase_orders: {
         Row: {
+          additional_payment_terms: string | null
           created_at: string
           description: string
           grand_total: number
@@ -1005,8 +1238,8 @@ export type Database = {
           place_of_supply: string
           po_date: string
           po_number: string
-          project_name: string
           project_manager: string | null
+          project_name: string
           project_number: string | null
           tax_amount: number
           tax_rate: number
@@ -1020,6 +1253,7 @@ export type Database = {
           vendor_pan: string | null
         }
         Insert: {
+          additional_payment_terms?: string | null
           created_at?: string
           description: string
           grand_total: number
@@ -1038,8 +1272,8 @@ export type Database = {
           place_of_supply: string
           po_date?: string
           po_number: string
-          project_name: string
           project_manager?: string | null
+          project_name: string
           project_number?: string | null
           tax_amount?: number
           tax_rate?: number
@@ -1053,6 +1287,7 @@ export type Database = {
           vendor_pan?: string | null
         }
         Update: {
+          additional_payment_terms?: string | null
           created_at?: string
           description?: string
           grand_total?: number
@@ -1071,8 +1306,8 @@ export type Database = {
           place_of_supply?: string
           po_date?: string
           po_number?: string
-          project_name?: string
           project_manager?: string | null
+          project_name?: string
           project_number?: string | null
           tax_amount?: number
           tax_rate?: number
@@ -1825,23 +2060,46 @@ export type Database = {
       }
       vendor_invoices: {
         Row: {
+          adv_amount: number | null
+          adv_paid_amount: number | null
+          adv_paid_on: string | null
+          adv_reason: string | null
+          adv_recorded_by: string | null
+          adv_requested_at: string | null
+          adv_status: string | null
+          adv_utr: string | null
           ai_confidence_score: number | null
           ai_extracted_data: Json | null
           ai_model_version: string | null
           created_at: string
+          credit_for_invoice_id: string | null
           description: string | null
+          doc_stage: string
           due_date: string | null
           gst_amount: number
           id: string
-          invoice_amount: number
-          invoice_date: string
-          invoice_file_key: string
-          invoice_number: string
+          invoice_amount: number | null
+          invoice_date: string | null
+          invoice_file_key: string | null
+          invoice_number: string | null
+          pi_ai_confidence_score: number | null
+          pi_ai_extracted_data: Json | null
+          pi_ai_model_version: string | null
+          pi_amount: number | null
+          pi_document_date: string | null
+          pi_document_number: string | null
+          pi_file_key: string | null
+          pi_review_comments: string | null
+          pi_reviewed_at: string | null
+          pi_reviewed_by: string | null
+          pi_status: Database["public"]["Enums"]["pi_quotation_status"] | null
+          pi_vendor_remarks: string | null
           po_file_key: string | null
           po_number: string | null
           project_name: string | null
           project_number: string | null
           project_owner_email: string | null
+          project_owner_external_id: string | null
           project_owner_name: string | null
           project_owner_user_id: string | null
           rejection_reason: string | null
@@ -1856,23 +2114,46 @@ export type Database = {
           vendor_id: string
         }
         Insert: {
+          adv_amount?: number | null
+          adv_paid_amount?: number | null
+          adv_paid_on?: string | null
+          adv_reason?: string | null
+          adv_recorded_by?: string | null
+          adv_requested_at?: string | null
+          adv_status?: string | null
+          adv_utr?: string | null
           ai_confidence_score?: number | null
           ai_extracted_data?: Json | null
           ai_model_version?: string | null
           created_at?: string
+          credit_for_invoice_id?: string | null
           description?: string | null
+          doc_stage?: string
           due_date?: string | null
           gst_amount?: number
           id?: string
-          invoice_amount: number
-          invoice_date: string
-          invoice_file_key: string
-          invoice_number: string
+          invoice_amount?: number | null
+          invoice_date?: string | null
+          invoice_file_key?: string | null
+          invoice_number?: string | null
+          pi_ai_confidence_score?: number | null
+          pi_ai_extracted_data?: Json | null
+          pi_ai_model_version?: string | null
+          pi_amount?: number | null
+          pi_document_date?: string | null
+          pi_document_number?: string | null
+          pi_file_key?: string | null
+          pi_review_comments?: string | null
+          pi_reviewed_at?: string | null
+          pi_reviewed_by?: string | null
+          pi_status?: Database["public"]["Enums"]["pi_quotation_status"] | null
+          pi_vendor_remarks?: string | null
           po_file_key?: string | null
           po_number?: string | null
           project_name?: string | null
           project_number?: string | null
           project_owner_email?: string | null
+          project_owner_external_id?: string | null
           project_owner_name?: string | null
           project_owner_user_id?: string | null
           rejection_reason?: string | null
@@ -1887,23 +2168,46 @@ export type Database = {
           vendor_id: string
         }
         Update: {
+          adv_amount?: number | null
+          adv_paid_amount?: number | null
+          adv_paid_on?: string | null
+          adv_reason?: string | null
+          adv_recorded_by?: string | null
+          adv_requested_at?: string | null
+          adv_status?: string | null
+          adv_utr?: string | null
           ai_confidence_score?: number | null
           ai_extracted_data?: Json | null
           ai_model_version?: string | null
           created_at?: string
+          credit_for_invoice_id?: string | null
           description?: string | null
+          doc_stage?: string
           due_date?: string | null
           gst_amount?: number
           id?: string
-          invoice_amount?: number
-          invoice_date?: string
-          invoice_file_key?: string
-          invoice_number?: string
+          invoice_amount?: number | null
+          invoice_date?: string | null
+          invoice_file_key?: string | null
+          invoice_number?: string | null
+          pi_ai_confidence_score?: number | null
+          pi_ai_extracted_data?: Json | null
+          pi_ai_model_version?: string | null
+          pi_amount?: number | null
+          pi_document_date?: string | null
+          pi_document_number?: string | null
+          pi_file_key?: string | null
+          pi_review_comments?: string | null
+          pi_reviewed_at?: string | null
+          pi_reviewed_by?: string | null
+          pi_status?: Database["public"]["Enums"]["pi_quotation_status"] | null
+          pi_vendor_remarks?: string | null
           po_file_key?: string | null
           po_number?: string | null
           project_name?: string | null
           project_number?: string | null
           project_owner_email?: string | null
+          project_owner_external_id?: string | null
           project_owner_name?: string | null
           project_owner_user_id?: string | null
           rejection_reason?: string | null
@@ -1918,6 +2222,13 @@ export type Database = {
           vendor_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "vendor_invoices_credit_for_invoice_id_fkey"
+            columns: ["credit_for_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_invoices"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "vendor_invoices_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -2887,6 +3198,10 @@ export type Database = {
         Returns: boolean
       }
       check_encryption_key_exists: { Args: never; Returns: boolean }
+      decide_pi: {
+        Args: { p_approve: boolean; p_comment?: string; p_id: string }
+        Returns: undefined
+      }
       decrypt_pii: { Args: { ciphertext: string }; Returns: string }
       delete_organization: { Args: { _tenant_id: string }; Returns: Json }
       encrypt_pii: { Args: { plaintext: string }; Returns: string }
@@ -2894,6 +3209,7 @@ export type Database = {
         Args: { _additional_days: number; _tenant_id: string }
         Returns: Json
       }
+      extract_gst_address: { Args: { p_extracted_data: Json }; Returns: string }
       find_staff_by_emails: {
         Args: { p_emails: string[] }
         Returns: {
@@ -2940,23 +3256,26 @@ export type Database = {
         Returns: boolean
       }
       increment_vendor_usage: { Args: { _tenant_id: string }; Returns: number }
+      invoice_net_payable: { Args: { p_invoice_id: string }; Returns: number }
+      invoice_settled_total: { Args: { p_invoice_id: string }; Returns: number }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_internal_staff: { Args: { _user_id: string }; Returns: boolean }
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       is_vendor_user: { Args: { _user_id: string }; Returns: boolean }
       is_view_only: { Args: { _user_id: string }; Returns: boolean }
-      issue_purchase_order: {
+      issue_po_for_row: {
         Args: {
           p_description: string
           p_hsn_sac: string
-          p_pi_quotation_id: string
           p_place_of_supply: string
           p_po_date?: string
+          p_row_id: string
           p_tax_rate: number
           p_tax_type: string
           p_taxable_amount: number
         }
         Returns: {
+          additional_payment_terms: string | null
           created_at: string
           description: string
           grand_total: number
@@ -2968,10 +3287,14 @@ export type Database = {
           issuer_gstin: string | null
           issuer_name: string
           pdf_file_key: string | null
+          pi_document_number: string | null
+          pi_document_type: string | null
+          pi_file_key: string | null
           pi_quotation_id: string | null
           place_of_supply: string
           po_date: string
           po_number: string
+          project_manager: string | null
           project_name: string
           project_number: string | null
           tax_amount: number
@@ -2992,8 +3315,157 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      issue_purchase_order: {
+        Args: {
+          p_description: string
+          p_hsn_sac: string
+          p_pi_quotation_id: string
+          p_place_of_supply: string
+          p_po_date?: string
+          p_tax_rate: number
+          p_tax_type: string
+          p_taxable_amount: number
+        }
+        Returns: {
+          additional_payment_terms: string | null
+          created_at: string
+          description: string
+          grand_total: number
+          hsn_sac: string | null
+          id: string
+          invoice_id: string | null
+          issued_by: string
+          issuer_address: string | null
+          issuer_gstin: string | null
+          issuer_name: string
+          pdf_file_key: string | null
+          pi_document_number: string | null
+          pi_document_type: string | null
+          pi_file_key: string | null
+          pi_quotation_id: string | null
+          place_of_supply: string
+          po_date: string
+          po_number: string
+          project_manager: string | null
+          project_name: string
+          project_number: string | null
+          tax_amount: number
+          tax_rate: number
+          tax_type: string
+          taxable_amount: number
+          tenant_id: string
+          vendor_address: string | null
+          vendor_gstin: string | null
+          vendor_id: string
+          vendor_name: string
+          vendor_pan: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "purchase_orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      ledger_block_hash: {
+        Args: {
+          p_from: unknown
+          p_n: number
+          p_no: number
+          p_prev: string
+          p_rows_hash: string
+          p_up_to: unknown
+        }
+        Returns: string
+      }
+      ledger_blocks_export: {
+        Args: {
+          p_after_block?: number
+          p_after_seq?: number
+          p_after_txid?: string
+          p_from_block: number
+          p_limit?: number
+          p_to_block: number
+        }
+        Returns: Json
+      }
+      ledger_blocks_for_copy: { Args: { p_from_block?: number }; Returns: Json }
+      ledger_can_view: { Args: { p_visibility: string }; Returns: boolean }
+      ledger_capture_logins: { Args: never; Returns: number }
+      ledger_excluded_but_tracked: {
+        Args: never
+        Returns: {
+          table_name: string
+        }[]
+      }
+      ledger_integrity_status: { Args: never; Returns: Json }
+      ledger_is_admin: { Args: never; Returns: boolean }
+      ledger_log_access: {
+        Args: { p_details?: Json; p_event: string; p_target: string }
+        Returns: undefined
+      }
+      ledger_range_digest: {
+        Args: { p_from: unknown; p_up_to: unknown }
+        Returns: {
+          first_seq: number
+          last_seq: number
+          n: number
+          rows_hash: string
+        }[]
+      }
+      ledger_row_hash: {
+        Args: { l: Database["public"]["Tables"]["activity_ledger"]["Row"] }
+        Returns: string
+      }
+      ledger_seal_block: { Args: never; Returns: Json }
+      ledger_untracked_tables: {
+        Args: never
+        Returns: {
+          table_name: string
+        }[]
+      }
+      ledger_verify_chain: { Args: never; Returns: Json }
+      raise_credit_note: {
+        Args: {
+          p_amount: number
+          p_date: string
+          p_file_key: string
+          p_invoice_id: string
+          p_number: string
+          p_reason: string
+        }
+        Returns: string
+      }
+      record_advance_payment: {
+        Args: {
+          p_amount: number
+          p_id: string
+          p_paid_on: string
+          p_utr: string
+        }
+        Returns: undefined
+      }
       refresh_invoice_payment_status: {
         Args: { p_invoice_id: string }
+        Returns: undefined
+      }
+      request_advance: {
+        Args: { p_amount: number; p_id: string; p_reason: string }
+        Returns: undefined
+      }
+      resubmit_pi: {
+        Args: {
+          p_ai_confidence: number
+          p_ai_data: Json
+          p_ai_model: string
+          p_amount: number
+          p_document_date: string
+          p_document_number: string
+          p_document_type: string
+          p_file_key: string
+          p_id: string
+          p_remarks: string
+        }
         Returns: undefined
       }
       set_active_org: { Args: { p_org_id: string }; Returns: string }
@@ -3001,8 +3473,28 @@ export type Database = {
         Args: { _active: boolean; _tenant_id: string }
         Returns: Json
       }
+      set_po_additional_terms: {
+        Args: { p_po_id: string; p_terms: string }
+        Returns: undefined
+      }
       settle_pi_into_invoice: {
         Args: { p_invoice_id: string; p_pi_quotation_id: string }
+        Returns: undefined
+      }
+      submit_invoice_on_row: {
+        Args: {
+          p_ai_confidence: number
+          p_ai_data: Json
+          p_ai_model: string
+          p_amount: number
+          p_date: string
+          p_description: string
+          p_due: string
+          p_file_key: string
+          p_gst: number
+          p_id: string
+          p_number: string
+        }
         Returns: undefined
       }
       submit_livecom_invoice: {
@@ -3019,6 +3511,14 @@ export type Database = {
           p_vendor_id: string
         }
         Returns: string
+      }
+      sync_unified_from_legacy_pi: {
+        Args: never
+        Returns: {
+          carried: number
+          inserted: number
+          updated: number
+        }[]
       }
       upsert_vault_secret: {
         Args: { secret_name: string; secret_value: string }
@@ -3226,9 +3726,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       advance_request_status: ["pending", "approved", "rejected"],

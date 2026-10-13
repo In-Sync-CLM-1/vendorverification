@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,31 +8,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InvoiceCharts } from "@/components/invoices/InvoiceCharts";
-import { PaymentBreakupTable } from "@/components/invoices/PaymentBreakupTable";
-import { InvoiceUploadDialog } from "@/components/invoices/InvoiceUploadDialog";
 import { DetailChangeRequestDialog } from "@/components/vendor/DetailChangeRequestDialog";
-import { AdvanceRequestDialog } from "@/components/vendor/AdvanceRequestDialog";
-import { PiQuotationDialog } from "@/components/vendor/PiQuotationDialog";
 import { DocumentUploadDialog, DocumentActionTarget } from "@/components/documents/DocumentUploadDialog";
-import {
-  formatINR,
-  INVOICE_STATUS_META,
-  openInvoiceFile,
-  downloadInvoiceFile,
-  paymentSettled,
-  VendorInvoice,
-  InvoicePayment,
-} from "@/lib/invoices";
+import { BillingTable } from "@/components/billing/BillingTable";
+import { SubmitPiDialog } from "@/components/billing/dialogs/SubmitPiDialog";
+import { UploadInvoiceDialog } from "@/components/billing/dialogs/UploadInvoiceDialog";
+import { RequestAdvanceDialog, RaiseCreditNoteDialog } from "@/components/billing/dialogs/SmallDialogs";
+import { OnboardingJourney } from "@/components/vendor/OnboardingJourney";
+import { useBillingRows } from "@/hooks/useBillingRows";
+import { BillingRow, balanceOf, isInvoice, paymentsOf, settledTotal, tdsTotal } from "@/lib/billing";
+import { formatINR } from "@/lib/invoices";
 import {
   FileText,
   XCircle,
@@ -41,16 +28,11 @@ import {
   Upload,
   LogOut,
   Loader2,
-  ChevronDown,
-  Paperclip,
   UserCog,
   AlertTriangle,
   RefreshCw,
-  HandCoins,
-  FileSignature,
-  Download,
+  Percent,
 } from "lucide-react";
-import { toast } from "sonner";
 import { UrlTabs } from "@/components/UrlTabs";
 
 // The deep link from a "please re-upload" email/WhatsApp points at
@@ -65,11 +47,12 @@ export default function VendorPortalDashboard() {
   const { user, userType, loading: authLoading, signOut } = useAuth();
   const { tenant } = useTenant();
   const tenantLogo = useTenantLogo();
-  const [uploadOpen, setUploadOpen] = useState(false);
   const [changeRequestOpen, setChangeRequestOpen] = useState(false);
-  const [advanceRequestOpen, setAdvanceRequestOpen] = useState(false);
-  const [piQuotationOpen, setPiQuotationOpen] = useState(false);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [piOpen, setPiOpen] = useState(false);
+  const [resubmitRow, setResubmitRow] = useState<BillingRow | null>(null);
+  const [advanceRow, setAdvanceRow] = useState<BillingRow | null>(null);
+  const [invoiceRow, setInvoiceRow] = useState<BillingRow | null>(null);
+  const [creditRow, setCreditRow] = useState<BillingRow | null>(null);
   const [documentTarget, setDocumentTarget] = useState<DocumentActionTarget | null>(null);
 
   const { data: vendor, isLoading: vendorLoading } = useQuery({
@@ -83,7 +66,7 @@ export default function VendorPortalDashboard() {
       if (!link) return null;
       const { data } = await supabase
         .from("vendors")
-        .select("id, company_name, vendor_code, current_status, category_id, tenant_id")
+        .select("id, company_name, vendor_code, current_status, category_id, tenant_id, sent_back_reason, rejection_reason, approved_at")
         .eq("id", link.vendor_id)
         .maybeSingle();
       return data;
@@ -91,48 +74,24 @@ export default function VendorPortalDashboard() {
     enabled: !!user?.id,
   });
 
-  const { data: invoices = [], refetch: refetchInvoices, isLoading: invLoading } = useQuery({
-    queryKey: ["portal-invoices", vendor?.id],
+  // Billing is a separate flow that opens once the vendor is approved.
+  const approved = vendor?.current_status === "approved";
+
+  // Standalone advance requests made before advances moved onto the billing row.
+  const { data: earlierAdvances = [] } = useQuery({
+    queryKey: ["portal-earlier-advances", vendor?.id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("vendor_invoices")
-        .select("*")
-        .eq("doc_stage", "invoice")
+        .from("vendor_advance_requests")
+        .select("id, amount, status, activity_name, created_at")
         .eq("vendor_id", vendor!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data || []) as VendorInvoice[];
+      return data || [];
     },
-    enabled: !!vendor?.id,
+    enabled: !!vendor?.id && approved,
   });
-
-  const { data: payments = [], refetch: refetchPayments } = useQuery({
-    queryKey: ["portal-payments", vendor?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("vendor_invoice_payments")
-        .select("*")
-        .eq("vendor_id", vendor!.id)
-        .order("payment_date", { ascending: false });
-      if (error) throw error;
-      return (data || []) as InvoicePayment[];
-    },
-    enabled: !!vendor?.id,
-  });
-
-  const { data: purchaseOrders = [], refetch: refetchPurchaseOrders } = useQuery({
-    queryKey: ["portal-purchase-orders", vendor?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("purchase_orders")
-        .select("id, po_number, po_date, project_name, project_number, grand_total, pdf_file_key, pi_file_key, pi_document_type, invoice_id")
-        .eq("vendor_id", vendor!.id)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data || []) as { id: string; po_number: string; po_date: string; project_name: string; project_number: string | null; grand_total: number; pdf_file_key: string | null; pi_file_key: string | null; pi_document_type: string | null; invoice_id: string | null }[];
-    },
-    enabled: !!vendor?.id,
-  });
+  const { rows, isLoading: rowsLoading, refresh } = useBillingRows(`vendor:${vendor?.id}`, !!vendor?.id && approved);
 
   const { data: changeRequests = [], refetch: refetchChangeRequests } = useQuery({
     queryKey: ["portal-change-requests", vendor?.id],
@@ -149,60 +108,6 @@ export default function VendorPortalDashboard() {
     enabled: !!vendor?.id,
   });
 
-  const { data: advanceRequests = [], refetch: refetchAdvanceRequests } = useQuery({
-    queryKey: ["portal-advance-requests", vendor?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("vendor_advance_requests")
-        .select("id, amount, activity_name, status, review_comments, project_name, created_at, ai_extracted_data, proforma_invoice_file_key")
-        .eq("vendor_id", vendor!.id)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data || []) as Array<{
-        id: string;
-        amount: number;
-        activity_name: string;
-        status: "pending" | "approved" | "rejected";
-        review_comments: string | null;
-        project_name: string | null;
-        created_at: string;
-        ai_extracted_data: {
-          proforma_invoice?: {
-            invoice_number?: string | null;
-            invoice_date?: string | null;
-            due_date?: string | null;
-            po_number?: string | null;
-          };
-        } | null;
-        proforma_invoice_file_key: string | null;
-      }>;
-    },
-    enabled: !!vendor?.id,
-  });
-
-  const { data: piQuotations = [], refetch: refetchPiQuotations } = useQuery({
-    queryKey: ["portal-pi-quotations", vendor?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("vendor_pi_quotations")
-        .select("id, document_type, document_number, project_name, amount, status, review_comments, file_key, created_at")
-        .eq("vendor_id", vendor!.id)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data || []) as Array<{
-        id: string;
-        document_type: "proforma_invoice" | "quotation";
-        document_number: string | null;
-        project_name: string;
-        amount: number | null;
-        status: "submitted" | "approved" | "rejected";
-        review_comments: string | null;
-        file_key: string;
-        created_at: string;
-      }>;
-    },
-    enabled: !!vendor?.id,
-  });
 
   const { data: requiredDocTypes = [] } = useQuery({
     queryKey: ["portal-category-documents", vendor?.category_id],
@@ -293,7 +198,7 @@ export default function VendorPortalDashboard() {
     return null;
   }
   if (!authLoading && userType === "staff") {
-    navigate("/staff/invoices", { replace: true });
+    navigate("/staff/vendor-payments", { replace: true });
     return null;
   }
 
@@ -325,104 +230,24 @@ export default function VendorPortalDashboard() {
     );
   }
 
-  const settledByInvoice = new Map<string, number>();
-  for (const p of payments) {
-    settledByInvoice.set(p.invoice_id, (settledByInvoice.get(p.invoice_id) || 0) + paymentSettled(p));
-  }
-
-  const totalInvoiced = invoices.reduce((s, i) => s + Number(i.invoice_amount), 0);
-  const totalSettled = payments.reduce((s, p) => s + paymentSettled(p), 0);
-  const totalTds = payments.reduce((s, p) => s + Number(p.tds_amount || 0), 0);
-
-  const outstandingInvoices = invoices.filter(
-    (i) => !["rejected", "paid"].includes(i.status) && Number(i.invoice_amount) - (settledByInvoice.get(i.id) || 0) > 0
-  );
-  const outstanding = outstandingInvoices.reduce((s, i) => s + Number(i.invoice_amount) - (settledByInvoice.get(i.id) || 0), 0);
-
-  const settledInvoices = invoices.filter((i) => (settledByInvoice.get(i.id) || 0) > 0);
-
-  const rejectedInvoices = invoices.filter((i) => i.status === "rejected");
-  const rejectedValue = rejectedInvoices.reduce((s, i) => s + Number(i.invoice_amount), 0);
-
-  // Advance available = approved advances minus whatever has since been
-  // adjusted off against invoice payments (the existing "Advance Adjusted"
-  // field staff already fill in when recording a payment).
-  const totalApprovedAdvance = advanceRequests
-    .filter((r) => r.status === "approved")
-    .reduce((s, r) => s + Number(r.amount), 0);
-  const totalAdvanceAdjusted = payments.reduce((s, p) => s + Number(p.advance_adjusted || 0), 0);
-  const advanceAvailable = Math.max(totalApprovedAdvance - totalAdvanceAdjusted, 0);
-
-  // One combined, date-sequenced table: invoices and advance requests are
-  // both financial events for this vendor, so they live in a single list
-  // sorted by when each one actually happened (upload/request date) instead
-  // of two separate tables. Advance amounts still aren't summed into the
-  // invoice totals (see summary line below) since a request's amount and an
-  // invoice's adjusted advance are different money — there's no link back
-  // from one to the other to net them off without double-counting.
-  const combinedRows = [
-    ...invoices.map((inv) => {
-      const invPayments = payments.filter((p) => p.invoice_id === inv.id);
-      return {
-        kind: "invoice" as const,
-        id: inv.id,
-        label: inv.invoice_number,
-        uploadDate: inv.created_at,
-        invoiceDate: inv.invoice_date as string | null,
-        dueDate: inv.due_date as string | null,
-        po: inv.po_number,
-        invoiceFileKey: inv.invoice_file_key,
-        poFileKey: inv.po_file_key,
-        amount: Number(inv.invoice_amount),
-        advance_payment: invPayments.reduce((s, p) => s + Number(p.advance_adjusted || 0), 0),
-        tds_amount: invPayments.reduce((s, p) => s + Number(p.tds_amount || 0), 0),
-        status: inv.status,
-        description: inv.description,
-        rejection_reason: inv.rejection_reason,
-        payments: invPayments,
-      };
-    }),
-    ...advanceRequests.map((r) => ({
-      kind: "advance" as const,
-      id: r.id,
-      // Prefer the proforma invoice's own PI number as the reference — it's
-      // what staff actually look up against; fall back to the free-text
-      // activity name for requests submitted without a PI attached.
-      label: r.ai_extracted_data?.proforma_invoice?.invoice_number || r.activity_name,
-      activityName: r.activity_name,
-      uploadDate: r.created_at,
-      invoiceDate: r.ai_extracted_data?.proforma_invoice?.invoice_date || null,
-      dueDate: r.ai_extracted_data?.proforma_invoice?.due_date || null,
-      po: r.ai_extracted_data?.proforma_invoice?.po_number || null,
-      invoiceFileKey: r.proforma_invoice_file_key,
-      poFileKey: null,
-      // The requested amount is this row's headline "Amount" — the Advance
-      // Adjusted / TDS / Paid columns are about money actually MOVED against
-      // an invoice, which hasn't happened yet for a request still pending or
-      // just approved (that only shows up once staff net it against an
-      // invoice, on that invoice's own row).
-      amount: Number(r.amount),
-      advance_payment: null as number | null,
-      tds_amount: null as number | null,
-      status: r.status,
-      project_name: r.project_name,
-      review_comments: r.review_comments,
-      payments: [] as InvoicePayment[],
-    })),
-  ].sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
+  const invoiceRows = rows.filter(isInvoice);
+  const totalInvoiced = invoiceRows.reduce((s, r) => s + Number(r.invoice_amount || 0), 0);
+  const totalSettled = invoiceRows.reduce((s, r) => s + settledTotal(r), 0);
+  const totalTds = invoiceRows.reduce((s, r) => s + tdsTotal(r), 0);
+  const totalBalance = invoiceRows.reduce((s, r) => s + (balanceOf(r) ?? 0), 0);
 
   const tiles = [
-    { label: "Invoiced", value: formatINR(totalInvoiced), count: invoices.length, icon: FileText },
-    { label: "Outstanding", value: formatINR(Math.max(outstanding, 0)), count: outstandingInvoices.length, icon: Clock },
-    { label: "Paid / Settled", value: formatINR(totalSettled), count: settledInvoices.length, icon: Landmark, sub: totalTds > 0 ? `incl. TDS ${formatINR(totalTds)}` : undefined },
-    { label: "Rejected", value: formatINR(rejectedValue), count: rejectedInvoices.length, icon: XCircle, accent: rejectedInvoices.length > 0 },
+    { label: "Invoiced", value: formatINR(totalInvoiced), sub: `${invoiceRows.length} ${invoiceRows.length === 1 ? "invoice" : "invoices"}`, icon: FileText },
+    { label: "Settled", value: formatINR(totalSettled), sub: "paid, TDS and advance", icon: Landmark },
+    { label: "TDS deducted", value: formatINR(totalTds), sub: "across all payments", icon: Percent },
+    { label: "Balance", value: formatINR(totalBalance), sub: "still to be paid", icon: Clock },
   ];
 
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Header */}
       <header className="bg-card border-b sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 min-h-16 py-2 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3 min-w-0">
             <img src={tenantLogo} alt={tenant?.short_name || "Organization"} className="h-12 w-auto max-w-[160px] object-contain shrink-0 rounded" />
             <div className="min-w-0">
@@ -432,22 +257,19 @@ export default function VendorPortalDashboard() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button onClick={() => setChangeRequestOpen(true)} size="sm" variant="outline">
               <UserCog className="h-4 w-4 mr-2" /> Update My Details
             </Button>
-            <Button onClick={() => setPiQuotationOpen(true)} size="sm" variant="outline">
-              <FileText className="h-4 w-4 mr-2" /> Submit PI / Quotation
-            </Button>
-            <Button onClick={() => setAdvanceRequestOpen(true)} size="sm" variant="outline">
-              <HandCoins className="h-4 w-4 mr-2" /> Request Advance
-            </Button>
-            <Button onClick={() => setUploadOpen(true)} size="sm">
-              <Upload className="h-4 w-4 mr-2" /> Upload Invoice
-            </Button>
+            {approved && (
+              <Button onClick={() => setPiOpen(true)} size="sm">
+                <FileText className="h-4 w-4 mr-2" /> Submit PI / Quotation
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
+              aria-label="Sign out"
               onClick={async () => {
                 await signOut();
                 navigate("/");
@@ -460,28 +282,33 @@ export default function VendorPortalDashboard() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
-        {/* KPI tiles */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {tiles.map((t) => (
-            <Card key={t.label} className={t.accent ? "border-red-200" : undefined}>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                  <t.icon className={`h-4 w-4 ${t.accent ? "text-red-500" : ""}`} />
-                  <p className="text-xs">{t.label}</p>
-                </div>
-                <p className={`text-xl font-bold ${t.accent ? "text-red-600" : ""}`}>{t.value}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {t.count} {t.count === 1 ? "invoice" : "invoices"}
-                  {t.sub ? ` · ${t.sub}` : ""}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        {approved && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {tiles.map((t) => (
+              <Card key={t.label}>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                    <t.icon className="h-4 w-4" />
+                    <p className="text-xs">{t.label}</p>
+                  </div>
+                  <p className="text-xl font-bold tabular-nums">{t.value}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t.sub}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
 
-        <UrlTabs param="vendorportaldashboard_tab" defaultValue="overview">
+        <UrlTabs param="vendorportaldashboard_tab" defaultValue={approved ? "billing" : "onboarding"}>
           <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
+            {approved ? (
+              <>
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="billing">Billing</TabsTrigger>
+              </>
+            ) : (
+              <TabsTrigger value="onboarding">Onboarding</TabsTrigger>
+            )}
             <TabsTrigger value="documents">
               Documents
               {attentionNeeded.length > 0 && (
@@ -491,6 +318,58 @@ export default function VendorPortalDashboard() {
               )}
             </TabsTrigger>
           </TabsList>
+
+        {!approved && (
+          <TabsContent value="onboarding" className="mt-6">
+            <OnboardingJourney
+              status={vendor.current_status}
+              note={vendor.current_status === "rejected" ? vendor.rejection_reason : vendor.sent_back_reason}
+              needsDocuments={attentionNeeded.length > 0}
+            />
+          </TabsContent>
+        )}
+
+        {approved && (
+          <TabsContent value="billing" className="mt-6 space-y-3">
+            {earlierAdvances.length > 0 && (
+              <Card>
+                <CardContent className="p-4">
+                  <h2 className="mb-2 text-sm font-semibold">Earlier advance requests</h2>
+                  <div className="space-y-1.5">
+                    {earlierAdvances.map((r) => (
+                      <div key={r.id} className="flex items-center justify-between gap-3 rounded-md border px-3 py-1.5 text-sm">
+                        <span className="min-w-0 truncate">{r.activity_name}</span>
+                        <span className="flex shrink-0 items-center gap-2">
+                          <b className="tabular-nums">{formatINR(Number(r.amount))}</b>
+                          <Badge variant="outline" className={r.status === "approved" ? "border-emerald-200 bg-emerald-100 text-emerald-800" : r.status === "rejected" ? "border-red-200 bg-red-100 text-red-800" : "border-amber-200 bg-amber-100 text-amber-800"}>
+                            {r.status === "approved" ? "Approved" : r.status === "rejected" ? "Not approved" : "Pending review"}
+                          </Badge>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            <BillingTable
+              rows={rows}
+              loading={rowsLoading}
+              viewer={{ mode: "vendor", userId: user?.id ?? null, isAdmin: false, isAccounts: false, isViewOnly: false }}
+              actions={{
+                resubmit: (r) => setResubmitRow(r),
+                requestAdvance: (r) => setAdvanceRow(r),
+                uploadInvoice: (r) => setInvoiceRow(r),
+                raiseCreditNote: (r) => setCreditRow(r),
+                decide: () => {},
+                issuePo: () => {},
+                recordAdvance: () => {},
+                recordPayment: () => {},
+              }}
+              emptyTitle="No PIs yet"
+              emptyHint="Submit a PI or Quotation to start your first job. Everything that follows, from the PO to the invoice, appears on the same row."
+            />
+          </TabsContent>
+        )}
 
         <TabsContent value="documents" className="mt-6">
         {/* Every required document for this vendor's category — upload
@@ -623,359 +502,48 @@ export default function VendorPortalDashboard() {
           </Card>
         )}
 
-        {/* PI / Quotation submissions */}
-        {piQuotations.length > 0 && (
-          <Card>
-            <CardContent className="p-4">
-              <h2 className="font-semibold mb-3">Your PI / Quotation Submissions</h2>
-              <div className="space-y-2">
-                {piQuotations.map((r) => {
-                  const statusMeta =
-                    r.status === "approved"
-                      ? { label: "Approved", className: "bg-emerald-100 text-emerald-800 border-emerald-200" }
-                      : r.status === "rejected"
-                        ? { label: "Not Approved", className: "bg-red-100 text-red-800 border-red-200" }
-                        : { label: "Pending Review", className: "bg-amber-100 text-amber-800 border-amber-200" };
-                  return (
-                    <div key={r.id} className="flex items-center justify-between gap-3 text-sm border rounded-md px-3 py-2">
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">
-                          {r.document_type === "quotation" ? "Quotation" : "Proforma Invoice"}
-                          {r.document_number ? ` #${r.document_number}` : ""} · {r.project_name}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {r.amount != null ? formatINR(r.amount) : "Amount not detected"} · submitted{" "}
-                          {new Date(r.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
-                        </p>
-                        {r.status === "rejected" && r.review_comments && (
-                          <p className="text-xs text-destructive mt-0.5">{r.review_comments}</p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2"
-                          onClick={() => openInvoiceFile(r.file_key).catch((err) => toast.error(err.message))}
-                        >
-                          <Paperclip className="h-3.5 w-3.5 mr-1" /> File
-                        </Button>
-                        <Badge variant="outline" className={statusMeta.className}>{statusMeta.label}</Badge>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Analytics */}
         <InvoiceCharts
-          invoices={invoices.map((i) => ({
+          invoices={invoiceRows.map((i) => ({
             invoice_amount: Number(i.invoice_amount),
-            invoice_date: i.invoice_date,
+            invoice_date: i.invoice_date as string,
             status: i.status,
           }))}
-          payments={payments.map((p) => ({
+          payments={rows.flatMap((r) => paymentsOf(r)).map((p) => ({
             payment_date: p.payment_date,
             advance_adjusted: Number(p.advance_adjusted),
             tds_amount: Number(p.tds_amount),
             payout_amount: Number(p.payout_amount),
           }))}
-          advanceRequests={advanceRequests.map((r) => ({
-            amount: Number(r.amount),
-            status: r.status,
-            created_at: r.created_at,
-          }))}
+          advanceRequests={rows
+            .filter((r) => r.adv_status)
+            .map((r) => ({
+              amount: Number(r.adv_amount),
+              status: (r.adv_status === "paid" ? "approved" : "pending") as "approved" | "pending" | "rejected",
+              created_at: r.adv_requested_at || r.created_at,
+            }))}
         />
-
-        {purchaseOrders.length > 0 && (
-          <Card>
-            <CardContent className="p-0">
-              <div className="p-4 border-b">
-                <h2 className="font-semibold flex items-center gap-1.5">
-                  <FileSignature className="h-4 w-4" /> Your Purchase Orders
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  An invoice can only be submitted against a PO not yet marked invoiced.
-                </p>
-              </div>
-              <div className="divide-y">
-                {[...purchaseOrders].sort((a, b) => Number(!!a.invoice_id) - Number(!!b.invoice_id)).map((po) => (
-                  <div key={po.id} className={`p-3 flex items-center justify-between gap-3 flex-wrap ${po.invoice_id ? "opacity-60" : ""}`}>
-                    <div>
-                      <p className="text-sm font-medium">
-                        PO #{po.po_number}
-                        {po.invoice_id && (
-                          <span className="ml-2 text-xs font-normal text-muted-foreground">· invoiced</span>
-                        )}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {po.project_number || po.project_name} ·{" "}
-                        {new Date(po.po_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-semibold">{formatINR(po.grand_total)}</span>
-                      {po.pdf_file_key && (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-xs"
-                            onClick={() => openInvoiceFile(po.pdf_file_key!).catch((err) => toast.error(err.message))}
-                          >
-                            <FileText className="h-3 w-3 mr-1" /> View PO
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-xs"
-                            onClick={() => downloadInvoiceFile(po.pdf_file_key!, `PO-${po.po_number.replace(/\//g, "-")}.pdf`).catch((err) => toast.error(err.message))}
-                          >
-                            <Download className="h-3 w-3 mr-1" /> Download
-                          </Button>
-                        </>
-                      )}
-                      {po.invoice_id ? (
-                        invoices.find((i) => i.id === po.invoice_id)?.invoice_file_key && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-xs"
-                            onClick={() => openInvoiceFile(invoices.find((i) => i.id === po.invoice_id)!.invoice_file_key!).catch((err) => toast.error(err.message))}
-                          >
-                            <FileText className="h-3 w-3 mr-1" /> View Invoice
-                          </Button>
-                        )
-                      ) : (
-                        po.pi_file_key && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-xs"
-                            onClick={() => openInvoiceFile(po.pi_file_key!).catch((err) => toast.error(err.message))}
-                          >
-                            <FileText className="h-3 w-3 mr-1" /> View {po.pi_document_type === "quotation" ? "Quotation" : "PI"}
-                          </Button>
-                        )
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Invoices and advance requests, one table, newest first */}
-        <Card>
-          <CardContent className="p-0">
-            <div className="p-4 border-b flex items-center justify-between flex-wrap gap-2">
-              <div>
-                <h2 className="font-semibold">Your Invoices &amp; Advances</h2>
-                <p className="text-sm text-muted-foreground">
-                  Tap an invoice to see its payment breakup
-                </p>
-              </div>
-              <span className="text-sm text-muted-foreground">
-                Invoiced: <span className="font-semibold text-foreground">{formatINR(totalInvoiced)}</span>
-                {" · "}Settled: <span className="font-semibold text-foreground">{formatINR(totalSettled)}</span>
-                {advanceAvailable > 0 && (
-                  <>{" · "}Advance available: <span className="font-semibold text-foreground">{formatINR(advanceAvailable)}</span></>
-                )}
-              </span>
-            </div>
-
-            {invLoading ? (
-              <div className="p-8 text-center">
-                <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
-              </div>
-            ) : combinedRows.length === 0 ? (
-              <div className="p-10 text-center space-y-3">
-                <FileText className="h-10 w-10 text-muted-foreground mx-auto" />
-                <p className="font-medium">No invoices yet</p>
-                <p className="text-sm text-muted-foreground">
-                  Upload your first invoice to get paid.
-                </p>
-                <Button onClick={() => setUploadOpen(true)}>
-                  <Upload className="h-4 w-4 mr-2" /> Upload Invoice
-                </Button>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Reference</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Due Date</TableHead>
-                      <TableHead>PO</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead className="text-right">Paid</TableHead>
-                      <TableHead className="text-right">TDS</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Files</TableHead>
-                      <TableHead className="w-8" />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {combinedRows.map((r) => {
-                      const isOpen = expandedId === r.id;
-                      const advanceStatusMeta =
-                        r.status === "approved"
-                          ? { label: "Approved", className: "bg-emerald-100 text-emerald-800 border-emerald-200" }
-                          : r.status === "rejected"
-                            ? { label: "Not Approved", className: "bg-red-100 text-red-800 border-red-200" }
-                            : { label: "Pending Review", className: "bg-amber-100 text-amber-800 border-amber-200" };
-                      return (
-                        <Fragment key={`${r.kind}-${r.id}`}>
-                          <TableRow
-                            className={r.kind === "invoice" ? "cursor-pointer" : undefined}
-                            onClick={() => r.kind === "invoice" && setExpandedId(isOpen ? null : r.id)}
-                          >
-                            <TableCell className="font-medium">
-                              {r.kind === "invoice" ? r.label : `Advance: ${r.label}`}
-                              {r.kind === "advance" && (
-                                <p className="text-xs text-muted-foreground font-normal mt-0.5">
-                                  {r.activityName}{r.project_name ? ` · ${r.project_name}` : ""}
-                                </p>
-                              )}
-                              {r.kind === "advance" && r.status === "rejected" && r.review_comments && (
-                                <p className="text-xs text-destructive font-normal mt-0.5">{r.review_comments}</p>
-                              )}
-                            </TableCell>
-                            <TableCell className="whitespace-nowrap">
-                              {new Date(r.invoiceDate || r.uploadDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
-                            </TableCell>
-                            <TableCell className="whitespace-nowrap">
-                              {r.dueDate ? new Date(r.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
-                            </TableCell>
-                            <TableCell>{r.po || "—"}</TableCell>
-                            <TableCell className="text-right font-medium">{r.amount != null ? formatINR(r.amount) : "—"}</TableCell>
-                            <TableCell className="text-right">{r.advance_payment ? formatINR(r.advance_payment) : "—"}</TableCell>
-                            <TableCell className="text-right">{r.tds_amount ? formatINR(r.tds_amount) : "—"}</TableCell>
-                            <TableCell>
-                              {r.kind === "invoice" ? (
-                                <Badge variant="outline" className={INVOICE_STATUS_META[r.status].className}>
-                                  {INVOICE_STATUS_META[r.status].label}
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className={advanceStatusMeta.className}>{advanceStatusMeta.label}</Badge>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex gap-1">
-                                {r.kind === "invoice" && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 px-2"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      openInvoiceFile(r.invoiceFileKey).catch((err) => toast.error(err.message));
-                                    }}
-                                  >
-                                    <Paperclip className="h-3.5 w-3.5 mr-1" /> Invoice
-                                  </Button>
-                                )}
-                                {r.kind === "invoice" && r.poFileKey && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 px-2"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      openInvoiceFile(r.poFileKey!).catch((err) => toast.error(err.message));
-                                    }}
-                                  >
-                                    <Paperclip className="h-3.5 w-3.5 mr-1" /> PO
-                                  </Button>
-                                )}
-                                {r.kind === "advance" && r.invoiceFileKey && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 px-2"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      openInvoiceFile(r.invoiceFileKey!).catch((err) => toast.error(err.message));
-                                    }}
-                                  >
-                                    <Paperclip className="h-3.5 w-3.5 mr-1" /> PI
-                                  </Button>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {r.kind === "invoice" && (
-                                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
-                              )}
-                            </TableCell>
-                          </TableRow>
-                          {r.kind === "invoice" && isOpen && (
-                            <TableRow className="bg-muted/30 hover:bg-muted/30">
-                              <TableCell colSpan={10} className="p-4">
-                                {r.status === "rejected" && r.rejection_reason && (
-                                  <p className="text-sm text-destructive mb-3">
-                                    Rejection reason: {r.rejection_reason}
-                                  </p>
-                                )}
-                                {r.description && (
-                                  <p className="text-sm text-muted-foreground mb-3">{r.description}</p>
-                                )}
-                                <p className="text-sm font-medium mb-2">Payment details</p>
-                                <PaymentBreakupTable payments={r.payments} />
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </Fragment>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
         </TabsContent>
         </UrlTabs>
       </main>
 
-      <InvoiceUploadDialog
-        open={uploadOpen}
-        onOpenChange={setUploadOpen}
+      <SubmitPiDialog
+        open={piOpen || !!resubmitRow}
+        onOpenChange={(o) => { if (!o) { setPiOpen(false); setResubmitRow(null); } }}
         vendorId={vendor.id}
-        advanceRequests={advanceRequests}
-        advanceAvailable={advanceAvailable}
-        onUploaded={() => {
-          refetchInvoices();
-          refetchPayments();
-          refetchPurchaseOrders();
-        }}
+        resubmitRow={resubmitRow}
+        onDone={refresh}
       />
+      <UploadInvoiceDialog open={!!invoiceRow} onOpenChange={(o) => !o && setInvoiceRow(null)} row={invoiceRow} onDone={refresh} />
+      <RequestAdvanceDialog open={!!advanceRow} onOpenChange={(o) => !o && setAdvanceRow(null)} row={advanceRow} onDone={refresh} />
+      <RaiseCreditNoteDialog open={!!creditRow} onOpenChange={(o) => !o && setCreditRow(null)} row={creditRow} onDone={refresh} />
 
       <DetailChangeRequestDialog
         open={changeRequestOpen}
         onOpenChange={setChangeRequestOpen}
         vendorId={vendor.id}
         onSubmitted={refetchChangeRequests}
-      />
-
-      <AdvanceRequestDialog
-        open={advanceRequestOpen}
-        onOpenChange={setAdvanceRequestOpen}
-        vendorId={vendor.id}
-        pendingRequests={advanceRequests.filter((r) => r.status === "pending")}
-        onSubmitted={refetchAdvanceRequests}
-      />
-
-      <PiQuotationDialog
-        open={piQuotationOpen}
-        onOpenChange={setPiQuotationOpen}
-        vendorId={vendor.id}
-        onSubmitted={refetchPiQuotations}
       />
 
       <DocumentUploadDialog

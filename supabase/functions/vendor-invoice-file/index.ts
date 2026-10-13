@@ -174,6 +174,14 @@ Deno.serve(async (req) => {
           .maybeSingle());
       }
       if (!invoice) {
+        // The PI / Quotation file kept on the billing row.
+        ({ data: invoice } = await admin
+          .from("vendor_invoices")
+          .select("id, tenant_id, vendor_id")
+          .eq("pi_file_key", key)
+          .maybeSingle());
+      }
+      if (!invoice) {
         ({ data: invoice } = await admin
           .from("vendor_advance_requests")
           .select("id, tenant_id, vendor_id")
