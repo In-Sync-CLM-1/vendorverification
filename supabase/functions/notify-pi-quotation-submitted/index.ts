@@ -7,7 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const PORTAL_URL = "https://vendor.in-sync.co.in/staff/pi-approvals";
+const PORTAL_URL = "https://vendor.in-sync.co.in/staff/vendor-payments";
 const WA_TEMPLATE_NAME = "pi_quotation_submitted_v1";
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -38,18 +38,33 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Not signed in" }, 401);
     }
 
-    const { pi_quotation_id } = await req.json();
-    if (!pi_quotation_id) {
-      return jsonResponse({ error: "pi_quotation_id is required" }, 400);
+    // The PI / Quotation is a row of the single billing table (row_id). The
+    // old standalone id is still accepted while the cutover settles.
+    const { row_id, pi_quotation_id } = await req.json();
+    const submissionId = row_id || pi_quotation_id;
+    if (!submissionId) {
+      return jsonResponse({ error: "row_id is required" }, 400);
     }
 
-    const { data: submission } = await admin
-      .from("vendor_pi_quotations")
-      .select(
-        "id, vendor_id, tenant_id, amount, document_type, project_name, project_number, project_owner_user_id, project_owner_name"
-      )
-      .eq("id", pi_quotation_id)
+    const { data: row } = await admin
+      .from("vendor_invoices")
+      .select("id, vendor_id, tenant_id, pi_amount, doc_stage, project_name, project_number, project_owner_user_id, project_owner_name")
+      .eq("id", submissionId)
+      .in("doc_stage", ["proforma_invoice", "quotation"])
       .maybeSingle();
+    let submission = row
+      ? { ...row, amount: row.pi_amount, document_type: row.doc_stage }
+      : null;
+    if (!submission) {
+      const { data: legacy } = await admin
+        .from("vendor_pi_quotations")
+        .select(
+          "id, vendor_id, tenant_id, amount, document_type, project_name, project_number, project_owner_user_id, project_owner_name"
+        )
+        .eq("id", submissionId)
+        .maybeSingle();
+      submission = legacy;
+    }
     if (!submission) {
       return jsonResponse({ error: "Submission not found" }, 404);
     }

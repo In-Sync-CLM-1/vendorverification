@@ -278,7 +278,8 @@ export function renderPurchaseOrderPdf(po: PurchaseOrder): Blob {
 }
 
 interface IssuePoInput {
-  pi_quotation_id: string;
+  /** The billing row (PI / Quotation) the PO is issued against. */
+  row_id: string;
   description: string;
   hsn_sac: string;
   place_of_supply: string;
@@ -290,10 +291,10 @@ interface IssuePoInput {
   additional_payment_terms?: string;
 }
 
-/** Calls issue_purchase_order, renders the PDF from the returned row, uploads it, and attaches the key. */
+/** Calls issue_po_for_row, renders the PDF from the returned row, uploads it, and attaches the key. */
 export async function issuePurchaseOrder(input: IssuePoInput): Promise<PurchaseOrder> {
-  const { data, error } = await supabase.rpc("issue_purchase_order", {
-    p_pi_quotation_id: input.pi_quotation_id,
+  const { data, error } = await supabase.rpc("issue_po_for_row", {
+    p_row_id: input.row_id,
     p_description: input.description,
     p_hsn_sac: input.hsn_sac || null,
     p_place_of_supply: input.place_of_supply,

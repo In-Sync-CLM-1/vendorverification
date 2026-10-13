@@ -35,25 +35,51 @@ const localDay = (d: Date) =>
  * per-request match — the closest true figure the schema supports.
  */
 export function useVendorPaymentFlow(range: AnalyticsRange, vendorFilter: string) {
+  // Every row that has (or had) a PI: still at PI stage, or already turned into
+  // its invoice (the PI details stay on the row).
   const { data: piRows = [], isLoading: piLoading } = useQuery({
     queryKey: ["payment-flow-pi"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("vendor_pi_quotations")
-        .select("id, vendor_id, status, amount, created_at, vendors(company_name)");
+        .from("vendor_invoices")
+        .select("id, vendor_id, status, pi_status, pi_amount, created_at, doc_stage, vendors(company_name)")
+        .or("doc_stage.in.(proforma_invoice,quotation),pi_file_key.not.is.null");
       if (error) throw error;
-      return data || [];
+      return (data || []).map((r) => ({
+        id: r.id,
+        vendor_id: r.vendor_id,
+        status: (r.pi_status ?? r.status) as string,
+        amount: r.pi_amount,
+        created_at: r.created_at,
+        vendors: r.vendors,
+      }));
     },
   });
 
+  // Advances: those held on the billing row, plus the earlier standalone requests.
   const { data: advanceRows = [], isLoading: advLoading } = useQuery({
     queryKey: ["payment-flow-advance"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("vendor_advance_requests")
-        .select("id, vendor_id, status, amount, created_at, vendors(company_name)");
-      if (error) throw error;
-      return data || [];
+      const [onRow, legacy] = await Promise.all([
+        supabase
+          .from("vendor_invoices")
+          .select("id, vendor_id, adv_status, adv_amount, adv_requested_at, created_at, vendors(company_name)")
+          .not("adv_status", "is", null),
+        supabase.from("vendor_advance_requests").select("id, vendor_id, status, amount, created_at, vendors(company_name)"),
+      ]);
+      if (onRow.error) throw onRow.error;
+      if (legacy.error) throw legacy.error;
+      return [
+        ...(onRow.data || []).map((r) => ({
+          id: r.id,
+          vendor_id: r.vendor_id,
+          status: r.adv_status === "paid" ? "approved" : "pending",
+          amount: r.adv_amount,
+          created_at: r.adv_requested_at || r.created_at,
+          vendors: r.vendors,
+        })),
+        ...(legacy.data || []),
+      ];
     },
   });
 

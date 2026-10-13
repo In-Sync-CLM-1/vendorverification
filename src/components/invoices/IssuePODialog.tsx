@@ -20,7 +20,7 @@ import { issuePurchaseOrder, inferTaxType } from "@/lib/purchaseOrders";
 import { Loader2, FileText } from "lucide-react";
 
 interface IssuePOTarget {
-  id: string; // pi_quotation id
+  id: string; // billing row id (the PI / Quotation)
   vendor_id: string;
   vendorName: string;
   projectName: string;
@@ -95,7 +95,7 @@ export function IssuePODialog({ open, onOpenChange, target, onIssued }: IssuePOD
     setSaving(true);
     try {
       await issuePurchaseOrder({
-        pi_quotation_id: target.id,
+        row_id: target.id,
         description: description.trim(),
         hsn_sac: hsnSac.trim(),
         place_of_supply: placeOfSupply.trim(),

@@ -23,8 +23,6 @@ import {
   Landmark,
   UserCog,
   Lock,
-  HandCoins,
-  ClipboardCheck,
   FileUp,
 } from "lucide-react";
 import {
@@ -71,9 +69,7 @@ const navSections = [
   {
     label: "Vendor Payments",
     items: [
-      { title: "PI / Quotation Approvals", url: "/staff/pi-approvals", icon: ClipboardCheck },
-      { title: "Advance Requests", url: "/staff/advance-requests", icon: HandCoins },
-      { title: "Invoices", url: "/staff/invoices", icon: ReceiptIndianRupee },
+      { title: "Vendor Payments", url: "/staff/vendor-payments", icon: ReceiptIndianRupee },
       { title: "Match Payments", url: "/staff/payment-matching", icon: Landmark },
     ],
   },
