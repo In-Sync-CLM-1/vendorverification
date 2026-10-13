@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +12,10 @@ import { IssuePODialog } from "@/components/invoices/IssuePODialog";
 import { RecordPaymentDialog, PaymentTarget } from "@/components/invoices/RecordPaymentDialog";
 import { BillingRow, docFileKey, netPayable, settledTotal } from "@/lib/billing";
 import { formatINR } from "@/lib/invoices";
+import { StaffStrip } from "@/components/game/StaffStrip";
+import { celebrate } from "@/components/game/Celebration";
+import { clearStreak, doneToday, recordClear, recordDone } from "@/lib/gamification";
+import { advPaid, nextActionFor, paidOut as rowPaidOut } from "@/lib/billing";
 
 /** One table, one row per flow from PI to credit note, for everyone on the organisation's side. */
 export default function StaffVendorPayments() {
@@ -31,6 +35,41 @@ export default function StaffVendorPayments() {
   });
   const earlierTotal = earlierAdvances.reduce((s, r) => s + Number(r.amount || 0), 0);
 
+  // The game layer: what is waiting on this person, and what they have cleared today.
+  const viewer = { mode: "staff" as const, userId: user?.id ?? null, isAdmin, isAccounts, isViewOnly };
+  const mine = rows.filter((r) => ["decide", "issue_po", "record_advance", "record_payment"].includes(nextActionFor(r, viewer).kind));
+  const waiting = mine.length;
+  const [done, setDone] = useState(() => doneToday(user?.id));
+  const [clearDays, setClearDays] = useState(() => clearStreak(user?.id));
+  const acted = useRef(false);
+  const prevWaiting = useRef<number | null>(null);
+  useEffect(() => {
+    setDone(doneToday(user?.id));
+    setClearDays(clearStreak(user?.id));
+  }, [user?.id]);
+  useEffect(() => {
+    if (isLoading) return;
+    if (acted.current && prevWaiting.current !== null && prevWaiting.current > 0 && waiting === 0) {
+      recordClear(user?.id);
+      setClearDays(clearStreak(user?.id));
+      celebrate("Inbox clear", "Nothing is waiting on you now.", true);
+    }
+    prevWaiting.current = waiting;
+  }, [waiting, isLoading, user?.id]);
+  const oldestDays = mine.reduce((m, r) => {
+    const k = nextActionFor(r, viewer).kind;
+    const since = k === "decide" ? r.created_at : k === "issue_po" ? r.pi_reviewed_at || r.created_at : k === "record_advance" ? r.adv_requested_at || r.created_at : r.invoice_date || r.created_at;
+    return Math.max(m, Math.max(Math.floor((Date.now() - new Date(since).getTime()) / 86400000), 0));
+  }, 0);
+  const paidOutTotal = rows.reduce((s, r) => s + rowPaidOut(r) + advPaid(r), 0);
+  const acting = (after?: () => void) => () => {
+    acted.current = true;
+    recordDone(user?.id);
+    setDone(doneToday(user?.id));
+    refresh();
+    after?.();
+  };
+
   const [decideRow, setDecideRow] = useState<BillingRow | null>(null);
   const [poRow, setPoRow] = useState<BillingRow | null>(null);
   const [advRow, setAdvRow] = useState<BillingRow | null>(null);
@@ -48,14 +87,22 @@ export default function StaffVendorPayments() {
 
   return (
     <StaffLayout title="Vendor Payments">
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto font-jakarta">
         <div className="border-b bg-card p-4">
-          <h1 className="text-xl font-semibold">Vendor Payments</h1>
+          <h1 className="text-xl font-bold">Vendor Payments</h1>
           <p className="text-sm text-muted-foreground">
             One row per piece of work, from the PI to the last credit note. The only approval is the PI; everything after it is recorded.
           </p>
         </div>
         <div className="space-y-3 p-4">
+          <StaffStrip
+            done={done}
+            waiting={waiting}
+            noun={isAccounts ? "items to action" : "PIs to decide"}
+            oldestDays={oldestDays}
+            clearDays={clearDays}
+            paidOut={isAccounts ? paidOutTotal : undefined}
+          />
           {earlierAdvances.length > 0 && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
               {earlierAdvances.length} earlier advance request{earlierAdvances.length === 1 ? "" : "s"} ({formatINR(earlierTotal)}) made before advances moved onto the billing row {earlierAdvances.length === 1 ? "is" : "are"} still waiting for a decision.{" "}
@@ -65,7 +112,7 @@ export default function StaffVendorPayments() {
           <BillingTable
             rows={rows}
             loading={isLoading}
-            viewer={{ mode: "staff", userId: user?.id ?? null, isAdmin, isAccounts, isViewOnly }}
+            viewer={viewer}
             actions={{
               decide: (r) => setDecideRow(r),
               issuePo: (r) => setPoRow(r),
@@ -82,8 +129,8 @@ export default function StaffVendorPayments() {
         </div>
       </div>
 
-      <DecidePiDialog open={!!decideRow} onOpenChange={(o) => !o && setDecideRow(null)} row={decideRow} onDone={refresh} />
-      <RecordAdvancePaymentDialog open={!!advRow} onOpenChange={(o) => !o && setAdvRow(null)} row={advRow} onDone={refresh} />
+      <DecidePiDialog open={!!decideRow} onOpenChange={(o) => !o && setDecideRow(null)} row={decideRow} onDone={(info) => acting(() => info?.approved && celebrate("PI approved", "Accounts can now issue the PO"))()} />
+      <RecordAdvancePaymentDialog open={!!advRow} onOpenChange={(o) => !o && setAdvRow(null)} row={advRow} onDone={acting()} />
       {poRow && (
         <IssuePODialog
           open={!!poRow}
@@ -98,7 +145,7 @@ export default function StaffVendorPayments() {
             documentType: poRow.doc_stage === "quotation" ? "quotation" : "proforma_invoice",
             fileKey: docFileKey(poRow),
           }}
-          onIssued={refresh}
+          onIssued={acting(() => celebrate("PO issued", "The vendor can now invoice"))}
         />
       )}
       {payTarget && payRow && (
@@ -107,7 +154,7 @@ export default function StaffVendorPayments() {
           onOpenChange={(o) => !o && setPayRow(null)}
           target={payTarget}
           alreadySettled={settledTotal(payRow)}
-          onRecorded={refresh}
+          onRecorded={acting()}
         />
       )}
     </StaffLayout>

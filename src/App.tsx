@@ -29,6 +29,7 @@ import VendorList from "./pages/staff/VendorList";
 import BulkImportVendors from "./pages/staff/BulkImportVendors";
 import BulkInviteVendors from "./pages/staff/BulkInviteVendors";
 import FraudAlertsDashboard from "./pages/staff/FraudAlertsDashboard";
+import { CelebrationHost } from "@/components/game/Celebration";
 import StaffInvoices from "./pages/staff/StaffInvoices";
 import StaffAdvanceRequests from "./pages/staff/StaffAdvanceRequests";
 import StaffVendorPayments from "./pages/staff/StaffVendorPayments";
@@ -67,6 +68,7 @@ const App = () => (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <TooltipProvider>
+        <CelebrationHost />
         <Toaster />
         <Sonner />
         <BrowserRouter>

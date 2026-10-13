@@ -15,7 +15,7 @@ interface BaseProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   row: BillingRow | null;
-  onDone: () => void;
+  onDone: (info?: { approved?: boolean }) => void;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -229,7 +229,7 @@ export function DecidePiDialog({ open, onOpenChange, row, onDone }: BaseProps) {
       if (error) throw new Error(error.message);
       toast.success(approve ? "Approved. Accounts can now issue the PO" : "Rejected. The comment is on the vendor's row");
       onOpenChange(false);
-      onDone();
+      onDone({ approved: approve });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Action failed");
     } finally {

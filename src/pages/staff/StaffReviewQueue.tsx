@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { StaffLayout } from "@/components/layout/StaffLayout";
 import { useUserRoles } from "@/hooks/useUserRoles";
+import { QueueStrip } from "@/components/game/QueueStrip";
 import { useStaffVendorQueue, VendorWithCategory } from "@/hooks/useStaffWorkflow";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -126,6 +127,7 @@ export default function StaffReviewQueue() {
   return (
     <StaffLayout title="Approval Queue">
       <div className="flex-1 flex flex-col">
+        <QueueStrip vendors={vendors || []} isMaker={isMaker} isApprover={isApprover} isAdmin={isAdmin} />
         {/* Search */}
         <div className="p-4 border-b bg-card">
           <div className="relative max-w-md">
