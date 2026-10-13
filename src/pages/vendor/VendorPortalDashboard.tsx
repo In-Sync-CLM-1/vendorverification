@@ -28,6 +28,7 @@ import {
   formatINR,
   INVOICE_STATUS_META,
   openInvoiceFile,
+  downloadInvoiceFile,
   paymentSettled,
   VendorInvoice,
   InvoicePayment,
@@ -47,6 +48,7 @@ import {
   RefreshCw,
   HandCoins,
   FileSignature,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { UrlTabs } from "@/components/UrlTabs";
@@ -716,24 +718,47 @@ export default function VendorPortalDashboard() {
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-semibold">{formatINR(po.grand_total)}</span>
                       {po.pdf_file_key && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs"
-                          onClick={() => openInvoiceFile(po.pdf_file_key!).catch((err) => toast.error(err.message))}
-                        >
-                          <FileText className="h-3 w-3 mr-1" /> View PO
-                        </Button>
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() => openInvoiceFile(po.pdf_file_key!).catch((err) => toast.error(err.message))}
+                          >
+                            <FileText className="h-3 w-3 mr-1" /> View PO
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() => downloadInvoiceFile(po.pdf_file_key!, `PO-${po.po_number.replace(/\//g, "-")}.pdf`).catch((err) => toast.error(err.message))}
+                          >
+                            <Download className="h-3 w-3 mr-1" /> Download
+                          </Button>
+                        </>
                       )}
-                      {po.pi_file_key && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs"
-                          onClick={() => openInvoiceFile(po.pi_file_key!).catch((err) => toast.error(err.message))}
-                        >
-                          <FileText className="h-3 w-3 mr-1" /> View {po.pi_document_type === "quotation" ? "Quotation" : "PI"}
-                        </Button>
+                      {po.invoice_id ? (
+                        invoices.find((i) => i.id === po.invoice_id)?.invoice_file_key && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() => openInvoiceFile(invoices.find((i) => i.id === po.invoice_id)!.invoice_file_key!).catch((err) => toast.error(err.message))}
+                          >
+                            <FileText className="h-3 w-3 mr-1" /> View Invoice
+                          </Button>
+                        )
+                      ) : (
+                        po.pi_file_key && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() => openInvoiceFile(po.pi_file_key!).catch((err) => toast.error(err.message))}
+                          >
+                            <FileText className="h-3 w-3 mr-1" /> View {po.pi_document_type === "quotation" ? "Quotation" : "PI"}
+                          </Button>
+                        )
                       )}
                     </div>
                   </div>
