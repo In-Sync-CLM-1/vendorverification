@@ -18,6 +18,7 @@ import { UploadInvoiceDialog } from "@/components/billing/dialogs/UploadInvoiceD
 import { RequestAdvanceDialog, RaiseCreditNoteDialog } from "@/components/billing/dialogs/SmallDialogs";
 import { OnboardingJourney } from "@/components/vendor/OnboardingJourney";
 import { useBillingRows } from "@/hooks/useBillingRows";
+import { AchievementShelf, ScoreStrip, useVendorGame } from "@/components/game/VendorGame";
 import { BillingRow, balanceOf, isInvoice, paymentsOf, settledTotal, tdsTotal } from "@/lib/billing";
 import { formatINR } from "@/lib/invoices";
 import {
@@ -92,6 +93,7 @@ export default function VendorPortalDashboard() {
     enabled: !!vendor?.id && approved,
   });
   const { rows, isLoading: rowsLoading, refresh } = useBillingRows(`vendor:${vendor?.id}`, !!vendor?.id && approved);
+  const game = useVendorGame(vendor?.id, rows, approved, !!vendor?.id && approved && !rowsLoading);
 
   const { data: changeRequests = [], refetch: refetchChangeRequests } = useQuery({
     queryKey: ["portal-change-requests", vendor?.id],
@@ -244,42 +246,54 @@ export default function VendorPortalDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-muted/30 font-jakarta">
       {/* Header */}
-      <header className="bg-card border-b sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 min-h-16 py-2 flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-3 min-w-0">
-            <img src={tenantLogo} alt={tenant?.short_name || "Organization"} className="h-12 w-auto max-w-[160px] object-contain shrink-0 rounded" />
-            <div className="min-w-0">
-              <p className="font-semibold truncate">{vendor.company_name}</p>
-              <p className="text-xs text-muted-foreground truncate">
-                {tenant?.short_name ? `${tenant.short_name} · ` : ""}Vendor Portal · {vendor.vendor_code}
-              </p>
+      <div className="mx-auto max-w-6xl px-4 pt-4">
+        <div
+          className="relative overflow-hidden rounded-3xl p-5 text-white"
+          style={{ background: "radial-gradient(120% 150% at 0% 0%, #0B2545 0%, #0A3F73 55%, #0066B3 105%)" }}
+        >
+          <div className="pointer-events-none absolute -right-16 -top-20 h-72 w-72 rounded-full" style={{ background: "radial-gradient(circle, rgba(124,187,68,.38), transparent 66%)" }} />
+          <div className="relative flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <img src={tenantLogo} alt={tenant?.short_name || "Organization"} className="h-11 w-auto max-w-[150px] shrink-0 rounded-lg bg-white object-contain p-1" />
+              <div className="min-w-0">
+                <p className="truncate text-[17px] font-bold">{vendor.company_name}</p>
+                <p className="truncate text-xs text-blue-200">
+                  {tenant?.short_name ? `${tenant.short_name} · ` : ""}Vendor Portal · {vendor.vendor_code}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button onClick={() => setChangeRequestOpen(true)} size="sm" variant="outline" className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white">
+                <UserCog className="mr-2 h-4 w-4" /> Update My Details
+              </Button>
+              {approved && (
+                <Button onClick={() => setPiOpen(true)} size="sm" className="bg-white text-[#0B2545] hover:bg-blue-50">
+                  <FileText className="mr-2 h-4 w-4" /> Submit PI / Quotation
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label="Sign out"
+                className="text-white hover:bg-white/15 hover:text-white"
+                onClick={async () => {
+                  await signOut();
+                  navigate("/");
+                }}
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button onClick={() => setChangeRequestOpen(true)} size="sm" variant="outline">
-              <UserCog className="h-4 w-4 mr-2" /> Update My Details
-            </Button>
-            {approved && (
-              <Button onClick={() => setPiOpen(true)} size="sm">
-                <FileText className="h-4 w-4 mr-2" /> Submit PI / Quotation
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-label="Sign out"
-              onClick={async () => {
-                await signOut();
-                navigate("/");
-              }}
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
+          {approved && (
+            <div className="relative mt-4">
+              <ScoreStrip xp={game.xp} level={game.level} streak={game.streak} gained={game.gained} />
+            </div>
+          )}
         </div>
-      </header>
+      </div>
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         {approved && (
@@ -298,6 +312,8 @@ export default function VendorPortalDashboard() {
             ))}
           </div>
         )}
+
+        {approved && <AchievementShelf achievements={game.achievements} justEarned={game.justEarned} />}
 
         <UrlTabs param="vendorportaldashboard_tab" defaultValue={approved ? "billing" : "onboarding"}>
           <TabsList>

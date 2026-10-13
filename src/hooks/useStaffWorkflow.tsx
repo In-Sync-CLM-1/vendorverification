@@ -4,6 +4,8 @@ import { useAuth } from "./useAuth";
 import { useUserRoles } from "./useUserRoles";
 import { toast } from "sonner";
 import { Vendor, VendorDocument } from "./useVendor";
+import { recordDone } from "@/lib/gamification";
+import { celebrate } from "@/components/game/Celebration";
 
 export interface VendorWithCategory extends Vendor {
   vendor_categories: {
@@ -246,10 +248,12 @@ export function useUpdateVendorStatus() {
         });
       }
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["staff-vendor-queue"] });
       queryClient.invalidateQueries({ queryKey: ["vendor-details"] });
       toast.success("Vendor status updated");
+      recordDone(user?.id);
+      if (variables.newStatus === "approved") celebrate("Vendor verified", "Billing is now open for them", true);
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to update status");
