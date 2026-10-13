@@ -117,7 +117,7 @@ export default function VendorPortalDashboard() {
     enabled: !!vendor?.id,
   });
 
-  const { data: purchaseOrders = [] } = useQuery({
+  const { data: purchaseOrders = [], refetch: refetchPurchaseOrders } = useQuery({
     queryKey: ["portal-purchase-orders", vendor?.id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -695,12 +695,12 @@ export default function VendorPortalDashboard() {
                   <FileSignature className="h-4 w-4" /> Your Purchase Orders
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  An invoice can only be submitted against one of these.
+                  An invoice can only be submitted against a PO not yet marked invoiced.
                 </p>
               </div>
               <div className="divide-y">
-                {purchaseOrders.map((po) => (
-                  <div key={po.id} className="p-3 flex items-center justify-between gap-3 flex-wrap">
+                {[...purchaseOrders].sort((a, b) => Number(!!a.invoice_id) - Number(!!b.invoice_id)).map((po) => (
+                  <div key={po.id} className={`p-3 flex items-center justify-between gap-3 flex-wrap ${po.invoice_id ? "opacity-60" : ""}`}>
                     <div>
                       <p className="text-sm font-medium">
                         PO #{po.po_number}
@@ -926,6 +926,7 @@ export default function VendorPortalDashboard() {
         onUploaded={() => {
           refetchInvoices();
           refetchPayments();
+          refetchPurchaseOrders();
         }}
       />
 
