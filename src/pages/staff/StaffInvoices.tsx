@@ -49,6 +49,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useUrlState } from "@/hooks/useUrlState";
+import { usePager, TablePager } from "@/components/ui/table-pager";
 
 type InvoiceWithVendor = VendorInvoice & {
   vendors: { company_name: string; vendor_code: string | null } | null;
@@ -167,6 +168,7 @@ export default function StaffInvoices() {
     (s, i) => s + Number(i.invoice_amount) - (settledByInvoice.get(i.id) || 0),
     0
   );
+  const { rows: pagedFiltered, pager: pagedFilteredPager } = usePager(filtered);
   const paidThisMonth = payments
     .filter((p) => (p.payment_date || "").startsWith(monthKey))
     .reduce((s, p) => s + paymentSettled(p), 0);
@@ -291,6 +293,7 @@ export default function StaffInvoices() {
                   </p>
                 </div>
               ) : (
+                <>
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -305,7 +308,7 @@ export default function StaffInvoices() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filtered.map((inv) => {
+                      {pagedFiltered.map((inv) => {
                         const meta = INVOICE_STATUS_META[inv.status];
                         const settled = settledByInvoice.get(inv.id) || 0;
                         return (
@@ -335,6 +338,8 @@ export default function StaffInvoices() {
                     </TableBody>
                   </Table>
                 </div>
+                <TablePager pager={pagedFilteredPager} />
+                </>
               )}
             </CardContent>
           </Card>

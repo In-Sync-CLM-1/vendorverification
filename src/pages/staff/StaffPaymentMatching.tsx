@@ -26,6 +26,7 @@ import { formatINR, paymentSettled, VendorInvoice, InvoicePayment } from "@/lib/
 import { Loader2, Landmark, Sparkles, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useUrlState } from "@/hooks/useUrlState";
+import { usePager, TablePager } from "@/components/ui/table-pager";
 
 type OutstandingInvoice = VendorInvoice & {
   vendors: { company_name: string; vendor_code: string | null } | null;
@@ -302,7 +303,7 @@ export default function StaffPaymentMatching() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {visibleRows.map((row) => (
+                      {pagedRows.map((row) => (
                         <TableRow key={row.id}>
                           <TableCell>
                             <Checkbox
@@ -343,6 +344,7 @@ export default function StaffPaymentMatching() {
                     </TableBody>
                   </Table>
                 </div>
+                <TablePager pager={pagedRowsPager} />
                 <div className="p-4 border-t flex items-center justify-between">
                   <p className="text-sm text-muted-foreground">
                     {matchedCount} of {rows.length} line{rows.length === 1 ? "" : "s"} matched and selected
@@ -362,4 +364,5 @@ export default function StaffPaymentMatching() {
       </div>
     </StaffLayout>
   );
+  const { rows: pagedRows, pager: pagedRowsPager } = usePager(visibleRows);
 }

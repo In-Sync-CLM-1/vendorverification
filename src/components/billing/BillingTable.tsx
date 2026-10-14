@@ -33,6 +33,7 @@ import {
   tdsTotal,
 } from "@/lib/billing";
 import { FileActions } from "./FileActions";
+import { usePager, TablePager } from "@/components/ui/table-pager";
 
 export interface BillingActions {
   resubmit: (r: BillingRow) => void;
@@ -201,6 +202,7 @@ export function BillingTable({
   const searched = rows.filter(matches);
   const active = chips.find((c) => c.key === chip) ?? chips[0];
   const shown = searched.filter(active.test);
+  const { rows: pagedShown, pager: pagedShownPager } = usePager(shown);
   const toggle = (id: string) =>
     setOpen((s) => {
       const n = new Set(s);
@@ -270,6 +272,7 @@ export function BillingTable({
             {rows.length === 0 && emptyHint && <p className="mt-1 text-sm text-muted-foreground">{emptyHint}</p>}
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <Table className="min-w-[1000px]">
               <TableHeader>
@@ -278,7 +281,7 @@ export function BillingTable({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {shown.map((r) => {
+                {pagedShown.map((r) => {
                   const st = stageOf(r);
                   const po = poOf(r);
                   const isOpen = open.has(r.id);
@@ -357,6 +360,8 @@ export function BillingTable({
               </TableBody>
             </Table>
           </div>
+          <TablePager pager={pagedShownPager} />
+          </>
         )}
       </Card>
     </div>

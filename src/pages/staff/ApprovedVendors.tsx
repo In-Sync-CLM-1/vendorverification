@@ -30,6 +30,7 @@ import { format } from "date-fns";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useUrlState } from "@/hooks/useUrlState";
+import { usePager, TablePager } from "@/components/ui/table-pager";
 
 type VendorRow = {
   id: string;
@@ -105,6 +106,7 @@ const ApprovedVendors = () => {
       (v.vendor_code || "").toLowerCase().includes(search.toLowerCase()) ||
       v.primary_contact_name.toLowerCase().includes(search.toLowerCase())
   );
+  const { rows: pagedFiltered, pager: pagedFilteredPager } = usePager(filtered);
 
   const handleStatusChange = (vendor: VendorRow, action: "deactivate" | "reactivate") => {
     setConfirmVendor(vendor);
@@ -180,7 +182,7 @@ const ApprovedVendors = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((vendor) => (
+                pagedFiltered.map((vendor) => (
                   <TableRow
                     key={vendor.id}
                     className={vendor.current_status === "deactivated" ? "opacity-60" : ""}
@@ -262,6 +264,7 @@ const ApprovedVendors = () => {
             </TableBody>
           </Table>
         </div>
+        <TablePager pager={pagedFilteredPager} />
       </div>
 
       {/* Confirmation Dialog */}
