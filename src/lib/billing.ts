@@ -149,7 +149,7 @@ export function nextActionFor(r: BillingRow, v: Viewer): NextAction {
 
   if (v.mode === "vendor") {
     if (isInvoice(r)) return { kind: "raise_credit_note" };
-    if (r.status === "submitted") return { kind: "wait", text: `Waiting for ${owner}` };
+    if (r.status === "submitted") return { kind: "wait", text: r.pi_owner_approved_at ? "Waiting for Accounts approval" : `Waiting for ${owner}` };
     if (r.status === "rejected") return { kind: "resubmit" };
     if (!po) return { kind: "wait", text: "Waiting for the PO" };
     return { kind: "upload_invoice", canAdvance: !r.adv_status };
@@ -159,6 +159,10 @@ export function nextActionFor(r: BillingRow, v: Viewer): NextAction {
 
   if (isPiStage(r)) {
     if (r.status === "submitted") {
+      // Two approvals: the project owner first, then Accounts.
+      if (r.pi_owner_approved_at) {
+        return v.isAccounts || v.isAdmin ? { kind: "decide" } : { kind: "wait", text: "Waiting for Accounts approval" };
+      }
       return r.project_owner_user_id === v.userId || v.isAdmin
         ? { kind: "decide" }
         : { kind: "wait", text: `Waiting for ${owner}` };
