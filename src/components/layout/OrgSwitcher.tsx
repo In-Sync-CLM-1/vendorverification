@@ -73,7 +73,7 @@ export function OrgSwitcher() {
         type="button"
         onClick={() => setOpen((o) => !o)}
         disabled={busy}
-        className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md border bg-background hover:bg-muted disabled:opacity-60"
+        className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md border bg-background text-foreground hover:bg-muted disabled:opacity-60"
       >
         <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
         <span className="truncate flex-1 text-left">{tenant?.name ?? "Select organisation"}</span>
@@ -81,7 +81,7 @@ export function OrgSwitcher() {
       </button>
 
       {open && (
-        <div className="absolute left-2 right-2 z-50 mt-1 rounded-md border bg-background shadow-lg py-1">
+        <div className="absolute left-2 right-2 z-50 mt-1 rounded-md border bg-background text-foreground shadow-lg py-1">
           <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Organisations
           </p>
