@@ -76,7 +76,7 @@ export async function analyzeInvoiceFile(fileKey: string): Promise<InvoiceExtrac
 
 export const LOW_CONFIDENCE = 60;
 
-async function fetchInvoiceFileBlob(key: string) {
+export async function fetchInvoiceFileBlob(key: string) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("Not signed in");
   const resp = await fetch(

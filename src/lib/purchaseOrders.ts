@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
-import { uploadInvoiceFile, formatINR } from "@/lib/invoices";
+import { uploadInvoiceFile, formatINR, fetchInvoiceFileBlob } from "@/lib/invoices";
+import { PDFDocument } from "pdf-lib";
 import jsPDF from "jspdf";
 
 export interface PurchaseOrder {
@@ -7,6 +8,7 @@ export interface PurchaseOrder {
   tenant_id: string;
   vendor_id: string;
   pi_quotation_id: string | null;
+  pi_file_key?: string | null;
   invoice_id: string | null;
   po_number: string;
   po_date: string;
@@ -277,6 +279,31 @@ export function renderPurchaseOrderPdf(po: PurchaseOrder): Blob {
   return doc.output("blob");
 }
 
+/**
+ * Returns the PO with its PI / Quotation document printed behind it, so the one
+ * PO copy carries both. PDFs are appended page by page; PNG/JPEG documents are
+ * placed on their own page. Any other format is left out and the PO alone is returned.
+ */
+export async function appendPiToPo(poBlob: Blob, piBlob: Blob): Promise<Blob> {
+  const out = await PDFDocument.load(await poBlob.arrayBuffer());
+  const bytes = new Uint8Array(await piBlob.arrayBuffer());
+  const startsWith = (...sig: number[]) => sig.every((b, i) => bytes[i] === b);
+  if (startsWith(0x25, 0x50, 0x44, 0x46)) {
+    const pi = await PDFDocument.load(bytes, { ignoreEncryption: true });
+    const pages = await out.copyPages(pi, pi.getPageIndices());
+    pages.forEach((p) => out.addPage(p));
+  } else if (startsWith(0x89, 0x50, 0x4e, 0x47) || startsWith(0xff, 0xd8)) {
+    const img = startsWith(0x89, 0x50) ? await out.embedPng(bytes) : await out.embedJpg(bytes);
+    const [pw, ph] = [595.28, 841.89];
+    const scale = Math.min((pw - 60) / img.width, (ph - 60) / img.height, 1);
+    const page = out.addPage([pw, ph]);
+    page.drawImage(img, { x: (pw - img.width * scale) / 2, y: ph - 30 - img.height * scale, width: img.width * scale, height: img.height * scale });
+  } else {
+    return poBlob;
+  }
+  return new Blob([await out.save()], { type: "application/pdf" });
+}
+
 interface IssuePoInput {
   /** The billing row (PI / Quotation) the PO is issued against. */
   row_id: string;
@@ -314,7 +341,15 @@ export async function issuePurchaseOrder(input: IssuePoInput): Promise<PurchaseO
   }
 
   try {
-    const blob = renderPurchaseOrderPdf(po);
+    let blob = renderPurchaseOrderPdf(po);
+    if (po.pi_file_key) {
+      try {
+        blob = await appendPiToPo(blob, await fetchInvoiceFileBlob(po.pi_file_key));
+      } catch (e) {
+        // Never block the PO itself on a PI that can't be read or merged.
+        console.error("Could not print the PI behind the PO:", e);
+      }
+    }
     const file = new File([blob], `PO_${po.po_number.replace(/\//g, "-")}.pdf`, { type: "application/pdf" });
     const key = await uploadInvoiceFile(file, input.vendor_id);
     const { error: attachError } = await supabase.rpc("attach_purchase_order_pdf", { p_po_id: po.id, p_pdf_file_key: key });
