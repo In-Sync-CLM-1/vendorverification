@@ -129,7 +129,7 @@ export default function StaffVendorPayments() {
         </div>
       </div>
 
-      <DecidePiDialog open={!!decideRow} onOpenChange={(o) => !o && setDecideRow(null)} row={decideRow} onDone={(info) => acting(() => info?.approved && celebrate("PI approved", "Accounts can now issue the PO"))()} />
+      <DecidePiDialog open={!!decideRow} onOpenChange={(o) => !o && setDecideRow(null)} row={decideRow} onDone={(info) => acting(() => info?.final && celebrate("PI approved", "Accounts can now issue the PO"))()} />
       <RecordAdvancePaymentDialog open={!!advRow} onOpenChange={(o) => !o && setAdvRow(null)} row={advRow} onDone={acting()} />
       {poRow && (
         <IssuePODialog

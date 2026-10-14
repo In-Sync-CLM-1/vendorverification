@@ -2091,6 +2091,8 @@ export type Database = {
           pi_file_key: string | null
           pi_review_comments: string | null
           pi_reviewed_at: string | null
+          pi_owner_approved_at: string | null
+          pi_owner_approved_by: string | null
           pi_reviewed_by: string | null
           pi_status: Database["public"]["Enums"]["pi_quotation_status"] | null
           pi_vendor_remarks: string | null
@@ -2145,6 +2147,8 @@ export type Database = {
           pi_file_key?: string | null
           pi_review_comments?: string | null
           pi_reviewed_at?: string | null
+          pi_owner_approved_at?: string | null
+          pi_owner_approved_by?: string | null
           pi_reviewed_by?: string | null
           pi_status?: Database["public"]["Enums"]["pi_quotation_status"] | null
           pi_vendor_remarks?: string | null
@@ -2199,6 +2203,8 @@ export type Database = {
           pi_file_key?: string | null
           pi_review_comments?: string | null
           pi_reviewed_at?: string | null
+          pi_owner_approved_at?: string | null
+          pi_owner_approved_by?: string | null
           pi_reviewed_by?: string | null
           pi_status?: Database["public"]["Enums"]["pi_quotation_status"] | null
           pi_vendor_remarks?: string | null

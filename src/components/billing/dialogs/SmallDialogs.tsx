@@ -15,7 +15,7 @@ interface BaseProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   row: BillingRow | null;
-  onDone: (info?: { approved?: boolean }) => void;
+  onDone: (info?: { approved?: boolean; final?: boolean }) => void;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -214,11 +214,13 @@ export function RaiseCreditNoteDialog({ open, onOpenChange, row, onDone }: BaseP
   );
 }
 
-/** The project owner approves or rejects the PI / Quotation. */
+/** The project owner approves or rejects the PI / Quotation, then Accounts gives the final approval. */
 export function DecidePiDialog({ open, onOpenChange, row, onDone }: BaseProps) {
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState<"approve" | "reject" | null>(null);
   useEffect(() => { if (open) setComment(""); }, [open]);
+  // Second approval: the project owner has already approved, so this is Accounts.
+  const accountsStep = !!row?.pi_owner_approved_at;
 
   const decide = async (approve: boolean) => {
     if (!row) return;
@@ -227,9 +229,9 @@ export function DecidePiDialog({ open, onOpenChange, row, onDone }: BaseProps) {
     try {
       const { error } = await supabase.rpc("decide_pi", { p_id: row.id, p_approve: approve, p_comment: comment.trim() || null });
       if (error) throw new Error(error.message);
-      toast.success(approve ? "Approved. Accounts can now issue the PO" : "Rejected. The comment is on the vendor's row");
+      toast.success(approve ? (accountsStep ? "Approved. Accounts can now issue the PO" : "Approved. It now goes to Accounts for approval") : "Rejected. The comment is on the vendor's row");
       onOpenChange(false);
-      onDone({ approved: approve });
+      onDone({ approved: approve, final: approve && accountsStep });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Action failed");
     } finally {
@@ -241,7 +243,7 @@ export function DecidePiDialog({ open, onOpenChange, row, onDone }: BaseProps) {
     <Dialog open={open} onOpenChange={(o) => !saving && onOpenChange(o)}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Approve or reject the {row ? docKindLabel(row) : "PI"}</DialogTitle>
+          <DialogTitle>{accountsStep ? "Accounts approval: " : ""}Approve or reject the {row ? docKindLabel(row) : "PI"}</DialogTitle>
           <DialogDescription>{row?.vendors?.company_name} · {row?.project_number} {row?.project_name}</DialogDescription>
         </DialogHeader>
         {row && (
