@@ -271,7 +271,7 @@ export function BillingTable({
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <Table className="min-w-[1100px]">
+            <Table className="min-w-[1000px]">
               <TableHeader>
                 <TableRow className="bg-muted/40">
                   {cols.map((c) => (<TableHead key={c} className="whitespace-nowrap">{c}</TableHead>))}
