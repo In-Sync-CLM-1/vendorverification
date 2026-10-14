@@ -248,7 +248,7 @@ export default function VendorPortalDashboard() {
   return (
     <div className="min-h-screen bg-muted/30 font-jakarta">
       {/* Header */}
-      <div className="mx-auto max-w-6xl px-4 pt-4">
+      <div className="mx-auto max-w-[1600px] px-4 pt-4">
         <div
           className="relative overflow-hidden rounded-3xl p-5 text-white"
           style={{ background: "radial-gradient(120% 150% at 0% 0%, #0B2545 0%, #0A3F73 55%, #0066B3 105%)" }}
@@ -295,7 +295,7 @@ export default function VendorPortalDashboard() {
         </div>
       </div>
 
-      <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+      <main className="max-w-[1600px] mx-auto px-4 py-6 space-y-6">
         {approved && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {tiles.map((t) => (
