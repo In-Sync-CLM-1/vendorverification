@@ -67,7 +67,7 @@ export const settledTotal = (r: BillingRow) => paymentsOf(r).reduce((s, p) => s 
 export const netPayable = (r: BillingRow) => (isInvoice(r) ? num(r.invoice_amount) - cnTotal(r) : 0);
 export const balanceOf = (r: BillingRow) => (isInvoice(r) ? Math.max(netPayable(r) - settledTotal(r), 0) : null);
 
-export type RowStage = "waiting" | "approved" | "rejected" | "submitted" | "part" | "paid";
+export type RowStage = "awaiting_owner" | "awaiting_accounts" | "waiting" | "approved" | "rejected" | "submitted" | "part" | "paid";
 
 export function stageOf(r: BillingRow): RowStage {
   if (isInvoice(r)) {
@@ -76,12 +76,16 @@ export function stageOf(r: BillingRow): RowStage {
     if (r.status === "rejected") return "rejected";
     return "submitted";
   }
+  if (r.pi_approval_stage === "awaiting_owner") return "awaiting_owner";
+  if (r.pi_approval_stage === "awaiting_accounts") return "awaiting_accounts";
   if (r.status === "approved") return "approved";
   if (r.status === "rejected") return "rejected";
   return "waiting";
 }
 
 export const STAGE_LABEL: Record<RowStage, string> = {
+  awaiting_owner: "Awaiting owner",
+  awaiting_accounts: "Awaiting Accounts",
   waiting: "Waiting",
   approved: "Approved",
   rejected: "Rejected",
@@ -91,6 +95,8 @@ export const STAGE_LABEL: Record<RowStage, string> = {
 };
 
 export const STAGE_TONE: Record<RowStage, string> = {
+  awaiting_owner: "bg-amber-100 text-amber-800 border-amber-200",
+  awaiting_accounts: "bg-violet-100 text-violet-800 border-violet-200",
   waiting: "bg-slate-100 text-slate-700 border-slate-200",
   approved: "bg-emerald-100 text-emerald-800 border-emerald-200",
   rejected: "bg-red-100 text-red-800 border-red-200",

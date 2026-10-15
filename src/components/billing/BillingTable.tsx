@@ -307,6 +307,7 @@ export function BillingTable({
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className={STAGE_TONE[st]}>{STAGE_LABEL[st]}</Badge>
+                          {st === "awaiting_owner" && r.project_owner_name && <p className="mt-0.5 text-xs text-muted-foreground">{r.project_owner_name}</p>}
                           <JourneyTrack row={r} />
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
