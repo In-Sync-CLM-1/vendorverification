@@ -220,7 +220,7 @@ export function DecidePiDialog({ open, onOpenChange, row, onDone }: BaseProps) {
   const [saving, setSaving] = useState<"approve" | "reject" | null>(null);
   useEffect(() => { if (open) setComment(""); }, [open]);
   // Second approval: the project owner has already approved, so this is Accounts.
-  const accountsStep = !!row?.pi_owner_approved_at;
+  const accountsStep = row?.pi_approval_stage === "awaiting_accounts";
 
   const decide = async (approve: boolean) => {
     if (!row) return;
@@ -229,6 +229,8 @@ export function DecidePiDialog({ open, onOpenChange, row, onDone }: BaseProps) {
     try {
       const { error } = await supabase.rpc("decide_pi", { p_id: row.id, p_approve: approve, p_comment: comment.trim() || null });
       if (error) throw new Error(error.message);
+      // The owner approved, so it now sits with Accounts: tell them.
+      if (approve && !accountsStep) supabase.functions.invoke("notify-pi-awaiting-accounts", { body: { row_id: row.id } }).catch(() => {});
       toast.success(approve ? (accountsStep ? "Approved. Accounts can now issue the PO" : "Approved. It now goes to Accounts for approval") : "Rejected. The comment is on the vendor's row");
       onOpenChange(false);
       onDone({ approved: approve, final: approve && accountsStep });

@@ -149,7 +149,8 @@ export function nextActionFor(r: BillingRow, v: Viewer): NextAction {
 
   if (v.mode === "vendor") {
     if (isInvoice(r)) return { kind: "raise_credit_note" };
-    if (r.status === "submitted") return { kind: "wait", text: r.pi_owner_approved_at ? "Waiting for Accounts approval" : `Waiting for ${owner}` };
+    if (r.pi_approval_stage === "awaiting_accounts") return { kind: "wait", text: "Waiting for Accounts approval" };
+    if (r.pi_approval_stage === "awaiting_owner") return { kind: "wait", text: `Waiting for ${owner}` };
     if (r.status === "rejected") return { kind: "resubmit" };
     if (!po) return { kind: "wait", text: "Waiting for the PO" };
     return { kind: "upload_invoice", canAdvance: !r.adv_status };
@@ -157,18 +158,18 @@ export function nextActionFor(r: BillingRow, v: Viewer): NextAction {
 
   // What a person can do follows their function, not their account type: the
   // project owner decides a PI routed to them even on a read-only account.
-  if (isPiStage(r) && r.status === "submitted" && !r.pi_owner_approved_at && !!v.userId && r.project_owner_user_id === v.userId) {
+  if (isPiStage(r) && r.pi_approval_stage === "awaiting_owner" && !!v.userId && r.project_owner_user_id === v.userId) {
     return { kind: "decide" };
   }
 
   if (v.isViewOnly) return { kind: "none" };
 
   if (isPiStage(r)) {
-    if (r.status === "submitted") {
-      // Two approvals: the project owner first, then Accounts.
-      if (r.pi_owner_approved_at) {
-        return v.isAccounts || v.isAdmin ? { kind: "decide" } : { kind: "wait", text: "Waiting for Accounts approval" };
-      }
+    // One decision per stage: the project owner first, then Accounts.
+    if (r.pi_approval_stage === "awaiting_accounts") {
+      return v.isAccounts || v.isAdmin ? { kind: "decide" } : { kind: "wait", text: "Waiting for Accounts approval" };
+    }
+    if (r.pi_approval_stage === "awaiting_owner") {
       return r.project_owner_user_id === v.userId || v.isAdmin
         ? { kind: "decide" }
         : { kind: "wait", text: `Waiting for ${owner}` };
