@@ -155,6 +155,12 @@ export function nextActionFor(r: BillingRow, v: Viewer): NextAction {
     return { kind: "upload_invoice", canAdvance: !r.adv_status };
   }
 
+  // What a person can do follows their function, not their account type: the
+  // project owner decides a PI routed to them even on a read-only account.
+  if (isPiStage(r) && r.status === "submitted" && !r.pi_owner_approved_at && !!v.userId && r.project_owner_user_id === v.userId) {
+    return { kind: "decide" };
+  }
+
   if (v.isViewOnly) return { kind: "none" };
 
   if (isPiStage(r)) {
