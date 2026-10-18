@@ -1,3 +1,4 @@
+import { assertRowsChanged } from "@/lib/writeGuard";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -159,11 +160,13 @@ export default function VendorList() {
 
   const statusMutation = useMutation({
     mutationFn: async ({ vendorId, newStatus }: { vendorId: string; newStatus: string }) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("vendors")
         .update({ current_status: newStatus as any })
-        .eq("id", vendorId);
+        .eq("id", vendorId)
+        .select("id");
       if (error) throw error;
+      assertRowsChanged(data, "The status change");
     },
     onSuccess: (_, variables) => {
       const action = variables.newStatus === "deactivated" ? "deactivated" : "reactivated";

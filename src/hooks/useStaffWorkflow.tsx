@@ -1,3 +1,4 @@
+import { assertRowsChanged } from "@/lib/writeGuard";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
@@ -121,12 +122,14 @@ export function useUpdateVendorStatus() {
         updateData.sent_back_reason = comments || null;
       }
 
-      const { error: updateError } = await supabase
+      const { data: updatedRows, error: updateError } = await supabase
         .from("vendors")
         .update(updateData)
-        .eq("id", vendorId);
+        .eq("id", vendorId)
+        .select("id");
 
       if (updateError) throw updateError;
+      assertRowsChanged(updatedRows, "The status change");
 
       // Add workflow history
       const action =
@@ -275,7 +278,7 @@ export function useUpdateDocumentStatus() {
       status: VendorDocument["status"];
       comments?: string;
     }) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("vendor_documents")
         .update({
           status,
@@ -283,9 +286,11 @@ export function useUpdateDocumentStatus() {
           reviewed_at: new Date().toISOString(),
           review_comments: comments || null,
         })
-        .eq("id", documentId);
+        .eq("id", documentId)
+        .select("id");
 
       if (error) throw error;
+      assertRowsChanged(data, "The document review");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vendor-documents-review"] });
@@ -307,7 +312,7 @@ export function useRequestDocumentReupload() {
 
   return useMutation({
     mutationFn: async ({ documentId, reason }: { documentId: string; reason: string }) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("vendor_documents")
         .update({
           status: "reupload_requested",
@@ -315,9 +320,11 @@ export function useRequestDocumentReupload() {
           reviewed_at: new Date().toISOString(),
           review_comments: reason,
         })
-        .eq("id", documentId);
+        .eq("id", documentId)
+        .select("id");
 
       if (error) throw error;
+      assertRowsChanged(data, "The document review");
 
       const { error: notifyError } = await supabase.functions.invoke("notify-document-reupload", {
         body: { document_id: documentId },
