@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { StaffLayout } from "@/components/layout/StaffLayout";
-import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,7 +45,6 @@ function FieldDiff({ label, value }: { label: string; value: string | null }) {
 }
 
 export default function StaffDetailChangeRequests() {
-  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [comments, setComments] = useState<Record<string, string>>({});
   const [actioningId, setActioningId] = useState<string | null>(null);
@@ -69,31 +67,11 @@ export default function StaffDetailChangeRequests() {
   const handleDecide = async (req: ChangeRequest, approve: boolean) => {
     setActioningId(req.id);
     try {
-      if (approve) {
-        const updates: Record<string, string> = {};
-        if (req.requested_contact_name) updates.primary_contact_name = req.requested_contact_name;
-        if (req.requested_email) updates.primary_email = req.requested_email;
-        if (req.requested_mobile) updates.primary_mobile = req.requested_mobile;
-        if (req.requested_bank_account_number) updates.bank_account_number = req.requested_bank_account_number;
-        if (req.requested_bank_ifsc) updates.bank_ifsc = req.requested_bank_ifsc;
-        if (req.requested_gst_number) updates.gst_number = req.requested_gst_number;
-        if (req.requested_msme_number) updates.msme_number = req.requested_msme_number;
-
-        if (Object.keys(updates).length > 0) {
-          const { error: vendorErr } = await supabase.from("vendors").update(updates).eq("id", req.vendor_id);
-          if (vendorErr) throw new Error(`Could not update vendor record: ${vendorErr.message}`);
-        }
-      }
-
-      const { error } = await supabase
-        .from("vendor_detail_change_requests")
-        .update({
-          status: approve ? "approved" : "rejected",
-          reviewed_by: user?.id || null,
-          reviewed_at: new Date().toISOString(),
-          review_comments: comments[req.id]?.trim() || null,
-        })
-        .eq("id", req.id);
+      const { error } = await supabase.rpc("decide_vendor_detail_change_request", {
+        p_request_id: req.id,
+        p_approve: approve,
+        p_comments: comments[req.id]?.trim() || null,
+      });
       if (error) throw new Error(error.message);
 
       toast.success(approve ? "Change applied to vendor record" : "Request rejected");

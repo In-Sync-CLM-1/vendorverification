@@ -3214,6 +3214,10 @@ export type Database = {
         Args: { p_approve: boolean; p_comment?: string; p_id: string }
         Returns: undefined
       }
+      decide_vendor_detail_change_request: {
+        Args: { p_approve: boolean; p_comments?: string; p_request_id: string }
+        Returns: undefined
+      }
       decrypt_pii: { Args: { ciphertext: string }; Returns: string }
       delete_organization: { Args: { _tenant_id: string }; Returns: Json }
       encrypt_pii: { Args: { plaintext: string }; Returns: string }
