@@ -1,3 +1,4 @@
+import { assertRowsChanged } from "@/lib/writeGuard";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
@@ -142,7 +143,7 @@ export function useDismissFraudAlert() {
 
   return useMutation({
     mutationFn: async ({ alertId, reason }: { alertId: string; reason: string }) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("fraud_alerts")
         .update({
           status: "dismissed" as FraudAlertStatus,
@@ -150,8 +151,10 @@ export function useDismissFraudAlert() {
           reviewed_by: user?.id,
           reviewed_at: new Date().toISOString(),
         })
-        .eq("id", alertId);
+        .eq("id", alertId)
+        .select("id");
       if (error) throw error;
+      assertRowsChanged(data, "The alert review");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fraud-alerts"] });
@@ -167,15 +170,17 @@ export function useConfirmFraudAlert() {
 
   return useMutation({
     mutationFn: async (alertId: string) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("fraud_alerts")
         .update({
           status: "confirmed" as FraudAlertStatus,
           reviewed_by: user?.id,
           reviewed_at: new Date().toISOString(),
         })
-        .eq("id", alertId);
+        .eq("id", alertId)
+        .select("id");
       if (error) throw error;
+      assertRowsChanged(data, "The alert review");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fraud-alerts"] });

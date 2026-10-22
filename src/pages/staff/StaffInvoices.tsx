@@ -1,3 +1,4 @@
+import { assertRowsChanged } from "@/lib/writeGuard";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { StaffLayout } from "@/components/layout/StaffLayout";
@@ -175,7 +176,7 @@ export default function StaffInvoices() {
   const updateStatus = async (invoice: InvoiceWithVendor, status: InvoiceStatus, reason?: string) => {
     setActionLoading(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("vendor_invoices")
         .update({
           status,
@@ -183,8 +184,10 @@ export default function StaffInvoices() {
           reviewed_by: user?.id || null,
           reviewed_at: new Date().toISOString(),
         })
-        .eq("id", invoice.id);
+        .eq("id", invoice.id)
+        .select("id");
       if (error) throw new Error(error.message);
+      assertRowsChanged(data, "The invoice decision");
       toast.success(
         status === "approved"
           ? "Invoice approved for payment"

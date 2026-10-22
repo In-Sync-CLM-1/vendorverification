@@ -1,3 +1,4 @@
+import { assertRowsChanged } from "@/lib/writeGuard";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { StaffLayout } from "@/components/layout/StaffLayout";
@@ -82,7 +83,7 @@ export default function StaffAdvanceRequests() {
   const handleDecide = async (req: AdvanceRequest, approve: boolean) => {
     setActioningId(req.id);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("vendor_advance_requests")
         .update({
           status: approve ? "approved" : "rejected",
@@ -90,8 +91,10 @@ export default function StaffAdvanceRequests() {
           reviewed_at: new Date().toISOString(),
           review_comments: comments[req.id]?.trim() || null,
         })
-        .eq("id", req.id);
+        .eq("id", req.id)
+        .select("id");
       if (error) throw new Error(error.message);
+      assertRowsChanged(data, "The decision");
 
       toast.success(approve ? "Advance request approved" : "Advance request rejected");
       queryClient.invalidateQueries({ queryKey: ["staff-advance-requests"] });
