@@ -23,6 +23,7 @@ import { ProjectCombobox, RmplProject } from "@/components/shared/ProjectCombobo
 import { uploadInvoiceFile, analyzeInvoiceFile, formatINR, INVOICE_STATUS_META, InvoiceStatus } from "@/lib/invoices";
 import { toast } from "sonner";
 import { Loader2, Upload, Trash2, Plus, FileUp } from "lucide-react";
+import { usePager, TablePager } from "@/components/ui/table-pager";
 
 interface AllocationRow {
   key: string;
@@ -82,6 +83,7 @@ export default function LivecomInvoiceUpload() {
     },
     enabled: !!user?.id,
   });
+  const { rows: pagedUploads, pager: pagedUploadsPager } = usePager(recentUploads);
 
   const reset = () => {
     setVendor(null);
@@ -411,6 +413,7 @@ export default function LivecomInvoiceUpload() {
               ) : recentUploads.length === 0 ? (
                 <p className="p-4 pt-0 text-sm text-muted-foreground">Nothing uploaded yet.</p>
               ) : (
+                <>
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -422,7 +425,7 @@ export default function LivecomInvoiceUpload() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {recentUploads.map((inv) => {
+                      {pagedUploads.map((inv) => {
                         const meta = INVOICE_STATUS_META[inv.status];
                         return (
                           <TableRow key={inv.id}>
@@ -438,6 +441,8 @@ export default function LivecomInvoiceUpload() {
                     </TableBody>
                   </Table>
                 </div>
+                <TablePager pager={pagedUploadsPager} />
+                </>
               )}
             </CardContent>
           </Card>

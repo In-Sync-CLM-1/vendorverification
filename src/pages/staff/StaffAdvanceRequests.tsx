@@ -21,6 +21,7 @@ import { AdvanceRequestCharts } from "@/components/advance/AdvanceRequestCharts"
 import { Loader2, HandCoins, Check, X, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { formatINR, openInvoiceFile } from "@/lib/invoices";
+import { usePager, TablePager } from "@/components/ui/table-pager";
 
 interface AdvanceRequest {
   id: string;
@@ -70,6 +71,7 @@ export default function StaffAdvanceRequests() {
 
   const pending = requests.filter((r) => r.status === "pending");
   const decided = requests.filter((r) => r.status !== "pending");
+  const { rows: pagedDecided, pager: pagedDecidedPager } = usePager(decided);
 
   const handleViewPi = async (fileKey: string) => {
     try {
@@ -241,7 +243,7 @@ export default function StaffAdvanceRequests() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {decided.slice(0, 20).map((req) => (
+                      {pagedDecided.map((req) => (
                         <TableRow key={req.id}>
                           <TableCell>
                             <p className="font-medium">{req.vendors?.company_name}</p>
@@ -267,6 +269,7 @@ export default function StaffAdvanceRequests() {
                     </TableBody>
                   </Table>
                 </div>
+                <TablePager pager={pagedDecidedPager} />
               </CardContent>
             </Card>
           )}

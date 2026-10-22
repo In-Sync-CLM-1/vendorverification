@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { Loader2, UserCog, Check, X } from "lucide-react";
 import { toast } from "sonner";
+import { usePager, TablePager } from "@/components/ui/table-pager";
 
 interface ChangeRequest {
   id: string;
@@ -65,6 +66,7 @@ export default function StaffDetailChangeRequests() {
 
   const pending = requests.filter((r) => r.status === "pending");
   const decided = requests.filter((r) => r.status !== "pending");
+  const { rows: pagedDecided, pager: pagedDecidedPager } = usePager(decided);
 
   const handleDecide = async (req: ChangeRequest, approve: boolean) => {
     setActioningId(req.id);
@@ -211,7 +213,7 @@ export default function StaffDetailChangeRequests() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {decided.slice(0, 20).map((req) => (
+                      {pagedDecided.map((req) => (
                         <TableRow key={req.id}>
                           <TableCell>
                             <p className="font-medium">{req.vendors?.company_name}</p>
@@ -237,6 +239,7 @@ export default function StaffDetailChangeRequests() {
                     </TableBody>
                   </Table>
                 </div>
+                <TablePager pager={pagedDecidedPager} />
               </CardContent>
             </Card>
           )}
