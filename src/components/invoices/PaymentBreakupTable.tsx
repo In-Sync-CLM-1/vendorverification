@@ -7,8 +7,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatINR, InvoicePayment, paymentSettled } from "@/lib/invoices";
+import { usePager, TablePager } from "@/components/ui/table-pager";
 
 export function PaymentBreakupTable({ payments }: { payments: InvoicePayment[] }) {
+  const { rows: pagedPayments, pager: pagedPaymentsPager } = usePager(payments);
   if (payments.length === 0) {
     return <p className="text-sm text-muted-foreground py-3">No payments recorded yet.</p>;
   }
@@ -25,6 +27,7 @@ export function PaymentBreakupTable({ payments }: { payments: InvoicePayment[] }
   );
 
   return (
+    <>
     <div className="overflow-x-auto">
       <Table>
         <TableHeader>
@@ -40,7 +43,7 @@ export function PaymentBreakupTable({ payments }: { payments: InvoicePayment[] }
           </TableRow>
         </TableHeader>
         <TableBody>
-          {payments.map((p) => (
+          {pagedPayments.map((p) => (
             <TableRow key={p.id}>
               <TableCell className="whitespace-nowrap">
                 {new Date(p.payment_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
@@ -68,5 +71,7 @@ export function PaymentBreakupTable({ payments }: { payments: InvoicePayment[] }
         </TableBody>
       </Table>
     </div>
+    <TablePager pager={pagedPaymentsPager} />
+    </>
   );
 }

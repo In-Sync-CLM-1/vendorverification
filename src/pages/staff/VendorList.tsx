@@ -55,6 +55,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { Switch } from "@/components/ui/switch";
 import { z } from "zod";
 import { useUrlState } from "@/hooks/useUrlState";
+import { usePager, TablePager } from "@/components/ui/table-pager";
 
 const inviteSchema = z.object({
   company_name: z.string().trim().min(1, "Company name is required").max(200),
@@ -185,6 +186,7 @@ export default function VendorList() {
       (v.vendor_code || "").toLowerCase().includes(search.toLowerCase()) ||
       v.primary_contact_name.toLowerCase().includes(search.toLowerCase())
   );
+  const { rows: pagedFiltered, pager: pagedFilteredPager } = usePager(filtered);
 
   const handleStatusChange = (vendor: VendorRow, action: "deactivate" | "reactivate") => {
     setConfirmVendor(vendor);
@@ -439,7 +441,7 @@ export default function VendorList() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filtered.map((vendor) => (
+                    pagedFiltered.map((vendor) => (
                       <TableRow key={vendor.id} className={vendor.current_status === "deactivated" ? "opacity-60" : ""}>
                         <TableCell className="font-mono text-xs">{vendor.vendor_code || "-"}</TableCell>
                         <TableCell className="font-medium">{vendor.company_name}</TableCell>
@@ -485,6 +487,7 @@ export default function VendorList() {
                 </TableBody>
               </Table>
             </div>
+            <TablePager pager={pagedFilteredPager} />
           </TabsContent>
 
           {/* Invitations Tab */}

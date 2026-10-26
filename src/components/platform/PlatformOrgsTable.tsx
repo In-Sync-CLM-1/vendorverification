@@ -48,6 +48,7 @@ import {
   type OrgRow,
 } from "@/hooks/usePlatformDashboard";
 import { useUrlState } from "@/hooks/useUrlState";
+import { usePager, TablePager } from "@/components/ui/table-pager";
 
 interface Props {
   orgs: OrgRow[];
@@ -102,6 +103,7 @@ export function PlatformOrgsTable({ orgs, ownTenantId }: Props) {
     if (!q) return true;
     return o.name.toLowerCase().includes(q) || o.slug.toLowerCase().includes(q);
   });
+  const { rows: pagedFiltered, pager: pagedFilteredPager } = usePager(filtered);
 
   const isProtected = (o: OrgRow) =>
     o.id === PLATFORM_DEFAULT_TENANT || o.id === ownTenantId;
@@ -207,7 +209,7 @@ export function PlatformOrgsTable({ orgs, ownTenantId }: Props) {
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((org) => {
+                pagedFiltered.map((org) => {
                   const badge = statusBadgeVariant(org.status, org.is_active);
                   const totalUsers = org.staff_count + org.vendor_user_count;
                   const protectedOrg = isProtected(org);
@@ -294,6 +296,7 @@ export function PlatformOrgsTable({ orgs, ownTenantId }: Props) {
             </TableBody>
           </Table>
         </div>
+        <TablePager pager={pagedFilteredPager} />
       </CardContent>
 
       {/* Extend trial dialog */}
